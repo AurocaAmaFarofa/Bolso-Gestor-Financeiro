@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bolso · Gestão Financeira Pessoal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div>
+      <header>
+        <nav>
+          <button>Inicio</button>
+          <button>Lançamentos</button>
+          <button>Fixos</button>
+          <button>Reservas</button>
+        </nav>
+      </header>
+      <main>
+        <!-- Seção do Dashboard -->
+        <section id="dashboard">
+          <header class="page-header">
+            <h1 class="dashboard-title">Olá, Usuario</h1>
+          </header>
+          <div class="current-balance">
+            <span>Saldo atual</span>
+            <p>1.000,00</p>
+          </div>
+          <div class="stats-grid">
+            <div class="stats-card stats-card--expenses">
+              <span>Gasto no mês</span>
+              <p>700,00</p>
+            </div>
+            <div class="stats-card stats-card--reserve">
+              <span>Guardados</span>
+              <p>1.750,00</p>
+            </div>
+          </div>
+        </section>
+        <!-- Seção de Lançamentos -->
+        <section id="expenses">
+          <header class="page-header">
+            <h1>Lançamentos</h1>
+          </header>
+          <div class="container-btn-new-expenses">
+            <button class="btn-new-expenses">Novo Lançamento</button>
+          </div>
+          <div class="grid-expenses">
+            <div class="card-expenses">
+              <h2>Tipo de Gasto</h2>
+              <p>Valor</p>
+              <p>Descrição</p>
+              <p>Forma de pagamento</p>
+              <p>Data</p>
+              <button class="btn-delete">Excluir</button>
+            </div>
+          </div>
+        </section>
+        <!-- Seção de Fixos -->
+        <section id="fixed-expenses">
+          <header class="page-header">
+            <h1>Gastos Fixos</h1>
+          </header>
+          <div class="container-btn-new-expenses">
+            <button class="btn-new-expenses">Novo Gasto Fixo</button>
+          </div>
+          <div class="grid-expenses">
+            <div class="card-expenses">
+              <h2>Nome do Gasto</h2>
+              <p>Valor</p>
+              <button class="change-btn">Pendente</button>
+              <button class="btn-delete">Excluir</button>
+            </div>
+          </div>
+        </section>
+        <!-- Seção de Reservas -->
+        <section id="reserved-expenses">
+          <header class="page-header">
+            <h1>Gastos Fixos</h1>
+          </header>
+          <div class="container-btn-new-expenses">
+            <button class="btn-new-expenses">Novo Gasto Fixo</button>
+          </div>
+          <div class="grid-expenses">
+            <div class="card-expenses">
+              <h2>Nome do Gasto</h2>
+              <p>Valor</p>
+              <div class="change-btns">
+                <button class="btn-plus-minus" id="plus-btn">+</button>
+                <button class="btn-plus-minus" id="minus-btn">-</button>
+              </div>
+              <button class="btn-delete">Excluir</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
