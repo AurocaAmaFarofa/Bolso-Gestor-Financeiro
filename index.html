@@ -15,12 +15,37 @@
   </head>
   <body>
     <div>
-      <header>
+      <header class="app-header">
+        <h1 class="app-title">Bolso</h1>
         <nav>
-          <button onclick="mostrarPagina('dashboard')">Inicio</button>
-          <button onclick="mostrarPagina('expenses')">Lançamentos</button>
-          <button onclick="mostrarPagina('fixedExpenses')">Fixos</button>
-          <button onclick="mostrarPagina('reserved')">Reservas</button>
+          <button
+            onclick="mostrarPagina('dashboard')"
+            class="btn-header btn-header-active"
+            id="btn-dashboard"
+          >
+            Inicio
+          </button>
+          <button
+            onclick="mostrarPagina('expenses')"
+            class="btn-header btn-header-active"
+            id="btn-expenses"
+          >
+            Lançamentos
+          </button>
+          <button
+            onclick="mostrarPagina('fixedExpenses')"
+            class="btn-header btn-header-active"
+            id="btn-fixedExpenses"
+          >
+            Fixos
+          </button>
+          <button
+            onclick="mostrarPagina('reserved')"
+            class="btn-header btn-header-active"
+            id="btn-reserved"
+          >
+            Reservas
+          </button>
         </nav>
       </header>
       <main>

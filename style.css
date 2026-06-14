@@ -34,10 +34,11 @@ html {
 }
 body {
   font-family: var(--font-body);
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-bg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  margin: 20px;
 }
 button {
   font-family: inherit;
@@ -76,4 +77,37 @@ svg {
 
 .page.active-page {
   display: block;
+}
+
+.app-header {
+  background-color: var(--color-accent);
+  padding: var(--radius-md);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent-soft);
+  display: flex;
+  justify-content: center;
+  gap: var(--radius-md);
+  font-family: var(--font-body);
+  align-items: center;
+}
+
+.app-title {
+  font-family: var(--font-display);
+}
+
+.app-header nav {
+  display: flex;
+  gap: var(--radius-md);
+}
+
+.btn-header {
+  padding: var(--radius-md);
+  border-radius: var(--radius-lg);
+  font-size: var(--radius-md);
+}
+
+.btn-header-active {
+  background-color: var(--color-expense);
+  padding: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
