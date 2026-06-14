@@ -11,20 +11,21 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
   </head>
   <body>
     <div>
       <header>
         <nav>
-          <button>Inicio</button>
-          <button>Lançamentos</button>
-          <button>Fixos</button>
-          <button>Reservas</button>
+          <button onclick="mostrarPagina('dashboard')">Inicio</button>
+          <button onclick="mostrarPagina('expenses')">Lançamentos</button>
+          <button onclick="mostrarPagina('fixedExpenses')">Fixos</button>
+          <button onclick="mostrarPagina('reserved')">Reservas</button>
         </nav>
       </header>
       <main>
         <!-- Seção do Dashboard -->
-        <section id="dashboard">
+        <section id="dashboard" class="page">
           <header class="page-header">
             <h1 class="dashboard-title">Olá, Usuario</h1>
           </header>
@@ -44,7 +45,7 @@
           </div>
         </section>
         <!-- Seção de Lançamentos -->
-        <section id="expenses">
+        <section id="expenses" class="page">
           <header class="page-header">
             <h1>Lançamentos</h1>
           </header>
@@ -63,7 +64,7 @@
           </div>
         </section>
         <!-- Seção de Fixos -->
-        <section id="fixed-expenses">
+        <section id="fixedExpenses" class="page">
           <header class="page-header">
             <h1>Gastos Fixos</h1>
           </header>
@@ -80,7 +81,7 @@
           </div>
         </section>
         <!-- Seção de Reservas -->
-        <section id="reserved-expenses">
+        <section id="reserved" class="page">
           <header class="page-header">
             <h1>Gastos Fixos</h1>
           </header>
