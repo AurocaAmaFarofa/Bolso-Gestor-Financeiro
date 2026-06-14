@@ -14,7 +14,7 @@
     <script src="script.js" defer></script>
   </head>
   <body>
-    <div>
+    <div class="app-general">
       <header class="app-header">
         <h1 class="app-title">Bolso</h1>
         <nav>
@@ -79,11 +79,13 @@
           </div>
           <div class="grid-expenses">
             <div class="card-expenses">
-              <h2>Tipo de Gasto</h2>
-              <p>Valor</p>
-              <p>Descrição</p>
-              <p>Forma de pagamento</p>
-              <p>Data</p>
+              <h2>Alimentação</h2>
+              <p>25,99</p>
+              <p>Compras no Mercado</p>
+              <div class="division-card">
+                <p>Pix</p>
+                <p>10/11/2026</p>
+              </div>
               <button class="btn-delete">Excluir</button>
             </div>
           </div>
@@ -98,30 +100,40 @@
           </div>
           <div class="grid-expenses">
             <div class="card-expenses">
-              <h2>Nome do Gasto</h2>
-              <p>Valor</p>
-              <button class="change-btn">Pendente</button>
-              <button class="btn-delete">Excluir</button>
+              <div class="especifications">
+                <h2>Spotify</h2>
+                <p>16,00</p>
+              </div>
+              <div class="btns-new-expenses">
+                <button class="change-btn pending" id="pending-btn">
+                  Pendente
+                </button>
+                <button class="btn-delete">Excluir</button>
+              </div>
             </div>
           </div>
         </section>
         <!-- Seção de Reservas -->
         <section id="reserved" class="page">
           <header class="page-header">
-            <h1>Gastos Fixos</h1>
+            <h1>Reserva</h1>
           </header>
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses">Novo Gasto Fixo</button>
+            <button class="btn-new-expenses">Nova Reserva</button>
           </div>
           <div class="grid-expenses">
             <div class="card-expenses">
-              <h2>Nome do Gasto</h2>
-              <p>Valor</p>
-              <div class="change-btns">
-                <button class="btn-plus-minus" id="plus-btn">+</button>
-                <button class="btn-plus-minus" id="minus-btn">-</button>
+              <div class="especifications">
+                <h2>NootBook</h2>
+                <p>1.750,00</p>
               </div>
-              <button class="btn-delete">Excluir</button>
+              <div class="btns-delete-plus-minus">
+                <div class="change-btns half">
+                  <button class="btn-plus-minus" id="plus-btn">+</button>
+                  <button class="btn-plus-minus" id="minus-btn">-</button>
+                </div>
+                <button class="btn-delete half">Excluir</button>
+              </div>
             </div>
           </div>
         </section>
