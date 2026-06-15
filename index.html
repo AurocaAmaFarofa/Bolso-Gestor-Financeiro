@@ -15,6 +15,73 @@
   </head>
   <body>
     <div class="app-general">
+      <!-------------------Popup De Lançamentos---------------->
+      <div class="popup-modal display-none" id="popup-modal">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Novo lançamento</h1>
+          <button class="close-modal-btn" id="close-popup">x</button>
+        </div>
+
+        <div class="popup-plus-minus-btn">
+          <button class="popup-btn" id="expense-btn">Gasto</button>
+          <button class="popup-btn" id="income-btn">Recebimento</button>
+        </div>
+
+        <div class="transaction-form-container">
+          <label class="popup-container">
+            <span class="span-popup">Valor</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="0,00"
+              id="valueInput"
+              required
+            />
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Categoria</span>
+            <select id="category-select" required>
+              <option value="alimentacao">Alimentação</option>
+              <option value="transporte">Transporte</option>
+              <option value="moradia">Moradia</option>
+              <option value="lazer">Lazer</option>
+              <option value="saude">Saúde</option>
+              <option value="salario">Salário</option>
+              <option value="extra">Renda extra</option>
+              <option value="outros">Outros</option>
+            </select>
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Descrição</span>
+            <input
+              type="text"
+              id="descriptionInput"
+              placeholder="Ex: Supermercado do mês"
+              required
+            />
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Forma de pagamento</span>
+            <select id="payment-select" required>
+              <option value="pix">Pix</option>
+              <option value="debito">Cartão de débito</option>
+              <option value="credito">Cartão de crédito</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="transferencia">Transferência</option>
+            </select>
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Data</span>
+            <input type="date" id="dateInput" required />
+          </label>
+
+          <button type="submit" class="btn-submit">Salvar lançamento</button>
+        </div>
+      </div>
       <header class="app-header">
         <h1 class="app-title">Bolso</h1>
         <nav>
@@ -75,9 +142,11 @@
             <h1>Lançamentos</h1>
           </header>
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses">Novo Lançamento</button>
+            <button class="btn-new-expenses" id="new-expense">
+              Novo Lançamento
+            </button>
           </div>
-          <div class="grid-expenses">
+          <div class="grid-expenses" id="grid-expenses">
             <div class="card-expenses">
               <h2>Alimentação</h2>
               <p>25,99</p>

@@ -1,3 +1,9 @@
+const btnLancamentos = document.querySelector("#new-expense");
+const btnFecharPopup = document.querySelector("#close-popup");
+const lancamentos = JSON.parse(localStorage.getItem("lancamentos")) || [];
+
+//-----------------------------------------------------------------
+
 function mostrarPagina(idPagina) {
   const paginas = document.querySelectorAll(".page");
   paginas.forEach((pagina) => {
@@ -18,3 +24,15 @@ function mostrarPagina(idPagina) {
 }
 
 window.onload = () => mostrarPagina("dashboard");
+
+//-----------------------------------------------------------------
+
+btnLancamentos.addEventListener("click", () => {
+  const popup = document.querySelector("#popup-modal");
+  popup.classList.remove("display-none");
+});
+
+btnFecharPopup.addEventListener("click", () => {
+  const popup = document.querySelector("#popup-modal");
+  popup.classList.add("display-none");
+});
