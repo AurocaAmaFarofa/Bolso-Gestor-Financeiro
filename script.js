@@ -1,38 +1,115 @@
-const btnLancamentos = document.querySelector("#new-expense");
-const btnFecharPopup = document.querySelector("#close-popup");
-const lancamentos = JSON.parse(localStorage.getItem("lancamentos")) || [];
+const btnLancamentos = document.querySelector('#new-expense')
+const btnFecharPopup = document.querySelector('#close-popup')
+const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
+const btnAddLancamento = document.querySelector('#btn-submit')
+const btnGasto = document.querySelector('#expense-btn')
+const btnRecebimento = document.querySelector('#income-btn')
+const gridLancamentos = document.querySelector('#grid-expenses')
+const cardLancamentos = document.querySelectorAll('.card-expenses')
+let tipoSelecionado = 'despesa'
+
+//-----------------------------------------------------------------
+
+function renderizarGridLancamentos() {
+  const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
+  gridLancamentos.innerHTML = ''
+
+  // CORREÇÃO: Usando o forEach como função e passando 'item' como parâmetro
+  lancamentos.forEach((item) => {
+    gridLancamentos.innerHTML += `
+      <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
+        <h2>${item.descricao}</h2>
+        <p>R$ ${item.valor}</p>
+        <p>${item.categoria}</p>
+        <div class="division-card">
+          <p>${item.forma}</p>
+          <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
+        </div>
+        <button class="btn-delete" id="delete-btn-card">Excluir</button>
+      </div>
+    `
+  })
+}
+
+renderizarGridLancamentos()
+
+function desmarcarBotao() {
+  btnGasto.classList.remove('btn-selected-ex')
+  btnRecebimento.classList.remove('btn-selected-in')
+}
+
+btnGasto.addEventListener('click', () => {
+  btnRecebimento.classList.remove('btn-selected-in')
+  btnGasto.classList.add('btn-selected-ex')
+  tipoSelecionado = 'despesa'
+})
+
+btnRecebimento.addEventListener('click', () => {
+  console.log('mudou')
+  btnGasto.classList.remove('btn-selected-ex')
+  btnRecebimento.classList.add('btn-selected-in')
+  tipoSelecionado = 'ganho'
+})
+
+function fecharPopup() {
+  const popup = document.querySelector('#popup-modal')
+  popup.classList.add('display-none')
+  desmarcarBotao()
+}
+
+btnAddLancamento.addEventListener('click', () => {
+  let lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
+  const novoLancamento = {
+    tipo: tipoSelecionado,
+    valor: document.getElementById('valueInput').value,
+    categoria: document.getElementById('category-select').value,
+    descricao: document.getElementById('descriptionInput').value,
+    forma: document.getElementById('payment-select').value,
+    data: Date.now(),
+  }
+
+  lancamentos.push(novoLancamento)
+  localStorage.setItem('lancamentos', JSON.stringify(lancamentos))
+
+  console.log(lancamentos)
+
+  renderizarGridLancamentos()
+  fecharPopup()
+})
 
 //-----------------------------------------------------------------
 
 function mostrarPagina(idPagina) {
-  const paginas = document.querySelectorAll(".page");
+  const paginas = document.querySelectorAll('.page')
   paginas.forEach((pagina) => {
-    pagina.classList.remove("active-page");
-  });
-  const paginaAtiva = document.getElementById(idPagina);
+    pagina.classList.remove('active-page')
+  })
+  const paginaAtiva = document.getElementById(idPagina)
   if (paginaAtiva) {
-    paginaAtiva.classList.add("active-page");
+    paginaAtiva.classList.add('active-page')
   }
-  const btnAtivo = document.querySelectorAll(".btn-header");
+  const btnAtivo = document.querySelectorAll('.btn-header')
   btnAtivo.forEach((btn) => {
-    btn.classList.remove("btn-header-active");
-  });
-  const btnAtual = document.getElementById("btn-" + idPagina);
+    btn.classList.remove('btn-header-active')
+  })
+  const btnAtual = document.getElementById('btn-' + idPagina)
   if (btnAtual) {
-    btnAtual.classList.add("btn-header-active");
+    btnAtual.classList.add('btn-header-active')
   }
 }
 
-window.onload = () => mostrarPagina("dashboard");
+window.onload = () => mostrarPagina('dashboard')
 
 //-----------------------------------------------------------------
 
-btnLancamentos.addEventListener("click", () => {
-  const popup = document.querySelector("#popup-modal");
-  popup.classList.remove("display-none");
-});
+btnLancamentos.addEventListener('click', () => {
+  const popup = document.querySelector('#popup-modal')
+  popup.classList.remove('display-none')
+  desmarcarBotao()
+})
 
-btnFecharPopup.addEventListener("click", () => {
-  const popup = document.querySelector("#popup-modal");
-  popup.classList.add("display-none");
-});
+btnFecharPopup.addEventListener('click', () => {
+  const popup = document.querySelector('#popup-modal')
+  popup.classList.add('display-none')
+  desmarcarBotao()
+})

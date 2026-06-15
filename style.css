@@ -14,9 +14,9 @@
   --color-reserve-soft: #f8edd3;
   --color-border: #e4ddcc;
 
-  --font-display: "Fraunces", serif;
-  --font-body: "Plus Jakarta Sans", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
 
   --radius-lg: 22px;
   --radius-md: 14px;
@@ -182,6 +182,7 @@ button:hover {
 .card-expenses {
   display: grid;
   gap: 8px;
+  color: var(--color-ink);
 }
 
 .card-expenses h2 {
@@ -189,7 +190,7 @@ button:hover {
 }
 
 .card-expenses p {
-  color: var(--color-ink-soft);
+  color: var(--color-ink);
   font-size: 0.95rem;
 }
 
@@ -331,17 +332,29 @@ h2 {
 .popup-plus-minus-btn {
   display: flex;
   justify-content: space-between;
-
+  margin-bottom: 10px;
   gap: 10px;
 }
 
 .popup-btn {
   width: 50%;
   max-width: 200px;
+  transform: scale(0.9);
+  opacity: 0.9;
+}
+
+.btn-selected-ex {
+  transform: scale(1.01);
+  opacity: 1;
+}
+
+.btn-selected-in {
+  transform: scale(1.01);
+  opacity: 1;
 }
 
 #expense-btn {
-  background-color: var(--color-expense);
+  background-color: var(--color-accent);
   color: var(--color-expense-soft);
 }
 
@@ -385,6 +398,16 @@ select:focus {
   width: 100%;
   margin: 0 auto;
   max-width: 200px;
+}
+
+.expense-color {
+  border: 2.5px solid;
+  border-color: var(--color-expense);
+}
+
+.income-color {
+  border: 2.5px solid;
+  border-color: var(--color-income);
 }
 
 @media (min-width: 520px) {
