@@ -427,6 +427,22 @@ select:focus {
   text-align: center;
 }
 
+.title-fixed-main {
+  font-size: 1.3rem;
+}
+
+.fixed-card-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px;
+}
+
+.pending-type-main {
+  font-family: var(--font-body) !important;
+  font-size: 1rem !important;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;
@@ -460,5 +476,9 @@ select:focus {
 
   .btn-new-expenses {
     width: auto;
+  }
+
+  .title-fixed-main {
+    font-size: 1.5rem;
   }
 }

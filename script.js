@@ -15,6 +15,7 @@ const btnPopupGastoFixo = document.querySelector('#btn-new-pending')
 const modalPopup = document.querySelector('#popup-fixed-expense')
 const btnFecharGastoFixo = document.querySelector('#close-popup-fixed')
 const btnAddGastoFixo = document.querySelector('#btn-submit-fixed-expense')
+const gastosFixosMain = document.querySelector('#fixed-expenses-main')
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
@@ -55,6 +56,7 @@ function renderizarGridGastosFixos() {
   const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
   if (!gridGastosFixos) return
 
+  gastosFixosMain.innerHTML = ''
   gridGastosFixos.innerHTML = ''
 
   pendencias.forEach((item, indice) => {
@@ -75,6 +77,12 @@ function renderizarGridGastosFixos() {
         </button>
         <button class="btn-delete" onclick="deletarGastoFixo(${indice})">Excluir</button>
       </div>
+    </div>
+    `
+    gastosFixosMain.innerHTML += `
+    <div class="fixed-card-main">
+      <h1 class="title-fixed-main">${item.nome}</h1>
+      <p class="pending-type-main">${textoBotao}</p>
     </div>
     `
   })
