@@ -15,6 +15,36 @@
   </head>
   <body>
     <div class="app-general">
+      <!-- Popup's de + e - -->
+      <div class="popup-modal display-none" id="modal-minus">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Valor à retirar</h1>
+          <button class="close-modal-btn">x</button>
+        </div>
+        <label class="popup-container">
+          <input
+            type="number"
+            id="minus-value-reserve"
+            placeholder="00,00"
+            required
+          />
+        </label>
+      </div>
+
+      <div class="popup-modal display-none" id="modal-add">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Valor à adicionar</h1>
+          <button class="close-modal-btn">x</button>
+        </div>
+        <label class="popup-container">
+          <input
+            type="number"
+            id="plus-value-reserve"
+            placeholder="00,00"
+            required
+          />
+        </label>
+      </div>
       <!-------------------Popup De Reservas--------------->
       <div class="popup-modal display-none" id="popup-reserved">
         <div class="container-modal-title">

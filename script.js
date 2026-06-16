@@ -24,11 +24,28 @@ const btnPopupNovaReserva = document.querySelector('#btn-new-reserve')
 const btnAddReserva = document.querySelector('#btn-submit-reserve')
 const totalReservadoVisor = document.querySelector('#total-reserved')
 const totalDinheiroVisor = document.querySelector('#total-money')
+const popupAddReserva = document.querySelector('#modal-add')
+const popupDimReserva = document.querySelector('#modal-minus')
 let valorTotalReservado = 0
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
 //----------------------Coisas Das Reservas----------------------
+
+window.abrirPopupAdd = abrirPopupAdd
+window.abrirPopupDim = abrirPopupDim
+
+function abrirPopupAdd(indice) {
+  if (popupAddReserva) {
+    popupAddReserva.classList.toggle('display-none')
+  }
+}
+
+function abrirPopupDim(indice) {
+  if (popupDimReserva) {
+    popupDimReserva.classList.toggle('display-none')
+  }
+}
 
 if (btnPopupNovaReserva && modalPopupReserved) {
   btnPopupNovaReserva.addEventListener('click', (evento) => {
@@ -82,8 +99,8 @@ function renderizarGridReservas() {
         </div>
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
-            <button class="btn-plus-minus" id="plus-btn">+</button>
-            <button class="btn-plus-minus" id="minus-btn">-</button>
+            <button class="btn-plus-minus" id="plus-btn" onclick="abrirPopupAdd(${indice})">+</button>
+            <button class="btn-plus-minus" id="minus-btn" onclick="abrirPopupDim(${indice})">-</button>
           </div>
           <button class="btn-delete half" onclick="excluirReservas(${indice})">Excluir</button>
         </div>
