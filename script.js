@@ -12,14 +12,33 @@ const saldoAtual = document.querySelector('#current-balance-id')
 const totalGasto = document.querySelector('#total-expenses')
 const btnPendente = document.querySelector('#pending-btn')
 const btnPopupGastoFixo = document.querySelector('#btn-new-pending')
-const modalPopup = document.querySelector('#popup-fixed-expense')
+const modalPopupFixed = document.querySelector('#popup-fixed-expense')
+const modalPopupReserved = document.querySelector('#popup-reserved')
 const btnFecharGastoFixo = document.querySelector('#close-popup-fixed')
 const btnAddGastoFixo = document.querySelector('#btn-submit-fixed-expense')
 const gastosFixosMain = document.querySelector('#fixed-expenses-main')
+const btnFecharReservas = document.querySelector('#close-popup-reserved')
+const btnPopupNovaReserva = document.querySelector('#btn-new-reserve')
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
-//-----------------------------------------------------------------
+//----------------------Coisas Das Reservas----------------------
+
+if (btnPopupNovaReserva && modalPopupReserved) {
+  btnPopupNovaReserva.addEventListener('click', (evento) => {
+    evento.stopPropagation()
+    modalPopupReserved.classList.toggle('display-none')
+  })
+}
+
+if (btnFecharReservas && modalPopupReserved) {
+  btnFecharReservas.addEventListener('click', (evento) => {
+    evento.stopPropagation()
+    modalPopupReserved.classList.add('display-none')
+  })
+}
+
+//----------------------Coisas dos Gastos Fixos-------------------------
 
 window.alternarStatusGastoFixo = alternarStatusGastoFixo
 window.deletarGastoFixo = deletarGastoFixo
@@ -39,9 +58,9 @@ function alternarStatusGastoFixo(indice) {
 }
 
 function fecharPopupFixed() {
-  const modalPopup = document.querySelector('#popup-fixed-expense')
-  if (modalPopup) {
-    modalPopup.classList.add('display-none')
+  const modalPopupFixed = document.querySelector('#popup-fixed-expense')
+  if (modalPopupFixed) {
+    modalPopupFixed.classList.add('display-none')
   }
 }
 
@@ -88,17 +107,17 @@ function renderizarGridGastosFixos() {
   })
 }
 
-if (btnPopupGastoFixo && modalPopup) {
+if (btnPopupGastoFixo && modalPopupFixed) {
   btnPopupGastoFixo.addEventListener('click', (evento) => {
     evento.stopPropagation()
-    modalPopup.classList.toggle('display-none')
+    modalPopupFixed.classList.toggle('display-none')
   })
 }
 
-if (btnFecharGastoFixo && modalPopup) {
+if (btnFecharGastoFixo && modalPopupFixed) {
   btnFecharGastoFixo.addEventListener('click', (evento) => {
     evento.stopPropagation()
-    modalPopup.classList.add('display-none')
+    modalPopupFixed.classList.add('display-none')
   })
 }
 
@@ -189,6 +208,7 @@ btnRecebimento.addEventListener('click', () => {
   tipoSelecionado = 'ganho'
 })
 
+//fecha o popup do lançamentos
 function fecharPopup() {
   const popup = document.querySelector('#popup-modal')
   popup.classList.add('display-none')

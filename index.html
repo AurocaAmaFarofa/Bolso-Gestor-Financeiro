@@ -15,6 +15,40 @@
   </head>
   <body>
     <div class="app-general">
+      <!-------------------Popup De Reservas--------------->
+      <div class="popup-modal display-none" id="popup-reserved">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Nova Reserva</h1>
+          <button class="close-modal-btn" id="close-popup-reserved">x</button>
+        </div>
+
+        <div class="transaction-form-container">
+          <label class="popup-container">
+            <span class="span-popup">Nome da reseva</span>
+            <input
+              type="text"
+              id="reserve-name"
+              placeholder="Ex: Notebook"
+              required
+            />
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Valor Inicial</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="0,00"
+              id="reserve-value"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn-submit" id="btn-submit-reserve">
+            Salvar Gasto
+          </button>
+        </div>
+      </div>
       <!-------------------Popup De Gastos Fixos--------------->
       <div class="popup-modal display-none" id="popup-fixed-expense">
         <div class="container-modal-title">
@@ -212,20 +246,7 @@
               Novo Gasto Fixo
             </button>
           </div>
-          <div class="grid-expenses" id="grid-fixed-expenses">
-            <div class="card-expenses">
-              <div class="especifications">
-                <h2>Spotify</h2>
-                <p>16,00</p>
-              </div>
-              <div class="btns-new-expenses">
-                <button class="change-btn pending" id="pending-btn">
-                  Pendente
-                </button>
-                <button class="btn-delete">Excluir</button>
-              </div>
-            </div>
-          </div>
+          <div class="grid-expenses" id="grid-fixed-expenses"></div>
         </section>
         <!-- Seção de Reservas -->
         <section id="reserved" class="page">
@@ -233,7 +254,9 @@
             <h1>Reserva</h1>
           </header>
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses">Nova Reserva</button>
+            <button class="btn-new-expenses" id="btn-new-reserve">
+              Nova Reserva
+            </button>
           </div>
           <div class="grid-expenses">
             <div class="card-expenses">
