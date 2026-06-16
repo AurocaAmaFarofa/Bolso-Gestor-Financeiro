@@ -6,6 +6,8 @@ const btnGasto = document.querySelector('#expense-btn')
 const btnRecebimento = document.querySelector('#income-btn')
 const gridLancamentos = document.querySelector('#grid-expenses')
 const cardLancamentos = document.querySelectorAll('.card-expenses')
+const saldoAtual = document.querySelector('#current-balance-id')
+const totalGasto = document.querySelector('#total-expenses')
 let tipoSelecionado = 'despesa'
 
 //-----------------------------------------------------------------
@@ -13,9 +15,12 @@ let tipoSelecionado = 'despesa'
 function renderizarGridLancamentos() {
   const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
   gridLancamentos.innerHTML = ''
+  let saldoAtualNum = 0
+  let totalGastoNum = 0
 
   // CORREÇÃO: Usando o forEach como função e passando 'item' como parâmetro
-  lancamentos.forEach((item) => {
+  lancamentos.forEach((item, indice) => {
+    console.log(indice)
     gridLancamentos.innerHTML += `
       <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
         <h2>${item.descricao}</h2>
@@ -25,25 +30,43 @@ function renderizarGridLancamentos() {
           <p>${item.forma}</p>
           <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
         </div>
-        <button class="btn-delete" id="delete-btn-card">Excluir</button>
+        <button class="btn-delete" id="delete-btn-card" onclick="deletarLancamento(${indice})">Excluir</button>
       </div>
     `
+    const valorItem = Number(item.valor)
+    if (item.tipo === 'ganho') {
+      saldoAtualNum = saldoAtualNum + valorItem
+    } else {
+      saldoAtualNum = saldoAtualNum - valorItem
+      totalGastoNum = totalGastoNum + valorItem
+    }
   })
+  saldoAtual.textContent = 'R$' + saldoAtualNum.toFixed(2).replace('.', ',')
+  totalGasto.textContent = 'R$' + totalGastoNum.toFixed(2).replace('.', ',')
 }
 
 renderizarGridLancamentos()
+
+function deletarLancamento(indice) {
+  let lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
+  lancamentos.splice(indice, 1)
+  localStorage.setItem('lancamentos', JSON.stringify(lancamentos))
+  renderizarGridLancamentos()
+}
 
 function desmarcarBotao() {
   btnGasto.classList.remove('btn-selected-ex')
   btnRecebimento.classList.remove('btn-selected-in')
 }
 
+//seleciona o tipo pra gasto
 btnGasto.addEventListener('click', () => {
   btnRecebimento.classList.remove('btn-selected-in')
   btnGasto.classList.add('btn-selected-ex')
   tipoSelecionado = 'despesa'
 })
 
+//seleciona o tipo pra ganho
 btnRecebimento.addEventListener('click', () => {
   console.log('mudou')
   btnGasto.classList.remove('btn-selected-ex')

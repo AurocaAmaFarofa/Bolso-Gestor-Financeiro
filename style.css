@@ -410,6 +410,10 @@ select:focus {
   border-color: var(--color-income);
 }
 
+.grid-none-expenses {
+  text-align: center;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;
