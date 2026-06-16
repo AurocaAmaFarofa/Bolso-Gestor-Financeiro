@@ -453,15 +453,33 @@ select:focus {
   }
 
   .app-header {
+    display: flex;
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
+    gap: 16px;
     padding: 20px 24px;
   }
 
+  .app-title {
+    flex-shrink: 0;
+  }
+
   .app-header nav {
-    width: auto;
-    justify-content: flex-end;
-    overflow-x: visible;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+    justify-content: flex-start;
+    flex: 1;
+    min-width: 0;
+    padding: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .app-header nav button:first-child {
+    margin-left: auto;
   }
 
   .stats-grid {
