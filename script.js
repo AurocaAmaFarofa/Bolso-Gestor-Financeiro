@@ -22,6 +22,9 @@ const gastosFixosMain = document.querySelector('#fixed-expenses-main')
 const btnFecharReservas = document.querySelector('#close-popup-reserved')
 const btnPopupNovaReserva = document.querySelector('#btn-new-reserve')
 const btnAddReserva = document.querySelector('#btn-submit-reserve')
+const totalReservadoVisor = document.querySelector('#total-reserved')
+const totalDinheiroVisor = document.querySelector('#total-money')
+let valorTotalReservado = 0
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
@@ -62,11 +65,12 @@ btnAddReserva.addEventListener('click', () => {
 
   document.querySelector('#reserve-name').value = ''
   document.querySelector('#reserve-value').value = ''
+
+  renderizarGridLancamentos()
 })
 
 function renderizarGridReservas() {
   const reservas = JSON.parse(localStorage.getItem('reservas')) || []
-  valorReservado = reservas.valorI
   gridReservas.innerHTML = ''
 
   reservas.forEach((item, indice) => {
@@ -85,7 +89,11 @@ function renderizarGridReservas() {
         </div>
       </div>
     `
+    valorTotalReservado += Number(item.valorI)
+    ;(totalReservadoVisor.textContent =
+      'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
   })
+  renderizarGridLancamentos()
 }
 
 function excluirReservas(indice) {
@@ -93,6 +101,7 @@ function excluirReservas(indice) {
   reservas.splice(indice, 1)
   localStorage.setItem('reservas', JSON.stringify(reservas))
   renderizarGridReservas()
+  renderizarGridLancamentos()
 }
 
 renderizarGridReservas()
@@ -210,7 +219,6 @@ function renderizarGridLancamentos() {
   let saldoAtualNum = 0
   let totalGastoNum = 0
 
-  // CORREÇÃO: Usando o forEach como função e passando 'item' como parâmetro
   lancamentos.forEach((item, indice) => {
     console.log(indice)
     gridLancamentos.innerHTML += `
@@ -233,6 +241,14 @@ function renderizarGridLancamentos() {
       totalGastoNum = totalGastoNum + valorItem
     }
   })
+
+  totalDinheiroVisor.textContent =
+    'R$' + saldoAtualNum.toFixed(2).replace('.', ',')
+
+  if (totalReservadoVisor) {
+    saldoAtualNum = saldoAtualNum - valorTotalReservado
+  }
+
   saldoAtual.textContent = 'R$' + saldoAtualNum.toFixed(2).replace('.', ',')
   totalGasto.textContent = 'R$' + totalGastoNum.toFixed(2).replace('.', ',')
 }

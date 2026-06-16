@@ -443,6 +443,10 @@ select:focus {
   font-size: 1rem !important;
 }
 
+#total-money {
+  font-size: 1.5rem;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;
