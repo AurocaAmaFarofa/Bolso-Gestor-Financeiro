@@ -161,12 +161,8 @@ button:hover {
 .stats-grid,
 .grid-expenses {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 12px;
-}
-
-.grid-expenses {
-  flex-direction: column-reverse !important;
 }
 
 .stats-card p {

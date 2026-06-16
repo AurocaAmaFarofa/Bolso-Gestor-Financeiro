@@ -2,11 +2,13 @@ const btnLancamentos = document.querySelector('#new-expense')
 const btnFecharPopup = document.querySelector('#close-popup')
 const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
 const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+const reservas = JSON.parse(localStorage.getItem('reservas')) || []
 const btnAddLancamento = document.querySelector('#btn-submit')
 const btnGasto = document.querySelector('#expense-btn')
 const btnRecebimento = document.querySelector('#income-btn')
 const gridLancamentos = document.querySelector('#grid-expenses')
 const gridGastosFixos = document.querySelector('#grid-fixed-expenses')
+const gridReservas = document.querySelector('#grid-reserveds')
 const cardLancamentos = document.querySelectorAll('.card-expenses')
 const saldoAtual = document.querySelector('#current-balance-id')
 const totalGasto = document.querySelector('#total-expenses')
@@ -19,6 +21,7 @@ const btnAddGastoFixo = document.querySelector('#btn-submit-fixed-expense')
 const gastosFixosMain = document.querySelector('#fixed-expenses-main')
 const btnFecharReservas = document.querySelector('#close-popup-reserved')
 const btnPopupNovaReserva = document.querySelector('#btn-new-reserve')
+const btnAddReserva = document.querySelector('#btn-submit-reserve')
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
@@ -37,6 +40,62 @@ if (btnFecharReservas && modalPopupReserved) {
     modalPopupReserved.classList.add('display-none')
   })
 }
+
+function fecharPopupReservas() {
+  const modalPopupReserved = document.querySelector('#popup-fixed-expense')
+  if (modalPopupReserved) {
+    modalPopupReserved.classList.add('display-none')
+  }
+}
+
+btnAddReserva.addEventListener('click', () => {
+  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  const novaReserva = {
+    nome: document.querySelector('#reserve-name').value,
+    valorI: Number(document.querySelector('#reserve-value').value),
+  }
+  reservas.push(novaReserva)
+  console.log(reservas)
+  localStorage.setItem('reservas', JSON.stringify(reservas))
+  fecharPopupReservas()
+  renderizarGridReservas()
+
+  document.querySelector('#reserve-name').value = ''
+  document.querySelector('#reserve-value').value = ''
+})
+
+function renderizarGridReservas() {
+  const reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  valorReservado = reservas.valorI
+  gridReservas.innerHTML = ''
+
+  reservas.forEach((item, indice) => {
+    gridReservas.innerHTML += `
+      <div class="card-expenses">
+        <div class="especifications">
+          <h2>${item.nome}</h2>
+          <p>R$ ${item.valorI.toFixed(2).replace('.', ',')}</p>
+        </div>
+        <div class="btns-delete-plus-minus">
+          <div class="change-btns half">
+            <button class="btn-plus-minus" id="plus-btn">+</button>
+            <button class="btn-plus-minus" id="minus-btn">-</button>
+          </div>
+          <button class="btn-delete half" onclick="excluirReservas(${indice})">Excluir</button>
+        </div>
+      </div>
+    `
+  })
+}
+
+function excluirReservas(indice) {
+  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  reservas.splice(indice, 1)
+  localStorage.setItem('reservas', JSON.stringify(reservas))
+  renderizarGridReservas()
+}
+
+renderizarGridReservas()
 
 //----------------------Coisas dos Gastos Fixos-------------------------
 
@@ -233,6 +292,12 @@ btnAddLancamento.addEventListener('click', () => {
 
   renderizarGridLancamentos()
   fecharPopup()
+
+  document.getElementById('valueInput').value = ''
+  document.getElementById('category-select').value = ''
+  document.getElementById('descriptionInput').value = ''
+  document.getElementById('payment-select').value = ''
+  tipoSelecionado = 'despesa'
 })
 
 //-----------------------------------------------------------------
