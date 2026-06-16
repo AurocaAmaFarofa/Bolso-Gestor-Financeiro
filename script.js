@@ -20,6 +20,10 @@ let pagoOuNaoPago = 'naoPago'
 
 //-----------------------------------------------------------------
 
+window.alternarStatusGastoFixo = alternarStatusGastoFixo
+window.deletarGastoFixo = deletarGastoFixo
+window.fecharPopupFixed = fecharPopupFixed
+
 function alternarStatusGastoFixo(indice) {
   let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
 
@@ -33,58 +37,28 @@ function alternarStatusGastoFixo(indice) {
   renderizarGridGastosFixos()
 }
 
-window.fecharPopupFixed = fecharPopupFixed
-
-btnPopupGastoFixo.addEventListener('click', (evento) => {
-  evento.stopPropagation()
-  modalPopup.classList.toggle('display-none')
-})
-
-btnFecharGastoFixo.addEventListener('click', (evento) => {
-  evento.stopPropagation()
-  modalPopup.classList.add('display-none')
-})
-
 function fecharPopupFixed() {
   const modalPopup = document.querySelector('#popup-fixed-expense')
-  modalPopup.classList.add('display-none')
+  if (modalPopup) {
+    modalPopup.classList.add('display-none')
+  }
 }
 
-window.fecharPopup = fecharPopup
-
-btnPopupGastoFixo.addEventListener('click', (evento) => {
-  evento.stopPropagation()
-  modalPopup.classList.toggle('display-none')
-})
-
-btnFecharGastoFixo.addEventListener('click', (evento) => {
-  evento.stopPropagation()
-  modalPopup.classList.add('display-none')
-})
-
-btnAddGastoFixo.addEventListener('click', () => {
+function deletarGastoFixo(indice) {
   let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
-  const novaPendencia = {
-    pagoOuPendente: 'naoPago',
-    valor: document.getElementById('fixed-expense-value').value,
-    nome: document.getElementById('fixed-expense-name').value,
-  }
-
-  pendencias.push(novaPendencia)
+  pendencias.splice(indice, 1)
   localStorage.setItem('pendencias', JSON.stringify(pendencias))
-  fecharPopupFixed()
-  console.log(pendencias)
   renderizarGridGastosFixos()
-})
+}
 
 function renderizarGridGastosFixos() {
   const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+  if (!gridGastosFixos) return
+
   gridGastosFixos.innerHTML = ''
 
   pendencias.forEach((item, indice) => {
     const ehPago = item.pagoOuPendente === 'pago'
-
-    // Mantém exatamente as suas classes do CSS: .pago ou .pending
     const classeStatus = ehPago ? 'pago' : 'pending'
     const textoBotao = ehPago ? 'Pago' : 'Pendente'
 
@@ -106,14 +80,41 @@ function renderizarGridGastosFixos() {
   })
 }
 
-renderizarGridGastosFixos()
-
-function deletarGastoFixo(indice) {
-  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
-  pendencias.splice(indice, 1)
-  localStorage.setItem('pendencias', JSON.stringify(pendencias))
-  renderizarGridGastosFixos()
+if (btnPopupGastoFixo && modalPopup) {
+  btnPopupGastoFixo.addEventListener('click', (evento) => {
+    evento.stopPropagation()
+    modalPopup.classList.toggle('display-none')
+  })
 }
+
+if (btnFecharGastoFixo && modalPopup) {
+  btnFecharGastoFixo.addEventListener('click', (evento) => {
+    evento.stopPropagation()
+    modalPopup.classList.add('display-none')
+  })
+}
+
+if (btnAddGastoFixo) {
+  btnAddGastoFixo.addEventListener('click', () => {
+    let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+    const novaPendencia = {
+      pagoOuPendente: 'naoPago',
+      valor: document.getElementById('fixed-expense-value').value,
+      nome: document.getElementById('fixed-expense-name').value,
+    }
+
+    pendencias.push(novaPendencia)
+    localStorage.setItem('pendencias', JSON.stringify(pendencias))
+    fecharPopupFixed()
+    console.log(pendencias)
+    renderizarGridGastosFixos()
+
+    document.getElementById('fixed-expense-value').value = ''
+    document.getElementById('fixed-expense-name').value = ''
+  })
+}
+
+renderizarGridGastosFixos()
 
 //-----------------------------------------------------------------
 
