@@ -229,10 +229,22 @@ button:hover {
   background-color: var(--color-income-soft);
   color: var(--color-income);
   border-color: var(--color-income-soft);
+  transition: all var(--transition);
 }
 
 .pending {
   transform: rotate(2deg);
+}
+
+.pago {
+  color: var(--color-income-soft);
+  background-color: var(--color-income);
+  transform: rotate(-2deg);
+}
+
+.pago:hover {
+  background-color: var(--color-income-soft);
+  color: var(--color-income);
 }
 
 .payed {
@@ -268,6 +280,7 @@ h2 {
 .especifications {
   display: flex;
   justify-content: space-between;
+  margin-bottom: 10px;
 }
 
 .btns-new-expenses {

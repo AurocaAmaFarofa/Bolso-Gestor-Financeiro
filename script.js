@@ -1,14 +1,119 @@
 const btnLancamentos = document.querySelector('#new-expense')
 const btnFecharPopup = document.querySelector('#close-popup')
 const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
+const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
 const btnAddLancamento = document.querySelector('#btn-submit')
 const btnGasto = document.querySelector('#expense-btn')
 const btnRecebimento = document.querySelector('#income-btn')
 const gridLancamentos = document.querySelector('#grid-expenses')
+const gridGastosFixos = document.querySelector('#grid-fixed-expenses')
 const cardLancamentos = document.querySelectorAll('.card-expenses')
 const saldoAtual = document.querySelector('#current-balance-id')
 const totalGasto = document.querySelector('#total-expenses')
+const btnPendente = document.querySelector('#pending-btn')
+const btnPopupGastoFixo = document.querySelector('#btn-new-pending')
+const modalPopup = document.querySelector('#popup-fixed-expense')
+const btnFecharGastoFixo = document.querySelector('#close-popup-fixed')
+const btnAddGastoFixo = document.querySelector('#btn-submit-fixed-expense')
 let tipoSelecionado = 'despesa'
+let pagoOuNaoPago = 'naoPago'
+
+//-----------------------------------------------------------------
+
+function alternarStatusGastoFixo(indice) {
+  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+
+  if (pendencias[indice].pagoOuPendente === 'naoPago') {
+    pendencias[indice].pagoOuPendente = 'pago'
+  } else {
+    pendencias[indice].pagoOuPendente = 'naoPago'
+  }
+
+  localStorage.setItem('pendencias', JSON.stringify(pendencias))
+  renderizarGridGastosFixos()
+}
+
+window.fecharPopupFixed = fecharPopupFixed
+
+btnPopupGastoFixo.addEventListener('click', (evento) => {
+  evento.stopPropagation()
+  modalPopup.classList.toggle('display-none')
+})
+
+btnFecharGastoFixo.addEventListener('click', (evento) => {
+  evento.stopPropagation()
+  modalPopup.classList.add('display-none')
+})
+
+function fecharPopupFixed() {
+  const modalPopup = document.querySelector('#popup-fixed-expense')
+  modalPopup.classList.add('display-none')
+}
+
+window.fecharPopup = fecharPopup
+
+btnPopupGastoFixo.addEventListener('click', (evento) => {
+  evento.stopPropagation()
+  modalPopup.classList.toggle('display-none')
+})
+
+btnFecharGastoFixo.addEventListener('click', (evento) => {
+  evento.stopPropagation()
+  modalPopup.classList.add('display-none')
+})
+
+btnAddGastoFixo.addEventListener('click', () => {
+  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+  const novaPendencia = {
+    pagoOuPendente: 'naoPago',
+    valor: document.getElementById('fixed-expense-value').value,
+    nome: document.getElementById('fixed-expense-name').value,
+  }
+
+  pendencias.push(novaPendencia)
+  localStorage.setItem('pendencias', JSON.stringify(pendencias))
+  fecharPopupFixed()
+  console.log(pendencias)
+  renderizarGridGastosFixos()
+})
+
+function renderizarGridGastosFixos() {
+  const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+  gridGastosFixos.innerHTML = ''
+
+  pendencias.forEach((item, indice) => {
+    const ehPago = item.pagoOuPendente === 'pago'
+
+    // Mantém exatamente as suas classes do CSS: .pago ou .pending
+    const classeStatus = ehPago ? 'pago' : 'pending'
+    const textoBotao = ehPago ? 'Pago' : 'Pendente'
+
+    console.log(indice + 'fixos')
+    gridGastosFixos.innerHTML += `
+    <div class="card-expenses">
+      <div class="especifications">
+        <h2>${item.nome}</h2>
+        <p>R$ ${item.valor}</p>
+      </div>
+      <div class="btns-new-expenses">
+        <button class="change-btn ${classeStatus}" onclick="alternarStatusGastoFixo(${indice})">
+          ${textoBotao}
+        </button>
+        <button class="btn-delete" onclick="deletarGastoFixo(${indice})">Excluir</button>
+      </div>
+    </div>
+    `
+  })
+}
+
+renderizarGridGastosFixos()
+
+function deletarGastoFixo(indice) {
+  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
+  pendencias.splice(indice, 1)
+  localStorage.setItem('pendencias', JSON.stringify(pendencias))
+  renderizarGridGastosFixos()
+}
 
 //-----------------------------------------------------------------
 
@@ -54,6 +159,7 @@ function deletarLancamento(indice) {
   renderizarGridLancamentos()
 }
 
+//deixa o botao sem o visual de selecionado
 function desmarcarBotao() {
   btnGasto.classList.remove('btn-selected-ex')
   btnRecebimento.classList.remove('btn-selected-in')
