@@ -41,6 +41,27 @@ let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
 let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
+// =============== Função de abrir e fechar Popups ==============
+
+function abrirOuFecharPopup(idPopup, acao) {
+  fecharPopups()
+  const popupId = document.getElementById(idPopup)
+  if (popupId) {
+    if (acao === 'abrir') {
+      popupId.classList.remove('display-none')
+    } else if (acao === 'fechar') {
+      popupId.classList.add('display-none')
+    }
+  }
+}
+
+function fecharPopups() {
+  const popups = document.querySelectorAll('.modal-popup')
+  popups.forEach((popup) => {
+    popup.classList.add('display-none')
+  })
+}
+
 //============== BANCOS PARA SELECIOAR ===============//
 let bancos = JSON.parse(localStorage.getItem('bancos')) || []
 if (bancos.length === 0) {
@@ -520,15 +541,3 @@ function mostrarPagina(idPagina) {
 window.onload = () => mostrarPagina('dashboard')
 
 //-----------------------------------------------------------------
-
-btnLancamentos.addEventListener('click', () => {
-  const popup = document.querySelector('#popup-modal')
-  popup.classList.remove('display-none')
-  desmarcarBotao()
-})
-
-btnFecharPopup.addEventListener('click', () => {
-  const popup = document.querySelector('#popup-modal')
-  popup.classList.add('display-none')
-  desmarcarBotao()
-})

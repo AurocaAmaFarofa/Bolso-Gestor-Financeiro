@@ -16,10 +16,15 @@
   <body>
     <div class="app-general">
       <!-- Popup Trocar Conta Bancaria -->
-      <div class="popup-modal display-none" id="popup-novo-banco">
+      <div class="popup-modal display-none modal-popup" id="popup-novo-banco">
         <div class="container-modal-title">
           <h1 class="modal-title">Cadastrar Novo Banco</h1>
-          <button class="close-modal-btn" id="close-popup-banco">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('popup-novo-banco', 'fechar')"
+          >
+            x
+          </button>
         </div>
 
         <div class="transaction-form-container">
@@ -49,10 +54,15 @@
         </div>
       </div>
       <!-- Popup's de + e - -->
-      <div class="popup-modal display-none" id="modal-minus">
+      <div class="popup-modal display-none modal-popup" id="modal-minus">
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à retirar</h1>
-          <button class="close-modal-btn" onclick="fecharPopupDim()">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('modal-minus', 'fechar')"
+          >
+            x
+          </button>
         </div>
         <label class="popup-container">
           <input
@@ -65,10 +75,15 @@
         <button id="withdraw-value">Retirar valor</button>
       </div>
 
-      <div class="popup-modal display-none" id="modal-add">
+      <div class="popup-modal display-none modal-popup" id="modal-add">
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à adicionar</h1>
-          <button class="close-modal-btn" onclick="fecharPopupAdd()">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('modal-add', 'fechar')"
+          >
+            x
+          </button>
         </div>
         <label class="popup-container">
           <input
@@ -81,10 +96,15 @@
         <button id="add-value">Adicionar valor</button>
       </div>
       <!-------------------Popup De Reservas--------------->
-      <div class="popup-modal display-none" id="popup-reserved">
+      <div class="popup-modal display-none modal-popup" id="popup-reserved">
         <div class="container-modal-title">
           <h1 class="modal-title">Nova Reserva</h1>
-          <button class="close-modal-btn" id="close-popup-reserved">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('popup-reserved', 'fechar')"
+          >
+            x
+          </button>
         </div>
 
         <div class="transaction-form-container">
@@ -115,10 +135,18 @@
         </div>
       </div>
       <!-------------------Popup De Gastos Fixos--------------->
-      <div class="popup-modal display-none" id="popup-fixed-expense">
+      <div
+        class="popup-modal display-none modal-popup"
+        id="popup-fixed-expense"
+      >
         <div class="container-modal-title">
           <h1 class="modal-title">Novo Gasto Fixo</h1>
-          <button class="close-modal-btn" id="close-popup-fixed">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('popup-fixed-expense', 'fechar')"
+          >
+            x
+          </button>
         </div>
 
         <div class="transaction-form-container">
@@ -153,10 +181,15 @@
         </div>
       </div>
       <!-------------------Popup De Lançamentos---------------->
-      <div class="popup-modal display-none" id="popup-modal">
+      <div class="popup-modal display-none modal-popup" id="popup-modal">
         <div class="container-modal-title">
           <h1 class="modal-title">Novo lançamento</h1>
-          <button class="close-modal-btn" id="close-popup">x</button>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('popup-modal', 'fechar')"
+          >
+            x
+          </button>
         </div>
 
         <div class="popup-plus-minus-btn">
@@ -265,7 +298,12 @@
             <span>Suas Contas / Bancos:</span>
             <div class="banks-container">
               <div id="list-bancos-abas"></div>
-              <button id="btn-open-popup-banco" class="btn-add-bank">+</button>
+              <button
+                onclick="abrirOuFecharPopup('popup-novo-banco', 'abrir')"
+                class="btn-add-bank"
+              >
+                +
+              </button>
             </div>
           </div>
           <header class="page-header">
@@ -306,8 +344,12 @@
           <header class="page-header">
             <h1>Lançamentos</h1>
           </header>
+          <!--id="new-expense"-->
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses" id="new-expense">
+            <button
+              class="btn-new-expenses"
+              onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
+            >
               Novo Lançamento
             </button>
           </div>
@@ -321,7 +363,10 @@
             <h1>Gastos Fixos</h1>
           </header>
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses" id="btn-new-pending">
+            <button
+              class="btn-new-expenses"
+              onclick="abrirOuFecharPopup('popup-fixed-expense', 'abrir')"
+            >
               Novo Gasto Fixo
             </button>
           </div>
@@ -333,7 +378,10 @@
             <h1>Reserva</h1>
           </header>
           <div class="container-btn-new-expenses">
-            <button class="btn-new-expenses" id="btn-new-reserve">
+            <button
+              class="btn-new-expenses"
+              onclick="abrirOuFecharPopup('popup-reserved', 'abrir')"
+            >
               Nova Reserva
             </button>
           </div>
