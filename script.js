@@ -41,6 +41,8 @@ let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
 let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
+const appData = JSON.parse(localStorage.getItem('appDados')) || []
+
 // =============== Função de abrir e fechar Popups ==============
 
 function abrirOuFecharPopup(idPopup, acao, indice) {
@@ -73,6 +75,7 @@ function atualizarTudo() {
 }
 
 //============== BANCOS PARA SELECIOAR ===============//
+
 let bancos = JSON.parse(localStorage.getItem('bancos')) || []
 if (bancos.length === 0) {
   bancos = [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }]
@@ -84,13 +87,16 @@ function renderizarAbasBancos() {
   if (!listBancosAbas) return
   listBancosAbas.innerHTML = ''
 
-  bancos.forEach((banco) => {
+  bancos.forEach((banco, indice) => {
     const classeAtiva = banco.id === bancoAtual ? 'banco-active' : ''
 
     listBancosAbas.innerHTML += `
+    <div class="btns-aba-bancos">
       <button class="btn-aba-banco ${classeAtiva}" onclick="selecionarBanco('${banco.id}')">
         ${banco.nome}
+        <button class="btn-aba-banco color-red-btn ${classeAtiva}" onclick="excluirBanco(${indice})">-</button>
       </button>
+    </div>  
     `
   })
 }
@@ -111,22 +117,34 @@ btnSubmitBanco.addEventListener('click', () => {
   }
 
   const novoBanco = {
-    id: 'banco-' + Date.now(), // ID único temporal
+    id: 'banco-' + Date.now(),
     nome: inputNome.value,
     saldoInicial: Number(inputSaldo.value) || 0,
   }
 
+  localStorage.setItem('appData', JSON.stringify(appData))
+  console.log(appData)
+
   bancos.push(novoBanco)
+
   localStorage.setItem('bancos', JSON.stringify(bancos))
 
-  // Limpa inputs e fecha modal
   inputNome.value = ''
   inputSaldo.value = ''
   modalPopupBanco.classList.add('display-none')
 
-  // Atualiza a tela de abas
-  renderizarAbasBancos()
+  atualizarTudo()
 })
+
+function excluirBanco(indice) {
+  bancos.splice(indice, 1)
+  localStorage.setItem('bancos', JSON.stringify(bancos))
+  if (bancos.length > 0) {
+    bancoAtual = bancos[0].id
+    localStorage.setItem('bancoAtual', bancoAtual)
+  }
+  atualizarTudo()
+}
 
 renderizarAbasBancos()
 

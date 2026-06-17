@@ -462,12 +462,20 @@ select:focus {
 
 #list-bancos-abas {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   overflow-x: auto;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-ink);
+}
+
+.color-red-btn {
+  background-color: var(--color-expense) !important;
 }
 
 .btn-aba-banco {
   background-color: var(--color-ink-soft);
+  opacity: 0.5;
   border: none;
   padding: 8px 16px;
   border-radius: 20px;
@@ -479,11 +487,13 @@ select:focus {
 
 .btn-aba-banco:hover {
   background-color: var(--color-ink-soft);
+  opacity: 1;
 }
 
 .btn-aba-banco.banco-active {
   background-color: var(--color-ink);
   color: var(--color-income-soft);
+  opacity: 1;
 }
 
 .btn-add-bank {
@@ -503,6 +513,11 @@ select:focus {
 
 #banco-id-visor {
   color: var(--color-income);
+}
+
+.btns-aba-bancos {
+  display: flex;
+  gap: 3px;
 }
 
 @media (min-width: 520px) {
