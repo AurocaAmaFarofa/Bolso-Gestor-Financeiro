@@ -63,6 +63,15 @@ function fecharPopups() {
   })
 }
 
+// ============ função para atualizar tudo =============
+
+function atualizarTudo() {
+  renderizarAbasBancos()
+  renderizarGridGastosFixos()
+  renderizarGridLancamentos()
+  renderizarGridReservas()
+}
+
 //============== BANCOS PARA SELECIOAR ===============//
 let bancos = JSON.parse(localStorage.getItem('bancos')) || []
 if (bancos.length === 0) {
@@ -70,19 +79,6 @@ if (bancos.length === 0) {
   localStorage.setItem('bancos', JSON.stringify(bancos))
 }
 let bancoAtual = localStorage.getItem('bancoAtual') || bancos[0].id //DEIXA O BANCO SEM SELECIONAR NO INICIO
-
-if (btnOpenPopupBanco && modalPopupBanco) {
-  btnOpenPopupBanco.addEventListener('click', (evento) => {
-    evento.stopPropagation()
-    modalPopupBanco.classList.remove('display-none')
-  })
-}
-//BOTOES PARA ABRIR E FECHAR O POPUP
-if (btnClosePopupBanco && modalPopupBanco) {
-  btnClosePopupBanco.addEventListener('click', () => {
-    modalPopupBanco.classList.add('display-none')
-  })
-}
 
 function renderizarAbasBancos() {
   if (!listBancosAbas) return
@@ -102,8 +98,7 @@ function renderizarAbasBancos() {
 window.selecionarBanco = function (id) {
   bancoAtual = id
   localStorage.setItem('bancoAtual', id)
-  renderizarAbasBancos()
-  renderizarGridLancamentos()
+  atualizarTudo()
 }
 
 btnSubmitBanco.addEventListener('click', () => {
@@ -137,53 +132,6 @@ renderizarAbasBancos()
 
 //----------------------Coisas Das Reservas----------------------
 
-//FAZER O NAVEGADOR VER AS FUNÇÕES
-window.abrirPopupAdd = abrirPopupAdd
-window.abrirPopupDim = abrirPopupDim
-
-function abrirPopupAdd(indice) {
-  indiceReservaSelecionada = indice
-  if (popupAddReserva) {
-    popupAddReserva.classList.toggle('display-none')
-  }
-}
-//ABRIR POPUPS DE AUMENTAR E DIMINUIR OS GASTOS
-function abrirPopupDim(indice) {
-  indiceReservaSelecionada = indice
-  if (popupDimReserva) {
-    popupDimReserva.classList.toggle('display-none')
-  }
-}
-
-function fecharPopupAdd(indice) {
-  popupAddReserva.classList.add('display-none')
-}
-
-function fecharPopupDim(indice) {
-  popupDimReserva.classList.add('display-none')
-}
-
-if (btnPopupNovaReserva && modalPopupReserved) {
-  btnPopupNovaReserva.addEventListener('click', (evento) => {
-    evento.stopPropagation()
-    modalPopupReserved.classList.toggle('display-none')
-  })
-}
-//ABRIR E FECHAR O MODAL DE ADICIONAR NOVA RESERVA
-if (btnFecharReservas && modalPopupReserved) {
-  btnFecharReservas.addEventListener('click', (evento) => {
-    evento.stopPropagation()
-    modalPopupReserved.classList.add('display-none')
-  })
-}
-
-function fecharPopupReservas() {
-  const modalPopupReserved = document.querySelector('#popup-fixed-expense')
-  if (modalPopupReserved) {
-    modalPopupReserved.classList.add('display-none')
-  }
-}
-
 //BOTAO PRA ADICIONAR NOVA RESERVA
 btnAddReserva.addEventListener('click', () => {
   let reservas = JSON.parse(localStorage.getItem('reservas')) || []
@@ -194,16 +142,12 @@ btnAddReserva.addEventListener('click', () => {
   reservas.push(novaReserva)
   console.log(reservas)
   localStorage.setItem('reservas', JSON.stringify(reservas))
-  fecharPopupReservas()
-  renderizarGridReservas()
 
   document.querySelector('#reserve-name').value = ''
   document.querySelector('#reserve-value').value = ''
 
-  renderizarGridLancamentos()
-  fecharPopupAdd()
-  fecharPopupDim()
-  fecharPopupReservas()
+  atualizarTudo()
+  abrirOuFecharPopup('popup-reserve', 'fechar')
 })
 
 // ADICIONAR VALOR PRA RESERVA USANDO INDICE
@@ -215,9 +159,8 @@ btnAdicionarValorReserva.addEventListener('click', () => {
   )
   reservas[indiceReservaSelecionada].valorI += valorPraRetirar
   localStorage.setItem('reservas', JSON.stringify(reservas))
-  renderizarGridReservas()
-  renderizarGridLancamentos()
-  fecharPopupAdd()
+  atualizarTudo()
+  abrirOuFecharPopup('modal-add', 'fechar')
   document.querySelector('#plus-value-reserve').value = ''
   indiceReservaSelecionada = null
 })
@@ -231,9 +174,8 @@ btnTirarValor.addEventListener('click', () => {
   )
   reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
   localStorage.setItem('reservas', JSON.stringify(reservas))
-  renderizarGridReservas()
-  renderizarGridLancamentos()
-  fecharPopupDim()
+  atualizarTudo()
+  abrirOuFecharPopup('modal-minus', 'fechar')
   document.querySelector('#minus-value-reserve').value = ''
   indiceReservaSelecionada = null
 })
@@ -241,6 +183,7 @@ btnTirarValor.addEventListener('click', () => {
 //MOSTRA NA PAGINA AS RESERVAS
 function renderizarGridReservas() {
   const reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  valorTotalReservado = 0
   gridReservas.innerHTML = ''
 
   //CRIA O INDICE PRA USAR NA HORA DE TROCAR OS VALORES
@@ -265,7 +208,6 @@ function renderizarGridReservas() {
     ;(totalReservadoVisor.textContent =
       'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
   })
-  renderizarGridLancamentos()
 }
 
 //FUNÇÃO PARA EXCLUIR A RESERVA
@@ -273,17 +215,15 @@ function excluirReservas(indice) {
   let reservas = JSON.parse(localStorage.getItem('reservas')) || []
   reservas.splice(indice, 1)
   localStorage.setItem('reservas', JSON.stringify(reservas))
-  renderizarGridReservas()
-  renderizarGridLancamentos()
+  atualizarTudo()
 }
 
-renderizarGridReservas()
+atualizarTudo()
 
 //----------------------Coisas dos Gastos Fixos-------------------------
 
 window.alternarStatusGastoFixo = alternarStatusGastoFixo
 window.deletarGastoFixo = deletarGastoFixo
-window.fecharPopupFixed = fecharPopupFixed
 
 function alternarStatusGastoFixo(indice) {
   let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
@@ -295,21 +235,14 @@ function alternarStatusGastoFixo(indice) {
   }
 
   localStorage.setItem('pendencias', JSON.stringify(pendencias))
-  renderizarGridGastosFixos()
-}
-
-function fecharPopupFixed() {
-  const modalPopupFixed = document.querySelector('#popup-fixed-expense')
-  if (modalPopupFixed) {
-    modalPopupFixed.classList.add('display-none')
-  }
+  atualizarTudo()
 }
 
 function deletarGastoFixo(indice) {
   let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
   pendencias.splice(indice, 1)
   localStorage.setItem('pendencias', JSON.stringify(pendencias))
-  renderizarGridGastosFixos()
+  atualizarTudo()
 }
 
 function renderizarGridGastosFixos() {
@@ -348,20 +281,6 @@ function renderizarGridGastosFixos() {
   })
 }
 
-if (btnPopupGastoFixo && modalPopupFixed) {
-  btnPopupGastoFixo.addEventListener('click', (evento) => {
-    evento.stopPropagation()
-    modalPopupFixed.classList.toggle('display-none')
-  })
-}
-
-if (btnFecharGastoFixo && modalPopupFixed) {
-  btnFecharGastoFixo.addEventListener('click', (evento) => {
-    evento.stopPropagation()
-    modalPopupFixed.classList.add('display-none')
-  })
-}
-
 if (btnAddGastoFixo) {
   btnAddGastoFixo.addEventListener('click', () => {
     let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
@@ -380,9 +299,8 @@ if (btnAddGastoFixo) {
     document.getElementById('fixed-expense-value').value = ''
     document.getElementById('fixed-expense-name').value = ''
   })
+  atualizarTudo()
 }
-
-renderizarGridGastosFixos()
 
 //-----------------------------------------------------------------
 
@@ -482,13 +400,6 @@ btnRecebimento.addEventListener('click', () => {
   tipoSelecionado = 'ganho'
 })
 
-//fecha o popup do lançamentos
-function fecharPopup() {
-  const popup = document.querySelector('#popup-modal')
-  popup.classList.add('display-none')
-  desmarcarBotao()
-}
-
 btnAddLancamento.addEventListener('click', () => {
   let lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
   const inputData = document.getElementById('dateInput').value
@@ -508,8 +419,8 @@ btnAddLancamento.addEventListener('click', () => {
 
   console.log(lancamentos)
 
-  renderizarGridLancamentos()
-  fecharPopup()
+  atualizarTudo()
+  abrirOuFecharPopup('popup-modal', 'fechar')
 
   document.getElementById('valueInput').value = ''
   document.getElementById('category-select').value = ''
