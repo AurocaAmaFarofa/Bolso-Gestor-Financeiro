@@ -15,6 +15,39 @@
   </head>
   <body>
     <div class="app-general">
+      <!-- Popup Trocar Conta Bancaria -->
+      <div class="popup-modal display-none" id="popup-novo-banco">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Cadastrar Novo Banco</h1>
+          <button class="close-modal-btn" id="close-popup-banco">x</button>
+        </div>
+
+        <div class="transaction-form-container">
+          <label class="popup-container">
+            <span class="span-popup">Nome do Banco / Conta</span>
+            <input
+              type="text"
+              id="banco-name"
+              placeholder="Ex: Nubank, Carteira..."
+              required
+            />
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Saldo Inicial</span>
+            <input
+              type="number"
+              placeholder="0,00"
+              id="banco-saldo-inicial"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn-submit" id="btn-submit-banco">
+            Salvar Banco
+          </button>
+        </div>
+      </div>
       <!-- Popup's de + e - -->
       <div class="popup-modal display-none" id="modal-minus">
         <div class="container-modal-title">
@@ -228,6 +261,13 @@
       <main>
         <!-- Seção do Dashboard -->
         <section id="dashboard" class="page">
+          <div class="banks-wrapper">
+            <span>Suas Contas / Bancos:</span>
+            <div class="banks-container">
+              <div id="list-bancos-abas"></div>
+              <button id="btn-open-popup-banco" class="btn-add-bank">+</button>
+            </div>
+          </div>
           <header class="page-header">
             <h1 class="dashboard-title">Olá, Usuario</h1>
           </header>
@@ -239,12 +279,15 @@
           <!--Total de dinheiro-->
 
           <div class="current-balance">
-            <span>Pode Gastar</span>
+            <span>Pode Gastar (Geral)</span>
             <p id="current-balance-id">00,00</p>
 
-            <span>Saldo total</span>
+            <span>Saldo do Banco Selecionado</span>
+            <p id="banco-id-visor">00,00</p>
+            <span>Saldo total (Todos os Bancos)</span>
             <p id="total-money">00,00</p>
           </div>
+
           <div class="stats-grid">
             <!--Gastos totais-->
             <div class="stats-card stats-card--expenses">
