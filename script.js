@@ -43,11 +43,12 @@ let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
 // =============== Função de abrir e fechar Popups ==============
 
-function abrirOuFecharPopup(idPopup, acao) {
+function abrirOuFecharPopup(idPopup, acao, indice) {
   fecharPopups()
   const popupId = document.getElementById(idPopup)
   if (popupId) {
     if (acao === 'abrir') {
+      indiceReservaSelecionada = indice
       popupId.classList.remove('display-none')
     } else if (acao === 'fechar') {
       popupId.classList.add('display-none')
@@ -252,8 +253,8 @@ function renderizarGridReservas() {
         </div>
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
-            <button class="btn-plus-minus" id="plus-btn" onclick="abrirPopupAdd(${indice})">+</button>
-            <button class="btn-plus-minus" id="minus-btn" onclick="abrirPopupDim(${indice})">-</button>
+            <button class="btn-plus-minus" id="plus-btn" onclick="abrirOuFecharPopup('modal-add', 'abrir', ${indice})">+</button>
+            <button class="btn-plus-minus" id="minus-btn" onclick="abrirOuFecharPopup('modal-minus', 'abrir', ${indice})">-</button>
           </div>
           <button class="btn-delete half" onclick="excluirReservas(${indice})">Excluir</button>
         </div>
