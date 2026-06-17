@@ -316,8 +316,9 @@ if (btnAddGastoFixo) {
 
     document.getElementById('fixed-expense-value').value = ''
     document.getElementById('fixed-expense-name').value = ''
+
+    atualizarTudo()
   })
-  atualizarTudo()
 }
 
 //-----------------------------------------------------------------
