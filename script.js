@@ -26,7 +26,12 @@ const totalReservadoVisor = document.querySelector('#total-reserved')
 const totalDinheiroVisor = document.querySelector('#total-money')
 const popupAddReserva = document.querySelector('#modal-add')
 const popupDimReserva = document.querySelector('#modal-minus')
+const btnTirarValor = document.querySelector('#withdraw-value')
+const btnAdicionarValorReserva = document.querySelector('#add-value')
+const inputMaisReserva = document.querySelector('#plus-value-reserve')
+const inputMenosReserva = document.querySelector('#minus-value-reserve')
 let valorTotalReservado = 0
+let indiceReservaSelecionada = null
 let tipoSelecionado = 'despesa'
 let pagoOuNaoPago = 'naoPago'
 
@@ -36,15 +41,25 @@ window.abrirPopupAdd = abrirPopupAdd
 window.abrirPopupDim = abrirPopupDim
 
 function abrirPopupAdd(indice) {
+  indiceReservaSelecionada = indice
   if (popupAddReserva) {
     popupAddReserva.classList.toggle('display-none')
   }
 }
 
 function abrirPopupDim(indice) {
+  indiceReservaSelecionada = indice
   if (popupDimReserva) {
     popupDimReserva.classList.toggle('display-none')
   }
+}
+
+function fecharPopupAdd(indice) {
+  popupAddReserva.classList.add('display-none')
+}
+
+function fecharPopupDim(indice) {
+  popupDimReserva.classList.add('display-none')
 }
 
 if (btnPopupNovaReserva && modalPopupReserved) {
@@ -84,6 +99,39 @@ btnAddReserva.addEventListener('click', () => {
   document.querySelector('#reserve-value').value = ''
 
   renderizarGridLancamentos()
+  fecharPopupAdd()
+  fecharPopupDim()
+  fecharPopupReservas()
+})
+
+btnAdicionarValorReserva.addEventListener('click', () => {
+  if (indiceReservaSelecionada === null) return
+  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  const valorPraRetirar = Number(
+    document.querySelector('#plus-value-reserve').value,
+  )
+  reservas[indiceReservaSelecionada].valorI += valorPraRetirar
+  localStorage.setItem('reservas', JSON.stringify(reservas))
+  renderizarGridReservas()
+  renderizarGridLancamentos()
+  fecharPopupAdd()
+  document.querySelector('#plus-value-reserve').value = ''
+  indiceReservaSelecionada = null
+})
+
+btnTirarValor.addEventListener('click', () => {
+  if (indiceReservaSelecionada === null) return
+  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
+  const valorPraAdicionar = Number(
+    document.querySelector('#minus-value-reserve').value,
+  )
+  reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
+  localStorage.setItem('reservas', JSON.stringify(reservas))
+  renderizarGridReservas()
+  renderizarGridLancamentos()
+  fecharPopupDim()
+  document.querySelector('#minus-value-reserve').value = ''
+  indiceReservaSelecionada = null
 })
 
 function renderizarGridReservas() {

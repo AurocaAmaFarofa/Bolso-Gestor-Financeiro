@@ -19,7 +19,7 @@
       <div class="popup-modal display-none" id="modal-minus">
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à retirar</h1>
-          <button class="close-modal-btn">x</button>
+          <button class="close-modal-btn" onclick="fecharPopupDim()">x</button>
         </div>
         <label class="popup-container">
           <input
@@ -29,12 +29,13 @@
             required
           />
         </label>
+        <button id="withdraw-value">Retirar valor</button>
       </div>
 
       <div class="popup-modal display-none" id="modal-add">
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à adicionar</h1>
-          <button class="close-modal-btn">x</button>
+          <button class="close-modal-btn" onclick="fecharPopupAdd()">x</button>
         </div>
         <label class="popup-container">
           <input
@@ -44,6 +45,7 @@
             required
           />
         </label>
+        <button id="add-value">Adicionar valor</button>
       </div>
       <!-------------------Popup De Reservas--------------->
       <div class="popup-modal display-none" id="popup-reserved">
@@ -237,7 +239,7 @@
           <!--Total de dinheiro-->
 
           <div class="current-balance">
-            <span>Saldo atual</span>
+            <span>Pode Gastar</span>
             <p id="current-balance-id">00,00</p>
 
             <span>Saldo total</span>
