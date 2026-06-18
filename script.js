@@ -36,6 +36,7 @@ const btnClosePopupBanco = document.querySelector('#close-popup-banco')
 const btnSubmitBanco = document.querySelector('#btn-submit-banco')
 const listBancosAbas = document.querySelector('#list-bancos-abas')
 const saldoBancoVisor = document.querySelector('#banco-id-visor')
+const visorMes = document.querySelector('#month-visor')
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
@@ -43,12 +44,17 @@ let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
 // ================= APP DATA ==================
 
+const dataAtual = new Date()
+const anoMesAtual =
+  dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1)
+
 const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
   bancoAtual: 'banco-inicial',
   bancos: [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }],
   lancamentos: [],
   reservas: [],
   pendencias: [],
+  mesAtivo: anoMesAtual,
 }
 
 function salvarDados() {
@@ -56,6 +62,56 @@ function salvarDados() {
 }
 
 console.log(appData)
+
+// =================== Funções do mês =====================
+
+function atualizarVisorMes(ano, mes) {
+  const mesmes = new Date(ano, mes - 1)
+  const textoMes = mesmes.toLocaleString('pt-BR', { month: 'long' })
+  const mesMaiusculo = textoMes.charAt(0).toUpperCase() + textoMes.slice(1)
+  visorMes.textContent = `${mesMaiusculo} de ${ano}`
+}
+
+const mesAnoInicial = appData.mesAtivo
+const [anoInicial, mesInicial] = mesAnoInicial.split('-')
+atualizarVisorMes(Number(anoInicial), Number(mesInicial))
+
+function diminuirOuAumentarMes(AumOuDim) {
+  mesAno = String(appData.mesAtivo)
+  let [ano, mes] = mesAno.split('-')
+  let anoNum = Number(ano)
+  let mesNum = Number(mes)
+  let mesText = '0'
+
+  if (AumOuDim === 'Aumentar') {
+    mesNum += 1
+    if (mesNum === 13) {
+      mesNum = 1
+      anoNum += 1
+    }
+  } else if (AumOuDim === 'Diminuir') {
+    mesNum -= 1
+    if (mesNum === 0) {
+      mesNum = 12
+      anoNum -= 1
+    }
+  }
+
+  if (mesNum < 10) {
+    mesText = '0' + mesNum
+  } else {
+    mesText = String(mesNum)
+  }
+
+  mesAnoResul = `${anoNum}-${mesText}`
+  appData.mesAtivo = mesAnoResul
+
+  atualizarVisorMes(anoNum, mesNum)
+
+  salvarDados()
+  atualizarTudo()
+  console.log(mesAnoResul)
+}
 
 // =============== Função de abrir e fechar Popups ==============
 
@@ -344,7 +400,11 @@ function renderizarGridLancamentos() {
       totalTodosBancosNum -= valorItem
     }
 
-    if (item.bancoId !== appData.bancoAtual) return
+    if (
+      item.bancoId !== appData.bancoAtual ||
+      item.mesAno !== appData.mesAtualSelecionado
+    )
+      return
 
     if (item.tipo === 'ganho') {
       saldoBancoSelecionadoNum += valorItem
@@ -418,6 +478,7 @@ btnRecebimento.addEventListener('click', () => {
 
 btnAddLancamento.addEventListener('click', () => {
   const inputData = document.getElementById('dateInput').value
+  const mesAnoDoLancamento = inputData.substring(0, 7)
   const dataLancamento = inputData ? new Date(inputData).getTime() : Date.now()
   const novoLancamento = {
     tipo: tipoSelecionado,
@@ -426,6 +487,7 @@ btnAddLancamento.addEventListener('click', () => {
     descricao: document.getElementById('descriptionInput').value,
     forma: document.getElementById('payment-select').value,
     data: dataLancamento,
+    mesAno: mesAnoDoLancamento,
     bancoId: appData.bancoAtual,
   }
 

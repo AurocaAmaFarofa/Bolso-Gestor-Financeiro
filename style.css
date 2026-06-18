@@ -58,6 +58,13 @@ body {
   margin-bottom: 16px;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: column;
+}
+
 .app-header {
   display: flex;
   flex-direction: column;
@@ -520,6 +527,37 @@ select:focus {
   gap: 3px;
 }
 
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.select-month-container {
+  font-family: var(--font-display);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.btn-select-month {
+  background-color: var(--color-ink);
+  color: var(--color-income-soft);
+  padding: 8px;
+  min-height: auto;
+}
+
+.btn-select-month:hover {
+  background-color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+#month-visor {
+  font-size: 1rem;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;
@@ -531,7 +569,6 @@ select:focus {
 
   .app-header {
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     gap: 16px;
@@ -575,5 +612,13 @@ select:focus {
 
   .title-fixed-main {
     font-size: 1.5rem;
+  }
+
+  .page-header {
+    flex-direction: row;
+  }
+
+  .select-month-container {
+    max-width: 220px;
   }
 }
