@@ -41,7 +41,21 @@ let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
 let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
-const appData = JSON.parse(localStorage.getItem('appDados')) || []
+// ================= APP DATA ==================
+
+const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
+  bancoAtual: 'banco-inicial',
+  bancos: [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }],
+  lancamentos: [],
+  reservas: [],
+  pendencias: [],
+}
+
+function salvarDados() {
+  localStorage.setItem('BolsoappData', JSON.stringify(appData))
+}
+
+console.log(appData)
 
 // =============== Função de abrir e fechar Popups ==============
 
@@ -76,19 +90,12 @@ function atualizarTudo() {
 
 //============== BANCOS PARA SELECIOAR ===============//
 
-let bancos = JSON.parse(localStorage.getItem('bancos')) || []
-if (bancos.length === 0) {
-  bancos = [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }]
-  localStorage.setItem('bancos', JSON.stringify(bancos))
-}
-let bancoAtual = localStorage.getItem('bancoAtual') || bancos[0].id //DEIXA O BANCO SEM SELECIONAR NO INICIO
-
 function renderizarAbasBancos() {
   if (!listBancosAbas) return
   listBancosAbas.innerHTML = ''
 
-  bancos.forEach((banco, indice) => {
-    const classeAtiva = banco.id === bancoAtual ? 'banco-active' : ''
+  appData.bancos.forEach((banco, indice) => {
+    const classeAtiva = banco.id === appData.bancoAtual ? 'banco-active' : ''
 
     listBancosAbas.innerHTML += `
     <div class="btns-aba-bancos">
@@ -101,9 +108,9 @@ function renderizarAbasBancos() {
   })
 }
 
-window.selecionarBanco = function (id) {
-  bancoAtual = id
-  localStorage.setItem('bancoAtual', id)
+function selecionarBanco(id) {
+  appData.bancoAtual = id
+  salvarDados()
   atualizarTudo()
 }
 
@@ -116,18 +123,21 @@ btnSubmitBanco.addEventListener('click', () => {
     return
   }
 
+  if (Number(inputSaldo.value) < 0) {
+    alert('Por favor, insira um numero válido')
+    return
+  }
+
   const novoBanco = {
     id: 'banco-' + Date.now(),
     nome: inputNome.value,
     saldoInicial: Number(inputSaldo.value) || 0,
   }
 
-  localStorage.setItem('appData', JSON.stringify(appData))
+  appData.bancos.push(novoBanco)
+
+  salvarDados()
   console.log(appData)
-
-  bancos.push(novoBanco)
-
-  localStorage.setItem('bancos', JSON.stringify(bancos))
 
   inputNome.value = ''
   inputSaldo.value = ''
@@ -137,11 +147,12 @@ btnSubmitBanco.addEventListener('click', () => {
 })
 
 function excluirBanco(indice) {
-  bancos.splice(indice, 1)
-  localStorage.setItem('bancos', JSON.stringify(bancos))
-  if (bancos.length > 0) {
-    bancoAtual = bancos[0].id
-    localStorage.setItem('bancoAtual', bancoAtual)
+  appData.bancos.splice(indice, 1)
+  salvarDados()
+  if (appData.bancos.length > 0) {
+    appData.bancoAtual = appData.bancos[0].id
+    salvarDados()
+    atualizarTudo()
   }
   atualizarTudo()
 }
@@ -152,14 +163,12 @@ renderizarAbasBancos()
 
 //BOTAO PRA ADICIONAR NOVA RESERVA
 btnAddReserva.addEventListener('click', () => {
-  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
   const novaReserva = {
     nome: document.querySelector('#reserve-name').value,
     valorI: Number(document.querySelector('#reserve-value').value),
   }
-  reservas.push(novaReserva)
-  console.log(reservas)
-  localStorage.setItem('reservas', JSON.stringify(reservas))
+  appData.reservas.push(novaReserva)
+  salvarDados()
 
   document.querySelector('#reserve-name').value = ''
   document.querySelector('#reserve-value').value = ''
@@ -171,12 +180,11 @@ btnAddReserva.addEventListener('click', () => {
 // ADICIONAR VALOR PRA RESERVA USANDO INDICE
 btnAdicionarValorReserva.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
-  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
   const valorPraRetirar = Number(
     document.querySelector('#plus-value-reserve').value,
   )
-  reservas[indiceReservaSelecionada].valorI += valorPraRetirar
-  localStorage.setItem('reservas', JSON.stringify(reservas))
+  appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
+  salvarDados()
   atualizarTudo()
   abrirOuFecharPopup('modal-add', 'fechar')
   document.querySelector('#plus-value-reserve').value = ''
@@ -186,12 +194,11 @@ btnAdicionarValorReserva.addEventListener('click', () => {
 //RETIRAR O VALOR DA RESERVA USANDO INDICE
 btnTirarValor.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
-  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
   const valorPraAdicionar = Number(
     document.querySelector('#minus-value-reserve').value,
   )
-  reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
-  localStorage.setItem('reservas', JSON.stringify(reservas))
+  appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
+  salvarDados()
   atualizarTudo()
   abrirOuFecharPopup('modal-minus', 'fechar')
   document.querySelector('#minus-value-reserve').value = ''
@@ -200,12 +207,12 @@ btnTirarValor.addEventListener('click', () => {
 
 //MOSTRA NA PAGINA AS RESERVAS
 function renderizarGridReservas() {
-  const reservas = JSON.parse(localStorage.getItem('reservas')) || []
   valorTotalReservado = 0
   gridReservas.innerHTML = ''
+  totalReservadoVisor.innerHTML = 'R$ 0,00'
 
   //CRIA O INDICE PRA USAR NA HORA DE TROCAR OS VALORES
-  reservas.forEach((item, indice) => {
+  appData.reservas.forEach((item, indice) => {
     gridReservas.innerHTML += `
       <div class="card-expenses">
         <div class="especifications">
@@ -230,9 +237,8 @@ function renderizarGridReservas() {
 
 //FUNÇÃO PARA EXCLUIR A RESERVA
 function excluirReservas(indice) {
-  let reservas = JSON.parse(localStorage.getItem('reservas')) || []
-  reservas.splice(indice, 1)
-  localStorage.setItem('reservas', JSON.stringify(reservas))
+  appData.reservas.splice(indice, 1)
+  salvarDados()
   atualizarTudo()
 }
 
@@ -244,22 +250,19 @@ window.alternarStatusGastoFixo = alternarStatusGastoFixo
 window.deletarGastoFixo = deletarGastoFixo
 
 function alternarStatusGastoFixo(indice) {
-  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
-
-  if (pendencias[indice].pagoOuPendente === 'naoPago') {
-    pendencias[indice].pagoOuPendente = 'pago'
+  if (appData.pendencias[indice].pagoOuPendente === 'naoPago') {
+    appData.pendencias[indice].pagoOuPendente = 'pago'
   } else {
-    pendencias[indice].pagoOuPendente = 'naoPago'
+    appData.pendencias[indice].pagoOuPendente = 'naoPago'
   }
 
-  localStorage.setItem('pendencias', JSON.stringify(pendencias))
+  salvarDados()
   atualizarTudo()
 }
 
 function deletarGastoFixo(indice) {
-  let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
-  pendencias.splice(indice, 1)
-  localStorage.setItem('pendencias', JSON.stringify(pendencias))
+  appData.pendencias.splice(indice, 1)
+  salvarDados()
   atualizarTudo()
 }
 
@@ -270,12 +273,11 @@ function renderizarGridGastosFixos() {
   gastosFixosMain.innerHTML = ''
   gridGastosFixos.innerHTML = ''
 
-  pendencias.forEach((item, indice) => {
+  appData.pendencias.forEach((item, indice) => {
     const ehPago = item.pagoOuPendente === 'pago'
     const classeStatus = ehPago ? 'pago' : 'pending'
     const textoBotao = ehPago ? 'Pago' : 'Pendente'
 
-    console.log(indice + 'fixos')
     gridGastosFixos.innerHTML += `
     <div class="card-expenses">
       <div class="especifications">
@@ -301,18 +303,15 @@ function renderizarGridGastosFixos() {
 
 if (btnAddGastoFixo) {
   btnAddGastoFixo.addEventListener('click', () => {
-    let pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
     const novaPendencia = {
       pagoOuPendente: 'naoPago',
       valor: document.getElementById('fixed-expense-value').value,
       nome: document.getElementById('fixed-expense-name').value,
     }
 
-    pendencias.push(novaPendencia)
-    localStorage.setItem('pendencias', JSON.stringify(pendencias))
-    fecharPopupFixed()
-    console.log(pendencias)
-    renderizarGridGastosFixos()
+    appData.pendencias.push(novaPendencia)
+    salvarDados()
+    abrirOuFecharPopup('popup-fixed-expense', 'fechar')
 
     document.getElementById('fixed-expense-value').value = ''
     document.getElementById('fixed-expense-name').value = ''
@@ -324,21 +323,20 @@ if (btnAddGastoFixo) {
 //-----------------------------------------------------------------
 
 function renderizarGridLancamentos() {
-  const lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
   if (gridLancamentos) gridLancamentos.innerHTML = ''
-  const idProcurado = bancoAtual
-  const bancoObjeto = bancos.find((b) => b.id === idProcurado)
+  const idProcurado = appData.bancoAtual
+  const bancoObjeto = appData.bancos.find((b) => b.id === idProcurado)
   let saldoBancoSelecionadoNum = bancoObjeto
     ? Number(bancoObjeto.saldoInicial)
     : 0
 
-  let totalTodosBancosNum = bancos.reduce(
+  let totalTodosBancosNum = appData.bancos.reduce(
     (soma, b) => soma + Number(b.saldoInicial),
     0,
   )
   let totalGastoNum = 0
 
-  lancamentos.forEach((item, indice) => {
+  appData.lancamentos.forEach((item, indice) => {
     const valorItem = Number(item.valor)
     if (item.tipo === 'ganho') {
       totalTodosBancosNum += valorItem
@@ -346,7 +344,7 @@ function renderizarGridLancamentos() {
       totalTodosBancosNum -= valorItem
     }
 
-    if (item.bancoId !== bancoAtual) return
+    if (item.bancoId !== appData.bancoAtual) return
 
     if (item.tipo === 'ganho') {
       saldoBancoSelecionadoNum += valorItem
@@ -392,9 +390,8 @@ function renderizarGridLancamentos() {
 renderizarGridLancamentos()
 
 function deletarLancamento(indice) {
-  let lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
-  lancamentos.splice(indice, 1)
-  localStorage.setItem('lancamentos', JSON.stringify(lancamentos))
+  appData.lancamentos.splice(indice, 1)
+  salvarDados()
   renderizarGridLancamentos()
 }
 
@@ -420,7 +417,6 @@ btnRecebimento.addEventListener('click', () => {
 })
 
 btnAddLancamento.addEventListener('click', () => {
-  let lancamentos = JSON.parse(localStorage.getItem('lancamentos')) || []
   const inputData = document.getElementById('dateInput').value
   const dataLancamento = inputData ? new Date(inputData).getTime() : Date.now()
   const novoLancamento = {
@@ -430,14 +426,11 @@ btnAddLancamento.addEventListener('click', () => {
     descricao: document.getElementById('descriptionInput').value,
     forma: document.getElementById('payment-select').value,
     data: dataLancamento,
-    bancoId: bancoAtual,
+    bancoId: appData.bancoAtual,
   }
 
-  lancamentos.push(novoLancamento)
-  localStorage.setItem('lancamentos', JSON.stringify(lancamentos))
-
-  console.log(lancamentos)
-
+  appData.lancamentos.push(novoLancamento)
+  salvarDados()
   atualizarTudo()
   abrirOuFecharPopup('popup-modal', 'fechar')
 
