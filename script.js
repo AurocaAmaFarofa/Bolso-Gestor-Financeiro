@@ -186,6 +186,7 @@ btnSubmitBanco.addEventListener('click', () => {
 
   const novoBanco = {
     id: 'banco-' + Date.now(),
+    mesCriado: appData.mesAtivo,
     nome: inputNome.value,
     saldoInicial: Number(inputSaldo.value) || 0,
   }
@@ -382,39 +383,48 @@ function renderizarGridLancamentos() {
   if (gridLancamentos) gridLancamentos.innerHTML = ''
   const idProcurado = appData.bancoAtual
   const bancoObjeto = appData.bancos.find((b) => b.id === idProcurado)
-  let saldoBancoSelecionadoNum = bancoObjeto
-    ? Number(bancoObjeto.saldoInicial)
-    : 0
-
-  let totalTodosBancosNum = appData.bancos.reduce(
-    (soma, b) => soma + Number(b.saldoInicial),
-    0,
-  )
+  let saldoBancoSelecionadoNum = 0
+  if (bancoObjeto) {
+    if (bancoObjeto.mesCriado === appData.mesAtivo) {
+      saldoBancoSelecionadoNum = Number(bancoObjeto.saldoInicial)
+    }
+  }
+  let totalTodosBancosNum = appData.bancos.reduce((soma, b) => {
+    if (b.mesCriado === appData.mesAtivo) {
+      return soma + Number(b.saldoInicial)
+    }
+    return soma
+  }, 0)
   let totalGastoNum = 0
 
   appData.lancamentos.forEach((item, indice) => {
     const valorItem = Number(item.valor)
+
+    if (item.mesAno !== appData.mesAtivo) {
+      return
+    }
+
     if (item.tipo === 'ganho') {
       totalTodosBancosNum += valorItem
     } else {
       totalTodosBancosNum -= valorItem
-    }
-
-    if (
-      item.bancoId !== appData.bancoAtual ||
-      item.mesAno !== appData.mesAtualSelecionado
-    )
-      return
-
-    if (item.tipo === 'ganho') {
-      saldoBancoSelecionadoNum += valorItem
-    } else {
-      saldoBancoSelecionadoNum -= valorItem
       totalGastoNum += valorItem
     }
 
-    if (gridLancamentos) {
-      gridLancamentos.innerHTML += `
+    if (item.bancoId === idProcurado) {
+      if (item.tipo === 'ganho') {
+        saldoBancoSelecionadoNum += valorItem
+      } else {
+        saldoBancoSelecionadoNum -= valorItem
+      }
+
+      console.log(
+        'Passou no IF do banco! Desenhando o card de:',
+        item.descricao,
+      )
+
+      if (gridLancamentos) {
+        gridLancamentos.innerHTML += `
         <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
           <h2>${item.descricao}</h2>
           <p>R$ ${valorItem.toFixed(2).replace('.', ',')}</p>
@@ -426,6 +436,7 @@ function renderizarGridLancamentos() {
           <button class="btn-delete" id="delete-btn-card" onclick="deletarLancamento(${indice})">Excluir</button>
         </div>
       `
+      }
     }
   })
 
@@ -478,7 +489,7 @@ btnRecebimento.addEventListener('click', () => {
 
 btnAddLancamento.addEventListener('click', () => {
   const inputData = document.getElementById('dateInput').value
-  const mesAnoDoLancamento = inputData.substring(0, 7)
+  const mesAnoDoLancamento = appData.mesAtivo
   const dataLancamento = inputData ? new Date(inputData).getTime() : Date.now()
   const novoLancamento = {
     tipo: tipoSelecionado,
