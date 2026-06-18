@@ -596,6 +596,10 @@ select:focus {
     margin-left: auto;
   }
 
+  .app-header {
+    flex-direction: row;
+  }
+
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
