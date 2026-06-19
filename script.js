@@ -37,6 +37,9 @@ const btnSubmitBanco = document.querySelector('#btn-submit-banco')
 const listBancosAbas = document.querySelector('#list-bancos-abas')
 const saldoBancoVisor = document.querySelector('#banco-id-visor')
 const visorMes = document.querySelector('#month-visor')
+const btnCriarMeta = document.querySelector('#btn-submit-goal')
+const visorMainMeta = document.querySelector('#main-goals-visor')
+const visorExMeta = document.querySelector('#expense-goals-visor')
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
@@ -55,6 +58,7 @@ const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
   reservas: [],
   pendencias: [],
   mesAtivo: anoMesAtual,
+  metas: [],
 }
 
 function salvarDados() {
@@ -62,6 +66,80 @@ function salvarDados() {
 }
 
 console.log(appData)
+
+// ===================== Funções de metas =====================
+
+// pegar os dados do usuario atravez de um addEventListner e dentro dele puxar
+// uma const com um querySelector pros inputs de Tipo da meta (ex: Lazer) e
+// Max de dinheiro
+
+// Na hora de renderizar iremos fazer primeiro de tudo, uma verificação pra saber
+// se o gasto fixo criado esta dentro do mesAtivo. Depois disso a gnt pega o array
+// onde vao estar as metas e com base no calculo matematico
+// que a IA fez pra nós, e dai depois de verificar quantos % esta, a gnt muda as
+// propriedades do elemento, e dai sim exibe ele pro usuario
+
+btnCriarMeta.addEventListener('click', () => {
+  const nomeMeta = document.getElementById('category-select-goals').value
+  const valorMeta = document.getElementById('new-goals-input-value').value
+
+  if (!nomeMeta) {
+    alert('Por favor, digite o nome da meta.')
+    return
+  }
+  if (Number(valorMeta) < 0) {
+    alert('Por favor, insira um numero válido')
+    return
+  }
+
+  const novaMeta = {
+    mesCriado: appData.mesAtivo,
+    nome: nomeMeta,
+    valorMax: valorMeta,
+    valorIni: 0,
+  }
+
+  appData.metas.push(novaMeta)
+  salvarDados()
+
+  document.getElementById('category-select-goals').value = ''
+  document.getElementById('new-goals-input-value').value = ''
+
+  atualizarTudo()
+})
+
+function renderizarDoisVisores() {
+  visorMainMeta.innerHTML = ``
+
+  if (appData.metas) {
+    appData.metas.forEach((item, indice) => {
+      const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
+        return (
+          lancamentos.mesAno === appData.mesAtivo &&
+          lancamentos.categoria === item.nome &&
+          lancamentos.tipo === 'despesa'
+        )
+      })
+
+      const totalGastoMeta = gastosDaCategoria.reduce((soma, lancamento) => {
+        return soma + Number(lancamento.valor)
+      }, 0)
+
+      visorMainMeta.innerHTML += `
+      <div id="main-goals-visor" class="current-balance">
+        <h1>${item.nome}</h1>
+        <progress class="progress-goal" value="${item.valorIni}" max="${item.valorMax}"></progress>
+      </div>
+    `
+      visorExMeta.innerHTML += `
+      <div id="main-goals-visor" class="current-balance">
+        <h1>${item.nome}</h1>
+        <progress class="progress-goal" value="${item.valorIni}" max="${item.valorMax}"></progress>
+      </div>
+    `
+    })
+  }
+}
 
 // =================== Funções do mês =====================
 
@@ -142,6 +220,7 @@ function atualizarTudo() {
   renderizarGridGastosFixos()
   renderizarGridLancamentos()
   renderizarGridReservas()
+  renderizarDoisVisores()
 }
 
 //============== BANCOS PARA SELECIOAR ===============//

@@ -15,6 +15,49 @@
   </head>
   <body>
     <div class="app-general">
+      <!-- Popup Adicionar Meta -->
+      <div class="popup-modal modal-popup display-none" id="new-goals-popup">
+        <div class="container-modal-title">
+          <h1 class="modal-title">Nova Meta</h1>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('new-goals-popup', 'fechar')"
+          >
+            x
+          </button>
+        </div>
+
+        <div class="transaction-form-container">
+          <label class="popup-container">
+            <span class="span-popup">Classe da meta</span>
+            <select id="category-select-goals" required>
+              <option value="alimentacao">Alimentação</option>
+              <option value="transporte">Transporte</option>
+              <option value="moradia">Moradia</option>
+              <option value="lazer">Lazer</option>
+              <option value="saude">Saúde</option>
+              <option value="salario">Salário</option>
+              <option value="extra">Renda extra</option>
+              <option value="outros">Outros</option>
+            </select>
+          </label>
+
+          <label class="popup-container">
+            <span class="span-popup">Valor Maximo</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="0,00"
+              id="new-goals-input-value"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn-submit" id="btn-submit-goal">
+            Salvar Meta
+          </button>
+        </div>
+      </div>
       <!-- Popup Trocar Conta Bancaria -->
       <div class="popup-modal display-none modal-popup" id="popup-novo-banco">
         <div class="container-modal-title">
@@ -324,11 +367,25 @@
               </button>
             </section>
           </header>
+          <section
+            class="current-balance display-none"
+            id="expense-goals-visor"
+          ></section>
           <!------Gastos Fixos------>
           <div class="current-balance">
             <span>Gastos fixos</span>
             <div id="fixed-expenses-main"></div>
           </div>
+
+          <!-- Metas Main -->
+          <div class="current-balance">
+            <span>Metas</span>
+            <div id="main-goals-visor" class="current-balance">
+              <h1>Nome da meta</h1>
+              <progress class="progress-goal" value="40" max="100"></progress>
+            </div>
+          </div>
+
           <!--Total de dinheiro-->
 
           <div class="current-balance">
@@ -359,6 +416,13 @@
           <header class="page-header">
             <h1>Lançamentos</h1>
           </header>
+          <div class="current-balance">
+            <span>Metas</span>
+            <div id="expense-goals-visor" class="current-balance">
+              <h1>Nome da meta</h1>
+              <progress class="progress-goal" value="40" max="100"></progress>
+            </div>
+          </div>
           <!--id="new-expense"-->
           <div class="container-btn-new-expenses">
             <button
@@ -366,6 +430,12 @@
               onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
             >
               Novo Lançamento
+            </button>
+            <button
+              class="btn-new-expenses"
+              onclick="abrirOuFecharPopup('new-goals-popup', 'abrir')"
+            >
+              Nova Meta
             </button>
           </div>
           <div class="grid-expenses" id="grid-expenses">
