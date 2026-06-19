@@ -40,6 +40,7 @@ const visorMes = document.querySelector('#month-visor')
 const btnCriarMeta = document.querySelector('#btn-submit-goal')
 const visorMainMeta = document.querySelector('#main-goals-visor')
 const visorExMeta = document.querySelector('#expense-goals-visor')
+const metaGeral = document.querySelectorAll('.progress-goal')
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
@@ -51,15 +52,24 @@ const dataAtual = new Date()
 const anoMesAtual =
   dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1)
 
+const mesEAno = String(anoMesAtual)
+let [ano, mes] = mesEAno.split('-')
+if (mes < 10) {
+  mes = '0' + mes
+}
+ResultadoMes = `${ano}-` + `${mes}`
+
 const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
   bancoAtual: 'banco-inicial',
   bancos: [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }],
   lancamentos: [],
   reservas: [],
   pendencias: [],
-  mesAtivo: anoMesAtual,
+  mesAtivo: ResultadoMes,
   metas: [],
 }
+
+console.log(appData.mesAtivo)
 
 function salvarDados() {
   localStorage.setItem('BolsoappData', JSON.stringify(appData))
@@ -129,34 +139,37 @@ function renderizarDoisVisores() {
         return soma + Number(lancamento.valor)
       }, 0)
 
+      console.log(gastosDaCategoria)
+      console.log(totalGastoMeta)
+
       const matematicaDaBarra = (totalGastoMeta / item.valorMax) * 100
+      const stringPorcentagem = matematicaDaBarra + '%'
 
-      let classeAlerta = ''
+      let cardMeta = `
+        <div class="current-balance card-meta-${indice}">
+          <h1>${item.nome}</h1>
+          <div class="progress-goal-container">
+            <div class="progress-goal-${indice} progress-goal"><p>${matematicaDaBarra}%</p></div>
+          </div>
+        </div>
+      `
+      visorMainMeta.innerHTML += cardMeta
 
-      if (matematicaDaBarra <= 50) {
-        classeAlerta = 'progress-safe'
-      } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
-        classeAlerta = 'progress-atention'
-      } else {
-        classeAlerta = 'progress-alert'
+      const cardAtual = document.querySelector(`.card-meta-${indice}`)
+      const barraProgresso = document.querySelector(`.progress-goal-${indice}`)
+
+      if (cardAtual) {
+        cardAtual.style.setProperty('--porcentagem-local', stringPorcentagem)
+        if (matematicaDaBarra <= 50) {
+          barraProgresso.classList.add('progress-safe')
+        } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
+          barraProgresso.classList.add('progress-atention')
+        } else {
+          barraProgresso.classList.add('progress-alert')
+        }
       }
 
-      //if (gastosDaCategoria !== appData.mesAtivo) {
-      //  return
-      //}
-
-      visorMainMeta.innerHTML += `
-      <div class="current-balance">
-        <h1>${item.nome}</h1>
-        <progress class="progress-goal ${classeAlerta}" value="${matematicaDaBarra}" max="100"></progress>
-      </div>
-    `
-      visorExMeta.innerHTML += `
-      <div class="current-balance">
-        <h1>${item.nome}</h1>
-        <progress class="progress-goal ${classeAlerta}" value="${matematicaDaBarra}" max="100"></progress>
-      </div>
-    `
+      let classeAlerta = ''
     })
   }
 }
@@ -181,7 +194,6 @@ function diminuirOuAumentarMes(AumOuDim) {
   let [ano, mes] = mesAno.split('-')
   let anoNum = Number(ano)
   let mesNum = Number(mes)
-  let mesText = '0'
 
   if (AumOuDim === 'Aumentar') {
     mesNum += 1
@@ -197,13 +209,14 @@ function diminuirOuAumentarMes(AumOuDim) {
     }
   }
 
+  let anoStr = String(anoNum)
+  let mesStr = String(mesNum)
   if (mesNum < 10) {
-    mesText = '0' + mesNum
-  } else {
-    mesText = String(mesNum)
-  }
-
-  mesAnoResul = `${anoNum}-${mesText}`
+    mesNum = String(mesNum)
+    mesStr = '0' + mesNum
+  } else mesStr = String(mesNum)
+  const mesAnoResul = anoStr + '-' + mesStr
+  console.log(mesAnoResul)
   appData.mesAtivo = mesAnoResul
 
   atualizarVisorMes(anoNum, mesNum)

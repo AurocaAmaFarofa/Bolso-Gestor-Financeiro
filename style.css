@@ -559,16 +559,40 @@ select:focus {
   font-size: 1rem;
 }
 
+.progress-goal-container {
+  height: 40px;
+  width: 100%;
+  background-color: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.progress-goal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: var(--porcentagem-local);
+  transition: var(--transition);
+  height: 100%;
+}
+
+.progress-goal p {
+  font-size: 1rem;
+}
+
 .progress-safe {
-  color: var(--color-income);
+  background-color: var(--color-income);
+  border-radius: var(--radius-sm);
 }
 
 .progress-atention {
-  color: var(--color-reserve);
+  background-color: var(--color-reserve);
+  border-radius: var(--radius-sm);
 }
 
 .progress-alert {
-  color: var(--color-expense);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-expense);
+  max-width: 100%;
 }
 
 @media (min-width: 520px) {
