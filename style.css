@@ -559,6 +559,18 @@ select:focus {
   font-size: 1rem;
 }
 
+.progress-safe {
+  color: var(--color-income);
+}
+
+.progress-atention {
+  color: var(--color-reserve);
+}
+
+.progress-alert {
+  color: var(--color-expense);
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;

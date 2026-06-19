@@ -96,7 +96,6 @@ btnCriarMeta.addEventListener('click', () => {
     mesCriado: appData.mesAtivo,
     nome: nomeMeta,
     valorMax: valorMeta,
-    valorIni: 0,
   }
 
   appData.metas.push(novaMeta)
@@ -109,10 +108,15 @@ btnCriarMeta.addEventListener('click', () => {
 })
 
 function renderizarDoisVisores() {
+  visorExMeta.innerHTML = ``
   visorMainMeta.innerHTML = ``
 
   if (appData.metas) {
     appData.metas.forEach((item, indice) => {
+      if (item.mesCriado !== appData.mesAtivo) {
+        return
+      }
+
       const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
         return (
           lancamentos.mesAno === appData.mesAtivo &&
@@ -125,21 +129,39 @@ function renderizarDoisVisores() {
         return soma + Number(lancamento.valor)
       }, 0)
 
+      const matematicaDaBarra = (totalGastoMeta / item.valorMax) * 100
+
+      let classeAlerta = ''
+
+      if (matematicaDaBarra <= 50) {
+        classeAlerta = 'progress-safe'
+      } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
+        classeAlerta = 'progress-atention'
+      } else {
+        classeAlerta = 'progress-alert'
+      }
+
+      //if (gastosDaCategoria !== appData.mesAtivo) {
+      //  return
+      //}
+
       visorMainMeta.innerHTML += `
-      <div id="main-goals-visor" class="current-balance">
+      <div class="current-balance">
         <h1>${item.nome}</h1>
-        <progress class="progress-goal" value="${item.valorIni}" max="${item.valorMax}"></progress>
+        <progress class="progress-goal ${classeAlerta}" value="${matematicaDaBarra}" max="100"></progress>
       </div>
     `
       visorExMeta.innerHTML += `
-      <div id="main-goals-visor" class="current-balance">
+      <div class="current-balance">
         <h1>${item.nome}</h1>
-        <progress class="progress-goal" value="${item.valorIni}" max="${item.valorMax}"></progress>
+        <progress class="progress-goal ${classeAlerta}" value="${matematicaDaBarra}" max="100"></progress>
       </div>
     `
     })
   }
 }
+
+renderizarDoisVisores()
 
 // =================== Funções do mês =====================
 
