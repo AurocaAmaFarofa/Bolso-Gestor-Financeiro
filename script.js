@@ -150,7 +150,7 @@ function renderizarDoisVisores() {
 
       let cardMeta = `
         <div class="current-balance card-meta-${indice}">
-          <h1>${item.nome}</h1>
+          <h1>Gasto com ${item.nome}</h1>
           <div class="progress-goal-container">
             <div class="progress-goal-${indice} progress-goal"></div>
           </div>
