@@ -121,6 +121,9 @@ function renderizarDoisVisores() {
   visorExMeta.innerHTML = ``
   visorMainMeta.innerHTML = ``
 
+  console.log('Visor Principal:', visorMainMeta)
+  console.log('Visor Lançamentos:', visorExMeta)
+
   if (appData.metas) {
     appData.metas.forEach((item, indice) => {
       if (item.mesCriado !== appData.mesAtivo) {
@@ -153,21 +156,28 @@ function renderizarDoisVisores() {
           </div>
         </div>
       `
+
+      visorExMeta.innerHTML += cardMeta
       visorMainMeta.innerHTML += cardMeta
 
-      const cardAtual = document.querySelector(`.card-meta-${indice}`)
-      const barraProgresso = document.querySelector(`.progress-goal-${indice}`)
+      const cardAtual = document.querySelectorAll(`.card-meta-${indice}`)
+      const barraProgresso = document.querySelectorAll(
+        `.progress-goal-${indice}`,
+      )
 
-      if (cardAtual) {
-        cardAtual.style.setProperty('--porcentagem-local', stringPorcentagem)
+      barraProgresso.forEach((barra) => {
         if (matematicaDaBarra <= 50) {
-          barraProgresso.classList.add('progress-safe')
+          barra.classList.add('progress-safe')
         } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
-          barraProgresso.classList.add('progress-atention')
+          barra.classList.add('progress-atention')
         } else {
-          barraProgresso.classList.add('progress-alert')
+          barra.classList.add('progress-alert')
         }
-      }
+      })
+
+      cardAtual.forEach((card) => {
+        card.style.setProperty('--porcentagem-local', stringPorcentagem)
+      })
 
       let classeAlerta = ''
     })
