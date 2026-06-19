@@ -564,6 +564,17 @@ select:focus {
   width: 100%;
   background-color: var(--color-bg);
   border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.progress-goal::before {
+  content: var(--texto-porcentagem);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-weight: bold;
 }
 
 .progress-goal {

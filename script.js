@@ -152,7 +152,7 @@ function renderizarDoisVisores() {
         <div class="current-balance card-meta-${indice}">
           <h1>${item.nome}</h1>
           <div class="progress-goal-container">
-            <div class="progress-goal-${indice} progress-goal"><p>${matematicaDaBarra}%</p></div>
+            <div class="progress-goal-${indice} progress-goal"></div>
           </div>
         </div>
       `
@@ -177,6 +177,7 @@ function renderizarDoisVisores() {
 
       cardAtual.forEach((card) => {
         card.style.setProperty('--porcentagem-local', stringPorcentagem)
+        card.style.setProperty('--texto-porcentagem', `"${matematicaDaBarra}"`)
       })
 
       let classeAlerta = ''
