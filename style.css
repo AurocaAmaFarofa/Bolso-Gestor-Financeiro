@@ -610,6 +610,17 @@ select:focus {
   z-index: 1200 !important;
 }
 
+.header-meta-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.header-meta-card h1 {
+  font-size: 1.5rem;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;

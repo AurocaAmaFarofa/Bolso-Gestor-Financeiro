@@ -212,7 +212,10 @@ function renderizarDoisVisores() {
 
       let cardMeta = `
         <div class="current-balance card-meta-${indice}">
-          <h1>Gasto com ${nomeFormatado}</h1>
+          <div class="header-meta-card">
+            <h1>Gasto com ${nomeFormatado}</h1>
+            <button class="btn-delete" onclick="deletarMeta(${indice})">x</button>
+          </div>
           <div class="progress-goal-container">
             <div class="progress-goal-${indice} progress-goal"></div>
           </div>
@@ -237,13 +240,23 @@ function renderizarDoisVisores() {
         }
       })
 
+      const numeroFormatado = Number(matematicaDaBarra).toFixed(2)
+
       cardAtual.forEach((card) => {
         card.style.setProperty('--porcentagem-local', stringPorcentagem)
-        card.style.setProperty('--texto-porcentagem', `"${matematicaDaBarra}"`)
+        card.style.setProperty('--texto-porcentagem', `"%${numeroFormatado}"`)
       })
 
       let classeAlerta = ''
     })
+  }
+}
+
+function deletarMeta(indice) {
+  if (appData.metas) {
+    appData.metas.splice(indice, 1)
+    salvarDados()
+    atualizarTudo()
   }
 }
 
@@ -651,6 +664,7 @@ function deletarLancamento(indice) {
   appData.lancamentos.splice(indice, 1)
   salvarDados()
   renderizarGridLancamentos()
+  atualizarTudo()
 }
 
 //deixa o botao sem o visual de selecionado
