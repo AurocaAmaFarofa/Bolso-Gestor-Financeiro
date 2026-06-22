@@ -41,6 +41,9 @@ const btnCriarMeta = document.querySelector('#btn-submit-goal')
 const visorMainMeta = document.querySelector('#main-goals-visor')
 const visorExMeta = document.querySelector('#expense-goals-visor')
 const metaGeral = document.querySelectorAll('.progress-goal')
+const btnCriarCategoriaGasto = document.querySelector(
+  '#btn-submit-new-expense-category',
+)
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
@@ -67,6 +70,15 @@ const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
   pendencias: [],
   mesAtivo: ResultadoMes,
   metas: [],
+  categoriasGasto: [
+    { id: 'cat-1', nome: 'ALIMENTACAO' },
+    { id: 'cat-2', nome: 'LAZER' },
+    { id: 'cat-3', nome: 'TRANSPORTE' },
+    { id: 'cat-4', nome: 'MORADIA' },
+    { id: 'cat-5', nome: 'SAUDE' },
+    { id: 'cat-6', nome: 'CONTAS' },
+    { id: 'cat-7', nome: 'OUTROS' },
+  ],
 }
 
 console.log(appData.mesAtivo)
@@ -76,6 +88,53 @@ function salvarDados() {
 }
 
 console.log(appData)
+
+// =========== add opções de tipo de gasto =============
+
+function primeiraLetraMaior(texto) {
+  if (!texto) {
+    return
+  }
+  const textoMinusculo = texto.toLowerCase()
+  return textoMinusculo.charAt(0).toUpperCase() + textoMinusculo.slice(1)
+}
+
+function adicionarNovaCategoria() {
+  const inputNome = document.getElementById('new-category-name')
+  const nomeCategoria = inputNome.value.trim()
+
+  if (nomeCategoria === '') return
+
+  const novaCategoria = {
+    id: 'cat-' + Date.now(),
+    nome: nomeCategoria.toLowerCase(),
+  }
+
+  appData.categoriasGasto.push(novaCategoria)
+  salvarDados()
+  renderizarCategoriasDeGasto()
+
+  inputNome.value = ''
+  abrirOuFecharPopup('popup-nova-categoria', 'fechar')
+}
+
+function renderizarCategoriasDeGasto() {
+  const htmlCategoriaMeta = document.getElementById('category-select-goals')
+  const htmlCategoria = document.getElementById('category-select')
+  htmlCategoriaMeta.innerHTML = ''
+  htmlCategoria.innerHTML = ''
+  appData.categoriasGasto.forEach((gasto) => {
+    const nomeFormatado = primeiraLetraMaior(gasto.nome)
+    htmlCategoria.innerHTML += `
+      <option value="${gasto.nome}">${nomeFormatado}</option>
+    `
+    htmlCategoriaMeta.innerHTML += `
+      <option value="${gasto.nome}">${nomeFormatado}</option>
+    `
+  })
+}
+
+renderizarCategoriasDeGasto()
 
 // ===================== Funções de metas =====================
 
@@ -148,9 +207,12 @@ function renderizarDoisVisores() {
       const matematicaDaBarra = (totalGastoMeta / item.valorMax) * 100
       const stringPorcentagem = matematicaDaBarra + '%'
 
+      const nomeMeta = item.nome
+      const nomeFormatado = primeiraLetraMaior(nomeMeta)
+
       let cardMeta = `
         <div class="current-balance card-meta-${indice}">
-          <h1>Gasto com ${item.nome}</h1>
+          <h1>Gasto com ${nomeFormatado}</h1>
           <div class="progress-goal-container">
             <div class="progress-goal-${indice} progress-goal"></div>
           </div>
@@ -618,13 +680,44 @@ btnAddLancamento.addEventListener('click', () => {
   const dataLancamento = inputData ? new Date(inputData).getTime() : Date.now()
   const novoLancamento = {
     tipo: tipoSelecionado,
-    valor: document.getElementById('valueInput').value,
+    valor: Number(document.getElementById('valueInput').value),
     categoria: document.getElementById('category-select').value,
     descricao: document.getElementById('descriptionInput').value,
     forma: document.getElementById('payment-select').value,
     data: dataLancamento,
     mesAno: mesAnoDoLancamento,
     bancoId: appData.bancoAtual,
+  }
+
+  if (novoLancamento.tipo === 'despesa') {
+    const metaEncontrada = appData.metas.find(
+      (metas) =>
+        metas.nome === novoLancamento.categoria &&
+        metas.mesCriado === appData.mesAtivo,
+    )
+
+    if (metaEncontrada) {
+      const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
+        return (
+          lancamentos.mesAno === appData.mesAtivo &&
+          lancamentos.categoria === metaEncontrada.nome &&
+          lancamentos.tipo === 'despesa'
+        )
+      })
+
+      const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
+        return soma + Number(lancamento.valor)
+      }, 0)
+
+      gastoComInput = totalGasto + novoLancamento.valor
+
+      if (gastoComInput > metaEncontrada.valorMax) {
+        let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
+        if (resposta === false) {
+          return
+        }
+      }
+    }
   }
 
   appData.lancamentos.push(novoLancamento)

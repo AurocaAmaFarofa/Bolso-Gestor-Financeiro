@@ -30,16 +30,7 @@
         <div class="transaction-form-container">
           <label class="popup-container">
             <span class="span-popup">Classe da meta</span>
-            <select id="category-select-goals" required>
-              <option value="alimentacao">Alimentação</option>
-              <option value="transporte">Transporte</option>
-              <option value="moradia">Moradia</option>
-              <option value="lazer">Lazer</option>
-              <option value="saude">Saúde</option>
-              <option value="salario">Salário</option>
-              <option value="extra">Renda extra</option>
-              <option value="outros">Outros</option>
-            </select>
+            <select id="category-select-goals" required></select>
           </label>
 
           <label class="popup-container">
@@ -258,17 +249,16 @@
 
           <label class="popup-container">
             <span class="span-popup">Categoria</span>
-            <select id="category-select" required>
-              <option value="alimentacao">Alimentação</option>
-              <option value="transporte">Transporte</option>
-              <option value="moradia">Moradia</option>
-              <option value="lazer">Lazer</option>
-              <option value="saude">Saúde</option>
-              <option value="salario">Salário</option>
-              <option value="extra">Renda extra</option>
-              <option value="outros">Outros</option>
-            </select>
+            <select id="category-select" required></select>
           </label>
+
+          <button
+            type="button"
+            onclick="abrirOuFecharPopup('popup-nova-categoria', 'abrir')"
+            class="btn-submit"
+          >
+            +
+          </button>
 
           <label class="popup-container">
             <span class="span-popup">Descrição</span>
@@ -300,6 +290,41 @@
             Salvar lançamento
           </button>
         </div>
+      </div>
+      <!--popup novo tipo de gasto-->
+      <div class="popup-modal modal-popup display-none" id="popup-modal"></div>
+
+      <div
+        class="popup-modal modal-popup display-none"
+        id="popup-nova-categoria"
+      >
+        <div class="container-modal-title">
+          <h1 class="modal-title">Nova Categoria</h1>
+          <button
+            class="close-modal-btn"
+            onclick="abrirOuFecharPopup('popup-nova-categoria', 'fechar')"
+          >
+            X
+          </button>
+        </div>
+        <form
+          class="form-modal"
+          onsubmit="
+            event.preventDefault()
+            adicionarNovaCategoria()
+          "
+        >
+          <div class="container-input">
+            <label for="new-category-name">Nome da Categoria</label>
+            <input
+              type="text"
+              id="new-category-name"
+              placeholder="Ex: Combustível, Uber..."
+              required
+            />
+          </div>
+          <button type="submit" class="btn-submit">Criar Categoria</button>
+        </form>
       </div>
       <header class="app-header">
         <h1 class="app-title">Bolso</h1>

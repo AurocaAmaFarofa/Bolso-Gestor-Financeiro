@@ -606,6 +606,10 @@ select:focus {
   max-width: 100%;
 }
 
+#popup-nova-categoria {
+  z-index: 1200 !important;
+}
+
 @media (min-width: 520px) {
   body {
     padding: 24px;
