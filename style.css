@@ -14,9 +14,9 @@
   --color-reserve-soft: #f8edd3;
   --color-border: #e4ddcc;
 
-  --font-display: "Fraunces", serif;
-  --font-body: "Plus Jakarta Sans", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
 
   --radius-lg: 22px;
   --radius-md: 14px;
@@ -650,6 +650,23 @@ select:focus {
 .btn-search {
   max-height: 100%;
   width: 15%;
+}
+
+.header-last-expenses {
+  margin-bottom: 10px;
+}
+
+#btn-open-last {
+  cursor: pointer;
+}
+
+.cards-last {
+  display: flex;
+}
+
+.card-text-last {
+  width: 33.33%;
+  font-size: 1rem;
 }
 
 @media (min-width: 520px) {

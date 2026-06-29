@@ -136,7 +136,42 @@ function renderizarCategoriasDeGasto() {
 
 renderizarCategoriasDeGasto()
 
+// =============== Ultimos lançamentos ==========================
+
+const btnUltimosGastos = document.querySelector('#btn-open-last')
+const gridUltimosGastos = document.querySelector('#grid-last')
+let status = 'fechado'
+
+btnUltimosGastos.addEventListener('click', () => {
+  if (appData.lancamentos.length === 0) {
+    gridUltimosGastos.innerHTML = '<span>Nenhum lançamento ainda</span>'
+    return
+  }
+  atualizarGridUltimos()
+})
+
+function atualizarGridUltimos() {
+  if ((status = 'fechado')) {
+    const arrayLançamentos = appData.lancamentos.reverse()
+    const primeirosLan = arrayLançamentos.slice(0, 3)
+    gridUltimosGastos.innerHTML = ''
+    primeirosLan.forEach((item) => {
+      gridUltimosGastos.innerHTML += `
+        <div class="card-expenses cards-last">
+          <h1 class="card-text-last">${item.descricao}</h1>
+          <h1 class="card-text-last">${item.valor}</h1>
+          <h1 class="card-text-last">${item.tipo}</h1>
+        </div>
+      `
+    })
+    status = 'aberto'
+  } else {
+    status = 'fechado'
+  }
+}
+
 // =============== Função de pesquisa de lançamentos =============
+
 function formatarTexto(texto) {
   return texto
     .normalize('NFD')
