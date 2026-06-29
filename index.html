@@ -310,8 +310,8 @@
         <form
           class="form-modal"
           onsubmit="
-            event.preventDefault()
-            adicionarNovaCategoria()
+            event.preventDefault();
+            adicionarNovaCategoria();
           "
         >
           <div class="container-input">
@@ -460,6 +460,30 @@
               Nova Meta
             </button>
           </div>
+
+          <search class="search-bar">
+            <form method="GET" role="search">
+              <label for="search-text" class="popup-container search-title"
+                >Buscar Lançamento:</label
+              >
+              <div class="search-bar-itens">
+                <input
+                  type="text"
+                  class="search-bar-container"
+                  id="search-text"
+                  placeholder="Buscar por categoria.."
+                />
+                <button
+                  type="button"
+                  class="btn-search"
+                  onclick="buscarLancamentos()"
+                >
+                  Buscar
+                </button>
+              </div>
+            </form>
+          </search>
+
           <div class="grid-expenses" id="grid-expenses">
             <p class="grid-none-expenses">Nenhum lançamento ainda</p>
           </div>

@@ -42,7 +42,7 @@ const visorMainMeta = document.querySelector('#main-goals-visor')
 const visorExMeta = document.querySelector('#expense-goals-visor')
 const metaGeral = document.querySelectorAll('.progress-goal')
 const btnCriarCategoriaGasto = document.querySelector(
-  '#btn-submit-new-expense-category',
+  '#btn-submit-new-expense-category'
 )
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
@@ -71,13 +71,13 @@ const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
   mesAtivo: ResultadoMes,
   metas: [],
   categoriasGasto: [
-    { id: 'cat-1', nome: 'ALIMENTACAO' },
-    { id: 'cat-2', nome: 'LAZER' },
-    { id: 'cat-3', nome: 'TRANSPORTE' },
-    { id: 'cat-4', nome: 'MORADIA' },
-    { id: 'cat-5', nome: 'SAUDE' },
-    { id: 'cat-6', nome: 'CONTAS' },
-    { id: 'cat-7', nome: 'OUTROS' },
+    { id: 'cat-1', nome: 'Alimentação' },
+    { id: 'cat-2', nome: 'Lazer' },
+    { id: 'cat-3', nome: 'Transporte' },
+    { id: 'cat-4', nome: 'Moradia' },
+    { id: 'cat-5', nome: 'Saúde' },
+    { id: 'cat-6', nome: 'Contas' },
+    { id: 'cat-7', nome: 'Outros' },
   ],
 }
 
@@ -136,17 +136,49 @@ function renderizarCategoriasDeGasto() {
 
 renderizarCategoriasDeGasto()
 
+// =============== Função de pesquisa de lançamentos =============
+function formatarTexto(texto) {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+}
+
+function mostrarBuscaLancamentos(busca) {
+  if (busca.length === 0) {
+    renderizarGridLancamentos()
+    return
+  } else {
+    gridLancamentos.innerHTML = ''
+    busca.forEach((item) => {
+      if (gridLancamentos) {
+        gridLancamentos.innerHTML += `
+        <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
+          <h2>${item.descricao}</h2>
+          <p>R$ ${item.valor.toFixed(2).replace('.', ',')}</p>
+          <p>${item.categoria}</p>
+          <div class="division-card">
+            <p>${item.forma}</p>
+            <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
+          </div>
+        </div>
+      `
+      }
+    })
+  }
+}
+
+function buscarLancamentos() {
+  const textoDigitado = document.getElementById('search-text').value
+  const textoFormatado = formatarTexto(textoDigitado)
+  const filtroApp = appData.lancamentos.filter((L) => {
+    return formatarTexto(L.categoria) === textoFormatado
+  })
+  console.log(filtroApp)
+  mostrarBuscaLancamentos(filtroApp)
+}
+
 // ===================== Funções de metas =====================
-
-// pegar os dados do usuario atravez de um addEventListner e dentro dele puxar
-// uma const com um querySelector pros inputs de Tipo da meta (ex: Lazer) e
-// Max de dinheiro
-
-// Na hora de renderizar iremos fazer primeiro de tudo, uma verificação pra saber
-// se o gasto fixo criado esta dentro do mesAtivo. Depois disso a gnt pega o array
-// onde vao estar as metas e com base no calculo matematico
-// que a IA fez pra nós, e dai depois de verificar quantos % esta, a gnt muda as
-// propriedades do elemento, e dai sim exibe ele pro usuario
 
 btnCriarMeta.addEventListener('click', () => {
   const nomeMeta = document.getElementById('category-select-goals').value
@@ -227,7 +259,7 @@ function renderizarDoisVisores() {
 
       const cardAtual = document.querySelectorAll(`.card-meta-${indice}`)
       const barraProgresso = document.querySelectorAll(
-        `.progress-goal-${indice}`,
+        `.progress-goal-${indice}`
       )
 
       barraProgresso.forEach((barra) => {
@@ -438,7 +470,7 @@ btnAddReserva.addEventListener('click', () => {
 btnAdicionarValorReserva.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
   const valorPraRetirar = Number(
-    document.querySelector('#plus-value-reserve').value,
+    document.querySelector('#plus-value-reserve').value
   )
   appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
   salvarDados()
@@ -452,7 +484,7 @@ btnAdicionarValorReserva.addEventListener('click', () => {
 btnTirarValor.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
   const valorPraAdicionar = Number(
-    document.querySelector('#minus-value-reserve').value,
+    document.querySelector('#minus-value-reserve').value
   )
   appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
   salvarDados()
@@ -618,11 +650,6 @@ function renderizarGridLancamentos() {
         saldoBancoSelecionadoNum -= valorItem
       }
 
-      console.log(
-        'Passou no IF do banco! Desenhando o card de:',
-        item.descricao,
-      )
-
       if (gridLancamentos) {
         gridLancamentos.innerHTML += `
         <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
@@ -707,7 +734,7 @@ btnAddLancamento.addEventListener('click', () => {
     const metaEncontrada = appData.metas.find(
       (metas) =>
         metas.nome === novoLancamento.categoria &&
-        metas.mesCriado === appData.mesAtivo,
+        metas.mesCriado === appData.mesAtivo
     )
 
     if (metaEncontrada) {

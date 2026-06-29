@@ -14,9 +14,9 @@
   --color-reserve-soft: #f8edd3;
   --color-border: #e4ddcc;
 
-  --font-display: 'Fraunces', serif;
-  --font-body: 'Plus Jakarta Sans', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --font-display: "Fraunces", serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Space Mono", monospace;
 
   --radius-lg: 22px;
   --radius-md: 14px;
@@ -619,6 +619,37 @@ select:focus {
 
 .header-meta-card h1 {
   font-size: 1.5rem;
+}
+
+.search-bar {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.search-bar-container {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  height: 2rem;
+  width: 85%;
+  padding: var(--radius-sm);
+  height: 43px;
+}
+
+.search-bar-itens {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.search-title {
+  font-family: var(--font-body);
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.btn-search {
+  max-height: 100%;
+  width: 15%;
 }
 
 @media (min-width: 520px) {
