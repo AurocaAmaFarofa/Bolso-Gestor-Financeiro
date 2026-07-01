@@ -151,8 +151,9 @@ btnUltimosGastos.addEventListener('click', () => {
 })
 
 function atualizarGridUltimos() {
-  if ((status = 'fechado')) {
-    const arrayLançamentos = appData.lancamentos.reverse()
+  if (status === 'fechado') {
+    const copiaLancamentos = appData.lancamentos.slice()
+    const arrayLançamentos = copiaLancamentos.reverse()
     const primeirosLan = arrayLançamentos.slice(0, 3)
     gridUltimosGastos.innerHTML = ''
     primeirosLan.forEach((item) => {
@@ -166,6 +167,7 @@ function atualizarGridUltimos() {
     })
     status = 'aberto'
   } else {
+    gridUltimosGastos.innerHTML = ''
     status = 'fechado'
   }
 }
@@ -409,6 +411,7 @@ function atualizarTudo() {
   renderizarGridLancamentos()
   renderizarGridReservas()
   renderizarDoisVisores()
+  atualizarGridUltimos()
 }
 
 //============== BANCOS PARA SELECIOAR ===============//
