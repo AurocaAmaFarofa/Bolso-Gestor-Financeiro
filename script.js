@@ -472,11 +472,22 @@ btnSubmitBanco.addEventListener('click', () => {
   modalPopupBanco.classList.add('display-none')
 
   atualizarTudo()
+
+  if (existeBanco === 'nao') {
+    existeBanco = 'sim'
+    console.log(existeBanco)
+  }
 })
 
-let existeBanco = 'sim'
+let existeBanco = appData.bancos.length > 0 ? 'sim' : 'nao'
 
 function excluirBanco(indice) {
+  const bancoDeletado = appData.bancos[indice].id
+  const lancamentosDoBanco = appData.lancamentos.filter((L) => {
+    return L.bancoId !== bancoDeletado
+  })
+  appData.lancamentos = lancamentosDoBanco
+
   appData.bancos.splice(indice, 1)
   if (appData.bancos.length > 0) {
     appData.bancoAtual = appData.bancos[0].id
@@ -807,12 +818,6 @@ btnAddLancamento.addEventListener('click', () => {
             return
           }
         }
-      } else {
-        alert(
-          'Você não possui nenhum banco. Por favor, crie um banco primeiramente',
-        )
-        abrirOuFecharPopup('popup-novo-banco', 'abrir')
-        return
       }
     }
 
@@ -826,6 +831,12 @@ btnAddLancamento.addEventListener('click', () => {
     document.getElementById('descriptionInput').value = ''
     document.getElementById('payment-select').value = ''
     tipoSelecionado = 'despesa'
+  } else {
+    alert(
+      'Você não possui nenhum banco. Por favor, crie um banco primeiramente',
+    )
+    abrirOuFecharPopup('popup-novo-banco', 'abrir')
+    return
   }
 })
 
