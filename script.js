@@ -42,7 +42,7 @@ const visorMainMeta = document.querySelector('#main-goals-visor')
 const visorExMeta = document.querySelector('#expense-goals-visor')
 const metaGeral = document.querySelectorAll('.progress-goal')
 const btnCriarCategoriaGasto = document.querySelector(
-  '#btn-submit-new-expense-category'
+  '#btn-submit-new-expense-category',
 )
 let valorTotalReservado = 0
 let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
@@ -296,7 +296,7 @@ function renderizarDoisVisores() {
 
       const cardAtual = document.querySelectorAll(`.card-meta-${indice}`)
       const barraProgresso = document.querySelectorAll(
-        `.progress-goal-${indice}`
+        `.progress-goal-${indice}`,
       )
 
       barraProgresso.forEach((barra) => {
@@ -462,6 +462,7 @@ btnSubmitBanco.addEventListener('click', () => {
   }
 
   appData.bancos.push(novoBanco)
+  selecionarBanco(novoBanco.id)
 
   salvarDados()
   console.log(appData)
@@ -473,14 +474,21 @@ btnSubmitBanco.addEventListener('click', () => {
   atualizarTudo()
 })
 
+let existeBanco = 'sim'
+
 function excluirBanco(indice) {
   appData.bancos.splice(indice, 1)
-  salvarDados()
   if (appData.bancos.length > 0) {
     appData.bancoAtual = appData.bancos[0].id
     salvarDados()
     atualizarTudo()
+  } else {
+    existeBanco = 'nao'
+    console.log(existeBanco)
+    selecionarBanco(null)
+    abrirOuFecharPopup('popup-novo-banco', 'abrir')
   }
+  salvarDados()
   atualizarTudo()
 }
 
@@ -508,7 +516,7 @@ btnAddReserva.addEventListener('click', () => {
 btnAdicionarValorReserva.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
   const valorPraRetirar = Number(
-    document.querySelector('#plus-value-reserve').value
+    document.querySelector('#plus-value-reserve').value,
   )
   appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
   salvarDados()
@@ -522,7 +530,7 @@ btnAdicionarValorReserva.addEventListener('click', () => {
 btnTirarValor.addEventListener('click', () => {
   if (indiceReservaSelecionada === null) return
   const valorPraAdicionar = Number(
-    document.querySelector('#minus-value-reserve').value
+    document.querySelector('#minus-value-reserve').value,
   )
   appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
   salvarDados()
@@ -754,61 +762,71 @@ btnRecebimento.addEventListener('click', () => {
 })
 
 btnAddLancamento.addEventListener('click', () => {
-  const inputData = document.getElementById('dateInput').value
-  const mesAnoDoLancamento = appData.mesAtivo
-  const dataLancamento = inputData ? new Date(inputData).getTime() : Date.now()
-  const novoLancamento = {
-    tipo: tipoSelecionado,
-    valor: Number(document.getElementById('valueInput').value),
-    categoria: document.getElementById('category-select').value,
-    descricao: document.getElementById('descriptionInput').value,
-    forma: document.getElementById('payment-select').value,
-    data: dataLancamento,
-    mesAno: mesAnoDoLancamento,
-    bancoId: appData.bancoAtual,
-  }
+  if (existeBanco === 'sim') {
+    const inputData = document.getElementById('dateInput').value
+    const mesAnoDoLancamento = appData.mesAtivo
+    const dataLancamento = inputData
+      ? new Date(inputData).getTime()
+      : Date.now()
+    const novoLancamento = {
+      tipo: tipoSelecionado,
+      valor: Number(document.getElementById('valueInput').value),
+      categoria: document.getElementById('category-select').value,
+      descricao: document.getElementById('descriptionInput').value,
+      forma: document.getElementById('payment-select').value,
+      data: dataLancamento,
+      mesAno: mesAnoDoLancamento,
+      bancoId: appData.bancoAtual,
+    }
 
-  if (novoLancamento.tipo === 'despesa') {
-    const metaEncontrada = appData.metas.find(
-      (metas) =>
-        metas.nome === novoLancamento.categoria &&
-        metas.mesCriado === appData.mesAtivo
-    )
+    if (novoLancamento.tipo === 'despesa') {
+      const metaEncontrada = appData.metas.find(
+        (metas) =>
+          metas.nome === novoLancamento.categoria &&
+          metas.mesCriado === appData.mesAtivo,
+      )
 
-    if (metaEncontrada) {
-      const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
-        return (
-          lancamentos.mesAno === appData.mesAtivo &&
-          lancamentos.categoria === metaEncontrada.nome &&
-          lancamentos.tipo === 'despesa'
-        )
-      })
+      if (metaEncontrada) {
+        const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
+          return (
+            lancamentos.mesAno === appData.mesAtivo &&
+            lancamentos.categoria === metaEncontrada.nome &&
+            lancamentos.tipo === 'despesa'
+          )
+        })
 
-      const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
-        return soma + Number(lancamento.valor)
-      }, 0)
+        const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
+          return soma + Number(lancamento.valor)
+        }, 0)
 
-      gastoComInput = totalGasto + novoLancamento.valor
+        gastoComInput = totalGasto + novoLancamento.valor
 
-      if (gastoComInput > metaEncontrada.valorMax) {
-        let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
-        if (resposta === false) {
-          return
+        if (gastoComInput > metaEncontrada.valorMax) {
+          let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
+          if (resposta === false) {
+            return
+          }
         }
+      } else {
+        alert(
+          'Você não possui nenhum banco. Por favor, crie um banco primeiramente',
+        )
+        abrirOuFecharPopup('popup-novo-banco', 'abrir')
+        return
       }
     }
+
+    appData.lancamentos.push(novoLancamento)
+    salvarDados()
+    atualizarTudo()
+    abrirOuFecharPopup('popup-modal', 'fechar')
+
+    document.getElementById('valueInput').value = ''
+    document.getElementById('category-select').value = ''
+    document.getElementById('descriptionInput').value = ''
+    document.getElementById('payment-select').value = ''
+    tipoSelecionado = 'despesa'
   }
-
-  appData.lancamentos.push(novoLancamento)
-  salvarDados()
-  atualizarTudo()
-  abrirOuFecharPopup('popup-modal', 'fechar')
-
-  document.getElementById('valueInput').value = ''
-  document.getElementById('category-select').value = ''
-  document.getElementById('descriptionInput').value = ''
-  document.getElementById('payment-select').value = ''
-  tipoSelecionado = 'despesa'
 })
 
 //-----------------------------------------------------------------
