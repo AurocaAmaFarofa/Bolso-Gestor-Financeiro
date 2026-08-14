@@ -729,7 +729,7 @@ function renderizarGridLancamentos() {
             <p>${item.forma}</p>
             <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
           </div>
-          <button class="btn-delete" id="delete-btn-card" onclick="deletarLancamento(${indice})">Excluir</button>
+          <button class="btn-delete" id="delete-btn-card" onclick="deletarLancamento(${item.id})">Excluir</button>
         </div>
       `
       }
@@ -756,10 +756,26 @@ function renderizarGridLancamentos() {
 
 renderizarGridLancamentos()
 
-function deletarLancamento(indice) {
+async function deletarLancamento(id) {
+  console.log(id)
+
+  const resposta = await fetch(`lancamentos/${id}`, {
+    method: 'DELETE',
+  })
+
+  const resultado = await resposta.json()
+
+  console.log(resultado)
+
+  const indice = appData.lancamentos.findIndex(
+    (lancamento) => Number(lancamento.id) === Number(id),
+  )
   appData.lancamentos.splice(indice, 1)
-  salvarDados()
-  renderizarGridLancamentos()
+
+  if (indice !== -1) {
+    appData.lancamentos.splice(indice, 1)
+  }
+
   atualizarTudo()
 }
 

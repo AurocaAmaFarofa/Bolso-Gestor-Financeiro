@@ -90,6 +90,34 @@ app.post('/lancamentos', (req, res) => {
   })
 })
 
+app.delete('/lancamentos/:id', (req, res) => {
+  const id = req.params.id
+
+  console.log(id)
+
+  const sql = `
+    DELETE FROM lancamentos
+    WHERE id = ?
+  `
+
+  conexao.query(sql, [id], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao excluir: ', erro)
+
+      res.status(500).json({
+        erro: 'Erro ao exlcuir',
+      })
+
+      return
+    }
+
+    res.json({
+      mensagem: 'Excluido com sucesso',
+      id: id,
+    })
+  })
+})
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`)
 })
