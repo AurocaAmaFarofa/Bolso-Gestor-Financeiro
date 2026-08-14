@@ -414,6 +414,18 @@ function atualizarTudo() {
   atualizarGridUltimos()
 }
 
+// ============ função pra pegar os itens do MySql =====//
+
+async function carregarLancamento() {
+  const resposta = await fetch('/lancamentos')
+  const lancamentos = await resposta.json()
+  appData.lancamentos = lancamentos
+  console.log('Lançamentos do banco: ', lancamentos)
+  atualizarTudo()
+}
+
+carregarLancamento()
+
 //============== BANCOS PARA SELECIOAR ===============//
 
 function renderizarAbasBancos() {
@@ -772,7 +784,7 @@ btnRecebimento.addEventListener('click', () => {
   tipoSelecionado = 'ganho'
 })
 
-btnAddLancamento.addEventListener('click', () => {
+btnAddLancamento.addEventListener('click', async () => {
   if (existeBanco === 'sim') {
     const inputData = document.getElementById('dateInput').value
     const mesAnoDoLancamento = appData.mesAtivo
@@ -821,8 +833,17 @@ btnAddLancamento.addEventListener('click', () => {
       }
     }
 
-    appData.lancamentos.push(novoLancamento)
-    salvarDados()
+    const resposta = await fetch('/lancamentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novoLancamento),
+    })
+
+    const resultado = await resposta.json()
+    console.log(resultado)
+
+    appData.lancamentos.push(resultado.lancamento)
+    //salvarDados()
     atualizarTudo()
     abrirOuFecharPopup('popup-modal', 'fechar')
 
