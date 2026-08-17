@@ -121,3 +121,102 @@ app.delete('/lancamentos/:id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`)
 })
+
+// Bancos //
+
+app.get('/bancos', (req, res) => {
+  const sql = 'SELECT * FROM bancos'
+
+  conexao.query(sql, (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao buscar bancos: ', erro)
+
+      res.status(500).json({
+        erro: 'Erro ao buscar bancos.',
+      })
+
+      return
+    }
+
+    res.json(resultado)
+  })
+})
+
+app.post('/bancos', (req, res) => {
+  const { nome, saldoInicial, mesCriado } = req.body
+
+  const sql = `
+    INSERT INTO bancos
+    (nome, saldoInicial, mesCriado)
+    VALUES (?, ?, ?)
+  `
+
+  const valores = [nome, saldoInicial, mesCriado]
+
+  conexao.query(sql, valores, (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao criar banco:', erro)
+
+      res.status(500).json({
+        erro: 'Erro ao criar banco.',
+      })
+
+      return
+    }
+
+    const novoBanco = {
+      id: resultado.insertId,
+      nome,
+      saldoInicial,
+      mesCriado,
+    }
+
+    res.status(201).json({
+      mensagem: 'Banco criado com sucesso!',
+      banco: novoBanco,
+    })
+  })
+})
+
+app.delete('/bancos/:id', (req, res) => {
+  const id = req.params.id
+
+  const sqlLancamentos = `
+    DELETE FROM lancamentos
+    WHERE bancoId = ?
+  `
+
+  conexao.query(sqlLancamentos, [id], (erro) => {
+    if (erro) {
+      console.log('Erro ao excluir lançamentos do banco:', erro)
+
+      res.status(500).json({
+        erro: 'Erro ao excluir lançamentos do banco',
+      })
+
+      return
+    }
+
+    const sqlBanco = `
+      DELETE FROM bancos
+      WHERE id = ?
+    `
+
+    conexao.query(sqlBanco, [id], (erro, resultado) => {
+      if (erro) {
+        console.log('Erro ao excluir banco:', erro)
+
+        res.status(500).json({
+          erro: 'Erro ao excluir banco',
+        })
+
+        return
+      }
+
+      res.json({
+        mensagem: 'Banco excluído com sucesso',
+        id: id,
+      })
+    })
+  })
+})

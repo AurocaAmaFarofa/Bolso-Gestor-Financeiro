@@ -63,8 +63,8 @@ if (mes < 10) {
 ResultadoMes = `${ano}-` + `${mes}`
 
 const appData = JSON.parse(localStorage.getItem('BolsoappData')) || {
-  bancoAtual: 'banco-inicial',
-  bancos: [{ id: 'banco-inicial', nome: 'Banco Inicial', saldoInicial: 0 }],
+  bancoAtual: null,
+  bancos: [],
   lancamentos: [],
   reservas: [],
   pendencias: [],
@@ -430,18 +430,29 @@ carregarLancamento()
 
 function renderizarAbasBancos() {
   if (!listBancosAbas) return
+
   listBancosAbas.innerHTML = ''
 
-  appData.bancos.forEach((banco, indice) => {
-    const classeAtiva = banco.id === appData.bancoAtual ? 'banco-active' : ''
+  appData.bancos.forEach((banco) => {
+    const classeAtiva =
+      Number(banco.id) === Number(appData.bancoAtual) ? 'banco-active' : ''
 
     listBancosAbas.innerHTML += `
-    <div class="btns-aba-bancos">
-      <button class="btn-aba-banco ${classeAtiva}" onclick="selecionarBanco('${banco.id}')">
-        ${banco.nome}
-        <button class="btn-aba-banco color-red-btn ${classeAtiva}" onclick="excluirBanco(${indice})">-</button>
-      </button>
-    </div>  
+      <div class="btns-aba-bancos">
+        <button
+          class="btn-aba-banco ${classeAtiva}"
+          onclick="selecionarBanco(${banco.id})"
+        >
+          ${banco.nome}
+        </button>
+
+        <button
+          class="btn-aba-banco color-red-btn"
+          onclick="excluirBanco(${banco.id})"
+        >
+          -
+        </button>
+      </div>
     `
   })
 }
@@ -452,7 +463,7 @@ function selecionarBanco(id) {
   atualizarTudo()
 }
 
-btnSubmitBanco.addEventListener('click', () => {
+btnSubmitBanco.addEventListener('click', async () => {
   const inputNome = document.querySelector('#banco-name')
   const inputSaldo = document.querySelector('#banco-saldo-inicial')
 
@@ -467,23 +478,31 @@ btnSubmitBanco.addEventListener('click', () => {
   }
 
   const novoBanco = {
-    id: 'banco-' + Date.now(),
     mesCriado: appData.mesAtivo,
     nome: inputNome.value,
     saldoInicial: Number(inputSaldo.value) || 0,
   }
 
-  appData.bancos.push(novoBanco)
-  selecionarBanco(novoBanco.id)
+  const resposta = await fetch('/bancos', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(novoBanco),
+  })
 
-  salvarDados()
-  console.log(appData)
+  const resultado = await resposta.json()
+
+  console.log(resultado)
+
+  appData.bancos.push(resultado.banco)
+  selecionarBanco(resultado.banco.id)
 
   inputNome.value = ''
   inputSaldo.value = ''
   modalPopupBanco.classList.add('display-none')
 
-  atualizarTudo()
+  carregarBancos()
 
   if (existeBanco === 'nao') {
     existeBanco = 'sim'
@@ -491,27 +510,89 @@ btnSubmitBanco.addEventListener('click', () => {
   }
 })
 
+async function carregarBancos() {
+  const resposta = await fetch('/bancos')
+  const bancos = await resposta.json()
+
+  appData.bancos = bancos
+
+  if (appData.bancos.length === 0) {
+    await criarBancoInicial()
+  }
+
+  if (!appData.bancoAtual) {
+    selecionarBanco(appData.bancos[0].id)
+  }
+
+  console.log('Bancos do banco de dados: ', bancos)
+
+  atualizarTudo()
+}
+
+carregarBancos()
+
 let existeBanco = appData.bancos.length > 0 ? 'sim' : 'nao'
 
-function excluirBanco(indice) {
-  const bancoDeletado = appData.bancos[indice].id
-  const lancamentosDoBanco = appData.lancamentos.filter((L) => {
-    return L.bancoId !== bancoDeletado
-  })
-  appData.lancamentos = lancamentosDoBanco
-
-  appData.bancos.splice(indice, 1)
-  if (appData.bancos.length > 0) {
-    appData.bancoAtual = appData.bancos[0].id
-    salvarDados()
-    atualizarTudo()
-  } else {
-    existeBanco = 'nao'
-    console.log(existeBanco)
-    selecionarBanco(null)
-    abrirOuFecharPopup('popup-novo-banco', 'abrir')
+async function criarBancoInicial() {
+  const novoBanco = {
+    mesCriado: appData.mesAtivo,
+    nome: 'Banco Inicial',
+    saldoInicial: 0,
   }
-  salvarDados()
+
+  const resposta = await fetch('/bancos', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(novoBanco),
+  })
+
+  const resultado = await resposta.json()
+
+  appData.bancos.push(resultado.banco)
+
+  selecionarBanco(resultado.banco.id)
+}
+
+async function excluirBanco(id) {
+  const banco = appData.bancos.find((banco) => Number(banco.id) === Number(id))
+
+  if (!banco) return
+
+  const confirmar = confirm(
+    `Deseja excluir o banco "${banco.nome}"? Os lançamentos dele também serão excluídos.`,
+  )
+
+  if (!confirmar) return
+
+  const resposta = await fetch(`/bancos/${id}`, {
+    method: 'DELETE',
+  })
+
+  const resultado = await resposta.json()
+
+  console.log(resultado)
+
+  if (!resposta.ok) {
+    alert('Erro ao excluir banco.')
+    return
+  }
+
+  appData.bancos = appData.bancos.filter(
+    (banco) => Number(banco.id) !== Number(id),
+  )
+
+  appData.lancamentos = appData.lancamentos.filter(
+    (lancamento) => Number(lancamento.bancoId) !== Number(id),
+  )
+
+  if (appData.bancos.length === 0) {
+    await criarBancoInicial()
+  } else {
+    selecionarBanco(appData.bancos[0].id)
+  }
+
   atualizarTudo()
 }
 
@@ -712,7 +793,7 @@ function renderizarGridLancamentos() {
       totalGastoNum += valorItem
     }
 
-    if (item.bancoId === idProcurado) {
+    if (Number(item.bancoId) === Number(idProcurado)) {
       if (item.tipo === 'ganho') {
         saldoBancoSelecionadoNum += valorItem
       } else {
@@ -759,7 +840,7 @@ renderizarGridLancamentos()
 async function deletarLancamento(id) {
   console.log(id)
 
-  const resposta = await fetch(`lancamentos/${id}`, {
+  const resposta = await fetch(`/lancamentos/${id}`, {
     method: 'DELETE',
   })
 
@@ -770,7 +851,6 @@ async function deletarLancamento(id) {
   const indice = appData.lancamentos.findIndex(
     (lancamento) => Number(lancamento.id) === Number(id),
   )
-  appData.lancamentos.splice(indice, 1)
 
   if (indice !== -1) {
     appData.lancamentos.splice(indice, 1)
