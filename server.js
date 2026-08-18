@@ -220,3 +220,54 @@ app.delete('/bancos/:id', (req, res) => {
     })
   })
 })
+
+app.get('/reservas', (req, res) => {
+  const sql = 'SELECT * FROM reservas'
+
+  conexao.query(sql, (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao buscar reservas')
+
+      res.status(500).json({
+        erro: 'Erro ao buscar reservas',
+      })
+
+      return
+    }
+
+    res.json(resultado)
+  })
+})
+
+app.post('/reservas', (req, res) => {
+  const { nome, valor } = req.body
+
+  const sql = `
+  INSERT INTO reservas
+  (nome, valor)
+  VALUES (?, ?)
+  `
+
+  const valores = [nome, valor]
+
+  conexao.query(sql, valores, (erro, resultado) => {
+    if (erro) {
+      console.log('erro na reserva', erro)
+
+      res.status(500).json({ erro: 'erro ao inserir reserva' })
+
+      return
+    }
+
+    const novaReserva = {
+      id: resultado.insertId,
+      nome,
+      valor,
+    }
+
+    res.status(201).json({
+      mensagem: 'Reserva criada',
+      reserva: novaReserva,
+    })
+  })
+})

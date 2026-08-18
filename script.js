@@ -600,19 +600,74 @@ renderizarAbasBancos()
 
 //----------------------Coisas Das Reservas----------------------
 
+async function carregarReservas() {
+  const resposta = await fetch('/reservas')
+  const reservas = await resposta.json()
+
+  appData.reservas = reservas
+
+  atualizarTudo()
+}
+
+carregarReservas()
+
 //BOTAO PRA ADICIONAR NOVA RESERVA
-btnAddReserva.addEventListener('click', () => {
+btnAddReserva.addEventListener('click', async () => {
   const novaReserva = {
     nome: document.querySelector('#reserve-name').value,
-    valorI: Number(document.querySelector('#reserve-value').value),
+    valor: Number(document.querySelector('#reserve-value').value),
   }
-  appData.reservas.push(novaReserva)
-  salvarDados()
+
+  const totalBancos = appData.bancos.reduce((soma, b) => {
+    if (b.mesCriado === appData.mesAtivo) {
+      return soma + Number(b.saldoInicial)
+    }
+    return soma
+  }, 0)
+  let dinheiroLivre = totalBancos
+
+  appData.lancamentos.forEach((item) => {
+    if (item.mesAno !== appData.mesAtivo) {
+      return
+    }
+
+    if (item.tipo === 'ganho') {
+      dinheiroLivre += Number(item.valor)
+    }
+    if (item.tipo === 'despesa') {
+      dinheiroLivre -= Number(item.valor)
+    }
+  })
+  appData.reservas.forEach((item) => {
+    dinheiroLivre -= Number(item.valor)
+  })
+
+  if (novaReserva.valor < 0 || novaReserva.valor > dinheiroLivre) {
+    alert('Valor inválido')
+    return
+  }
+  if (!novaReserva.nome) {
+    alert('Por favor, insira um nome')
+    return
+  }
+
+  const resposta = await fetch('/reservas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(novaReserva),
+  })
+
+  const resultado = await resposta.json()
+
+  appData.reservas.push(resultado.reserva)
 
   document.querySelector('#reserve-name').value = ''
   document.querySelector('#reserve-value').value = ''
 
   atualizarTudo()
+
   abrirOuFecharPopup('popup-reserve', 'fechar')
 })
 
@@ -656,7 +711,7 @@ function renderizarGridReservas() {
       <div class="card-expenses">
         <div class="especifications">
           <h2>${item.nome}</h2>
-          <p>R$ ${item.valorI.toFixed(2).replace('.', ',')}</p>
+          <p>R$ ${Number(item.valor).toFixed(2).replace('.', ',')}</p>
         </div>
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
@@ -668,7 +723,7 @@ function renderizarGridReservas() {
       </div>
     `
     //MUDA NA PAGINA DE INICIO
-    valorTotalReservado += Number(item.valorI)
+    valorTotalReservado += Number(item.valor)
     ;(totalReservadoVisor.textContent =
       'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
   })
