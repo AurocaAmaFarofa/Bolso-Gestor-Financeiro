@@ -36,10 +36,13 @@ conexao.connect((erro) => {
   console.log('Conectado ao banco.')
 })
 
-app.get('/lancamentos', (req, res) => {
-  const sql = 'SELECT * FROM lancamentos'
+app.get('/lancamentos', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT * FROM lancamentos
+    WHERE usuarioId = ?
+  `
 
-  conexao.query(sql, (erro, resultados) => {
+  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
     if (erro) {
       console.error('Erro ao buscar lançamentos:', erro)
 
@@ -54,14 +57,14 @@ app.get('/lancamentos', (req, res) => {
   })
 })
 
-app.post('/lancamentos', (req, res) => {
+app.post('/lancamentos', exigirLogin, (req, res) => {
   const { tipo, valor, categoria, descricao, forma, data, mesAno, bancoId } =
     req.body
 
   const sql = `
   INSERT INTO lancamentos
-  (tipo, valor, categoria, descricao, forma, data, mesAno, bancoId)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  (tipo, valor, categoria, descricao, forma, data, mesAno, bancoId, usuarioId)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `
 
   const valores = [
@@ -73,6 +76,7 @@ app.post('/lancamentos', (req, res) => {
     data,
     mesAno,
     bancoId,
+    req.session.usuarioId,
   ]
 
   conexao.query(sql, valores, (erro, resultado) => {
@@ -103,17 +107,17 @@ app.post('/lancamentos', (req, res) => {
   })
 })
 
-app.delete('/lancamentos/:id', (req, res) => {
+app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
   const id = req.params.id
 
   console.log(id)
 
   const sql = `
-    DELETE FROM lancamentos
-    WHERE id = ?
+  DELETE FROM lancamentos
+  WHERE id = ? AND usuarioId = ?
   `
 
-  conexao.query(sql, [id], (erro, resultado) => {
+  conexao.query(sql, [id, req.session.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao excluir: ', erro)
 
@@ -137,34 +141,35 @@ app.listen(PORT, () => {
 
 // Bancos //
 
-app.get('/bancos', (req, res) => {
-  const sql = 'SELECT * FROM bancos'
+app.get('/bancos', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT * FROM bancos
+    WHERE usuarioId = ?
+  `
 
-  conexao.query(sql, (erro, resultado) => {
+  conexao.query(sql, [req.session.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao buscar bancos: ', erro)
 
-      res.status(500).json({
+      return res.status(500).json({
         erro: 'Erro ao buscar bancos.',
       })
-
-      return
     }
 
     res.json(resultado)
   })
 })
 
-app.post('/bancos', (req, res) => {
+app.post('/bancos', exigirLogin, (req, res) => {
   const { nome, saldoInicial, mesCriado } = req.body
 
   const sql = `
     INSERT INTO bancos
-    (nome, saldoInicial, mesCriado)
-    VALUES (?, ?, ?)
+    (nome, saldoInicial, mesCriado, usuarioId)
+    VALUES (?, ?, ?, ?)
   `
 
-  const valores = [nome, saldoInicial, mesCriado]
+  const valores = [nome, saldoInicial, mesCriado, req.session.usuarioId]
 
   conexao.query(sql, valores, (erro, resultado) => {
     if (erro) {
@@ -234,34 +239,35 @@ app.delete('/bancos/:id', (req, res) => {
   })
 })
 
-app.get('/reservas', (req, res) => {
-  const sql = 'SELECT * FROM reservas'
+app.get('/reservas', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT * FROM reservas
+    WHERE usuarioId = ?
+  `
 
-  conexao.query(sql, (erro, resultado) => {
+  conexao.query(sql, [req.session.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao buscar reservas')
 
-      res.status(500).json({
+      return res.status(500).json({
         erro: 'Erro ao buscar reservas',
       })
-
-      return
     }
 
     res.json(resultado)
   })
 })
 
-app.post('/reservas', (req, res) => {
+app.post('/reservas', exigirLogin, (req, res) => {
   const { nome, valor } = req.body
 
   const sql = `
-  INSERT INTO reservas
-  (nome, valor)
-  VALUES (?, ?)
+    INSERT INTO reservas
+    (nome, valor, usuarioId)
+    VALUES (?, ?, ?)
   `
 
-  const valores = [nome, valor]
+  const valores = [nome, valor, req.session.usuarioId]
 
   conexao.query(sql, valores, (erro, resultado) => {
     if (erro) {
@@ -329,30 +335,20 @@ app.post('/cadastro', async (req, res) => {
 app.post('/login', (req, res) => {
   const { email, senha } = req.body
 
-  if (!email || !senha) {
-    return res.status(400).json({
-      erro: 'Email e senha são obrigatórios.',
-    })
-  }
-
-  const sql = `
-    SELECT id, nome, email, senha_hash
-    FROM usuarios
-    WHERE email = ?
-  `
+  const sql = 'SELECT * FROM usuarios WHERE email = ?'
 
   conexao.query(sql, [email], async (erro, resultados) => {
     if (erro) {
-      console.log('Erro ao buscar usuário:', erro)
+      console.error('Erro ao buscar usuário:', erro)
 
       return res.status(500).json({
-        erro: 'Erro interno do servidor.',
+        erro: 'Erro interno do servidor',
       })
     }
 
     if (resultados.length === 0) {
       return res.status(401).json({
-        erro: 'Email ou senha incorretos.',
+        erro: 'Email ou senha incorretos',
       })
     }
 
@@ -362,12 +358,11 @@ app.post('/login', (req, res) => {
 
     if (!senhaCorreta) {
       return res.status(401).json({
-        erro: 'Email ou senha incorretos.',
+        erro: 'Email ou senha incorretos',
       })
     }
 
     req.session.usuarioId = usuario.id
-    req.session.usuarioNome = usuario.nome
 
     res.json({
       mensagem: 'Login realizado com sucesso!',
@@ -379,3 +374,25 @@ app.post('/login', (req, res) => {
     })
   })
 })
+
+app.get('/me', (req, res) => {
+  if (!req.session.usuarioId) {
+    return res.status(401).json({
+      erro: 'Não autenticado',
+    })
+  }
+
+  res.json({
+    usuarioId: req.session.usuarioId,
+  })
+})
+
+function exigirLogin(req, res, next) {
+  if (!req.session.usuarioId) {
+    return res.status(401).json({
+      erro: 'Você precisa estar logado.',
+    })
+  }
+
+  next()
+}
