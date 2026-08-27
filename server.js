@@ -1,11 +1,24 @@
 require('dotenv').config()
 const mysql = require('mysql2')
 const express = require('express')
+const path = require('path')
+const bcrypt = require('bcryptjs')
+const session = require('express-session')
 const app = express()
-app.use(express.static(__dirname))
 const PORT = 3000
-
+app.use(express.static(path.join(__dirname, 'public')))
 app.use(express.json())
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+  }),
+)
 
 const conexao = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -268,6 +281,101 @@ app.post('/reservas', (req, res) => {
     res.status(201).json({
       mensagem: 'Reserva criada',
       reserva: novaReserva,
+    })
+  })
+})
+
+app.post('/cadastro', async (req, res) => {
+  const { nome, email, senha } = req.body
+
+  if (!nome || !email || !senha) {
+    return res.status(400).json({
+      erro: 'Preencha todos os campos.',
+    })
+  }
+
+  try {
+    const senhaHash = await bcrypt.hash(senha, 12)
+
+    const sql = `
+      INSERT INTO usuarios
+      (nome, email, senha_hash)
+      VALUES (?, ?, ?)
+    `
+
+    conexao.query(sql, [nome, email, senhaHash], (erro, resultado) => {
+      if (erro) {
+        console.log('Erro ao cadastrar usuário:', erro)
+
+        return res.status(500).json({
+          erro: 'Erro ao cadastrar usuário.',
+        })
+      }
+
+      res.status(201).json({
+        mensagem: 'Usuário criado com sucesso!',
+        id: resultado.insertId,
+      })
+    })
+  } catch (erro) {
+    console.log('Erro no cadastro:', erro)
+
+    res.status(500).json({
+      erro: 'Erro interno do servidor.',
+    })
+  }
+})
+
+app.post('/login', (req, res) => {
+  const { email, senha } = req.body
+
+  if (!email || !senha) {
+    return res.status(400).json({
+      erro: 'Email e senha são obrigatórios.',
+    })
+  }
+
+  const sql = `
+    SELECT id, nome, email, senha_hash
+    FROM usuarios
+    WHERE email = ?
+  `
+
+  conexao.query(sql, [email], async (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao buscar usuário:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro interno do servidor.',
+      })
+    }
+
+    if (resultados.length === 0) {
+      return res.status(401).json({
+        erro: 'Email ou senha incorretos.',
+      })
+    }
+
+    const usuario = resultados[0]
+
+    const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash)
+
+    if (!senhaCorreta) {
+      return res.status(401).json({
+        erro: 'Email ou senha incorretos.',
+      })
+    }
+
+    req.session.usuarioId = usuario.id
+    req.session.usuarioNome = usuario.nome
+
+    res.json({
+      mensagem: 'Login realizado com sucesso!',
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+      },
     })
   })
 })
