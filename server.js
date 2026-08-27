@@ -25,6 +25,7 @@ const conexao = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  charset: 'utf8mb4',
 })
 
 conexao.connect((erro) => {
@@ -110,8 +111,6 @@ app.post('/lancamentos', exigirLogin, (req, res) => {
 app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
   const id = req.params.id
 
-  console.log(id)
-
   const sql = `
   DELETE FROM lancamentos
   WHERE id = ? AND usuarioId = ?
@@ -126,6 +125,12 @@ app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
       })
 
       return
+    }
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({
+        erro: 'Lançamento não encontrado.',
+      })
     }
 
     res.json({
@@ -196,15 +201,15 @@ app.post('/bancos', exigirLogin, (req, res) => {
   })
 })
 
-app.delete('/bancos/:id', (req, res) => {
+app.delete('/bancos/:id', exigirLogin, (req, res) => {
   const id = req.params.id
 
   const sqlLancamentos = `
     DELETE FROM lancamentos
-    WHERE bancoId = ?
+    WHERE bancoId = ? AND usuarioId = ?
   `
 
-  conexao.query(sqlLancamentos, [id], (erro) => {
+  conexao.query(sqlLancamentos, [id, req.session.usuarioId], (erro) => {
     if (erro) {
       console.log('Erro ao excluir lançamentos do banco:', erro)
 
@@ -217,10 +222,10 @@ app.delete('/bancos/:id', (req, res) => {
 
     const sqlBanco = `
       DELETE FROM bancos
-      WHERE id = ?
+      WHERE id = ? AND usuarioId = ?
     `
 
-    conexao.query(sqlBanco, [id], (erro, resultado) => {
+    conexao.query(sqlBanco, [id, req.session.usuarioId], (erro, resultado) => {
       if (erro) {
         console.log('Erro ao excluir banco:', erro)
 
@@ -287,6 +292,36 @@ app.post('/reservas', exigirLogin, (req, res) => {
     res.status(201).json({
       mensagem: 'Reserva criada',
       reserva: novaReserva,
+    })
+  })
+})
+
+app.delete('/reservas/:id', exigirLogin, (req, res) => {
+  const id = req.params.id
+
+  const sql = `
+    DELETE FROM reservas
+    WHERE id = ? AND usuarioId = ?
+  `
+
+  conexao.query(sql, [id, req.session.usuarioId], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao excluir reserva:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao excluir reserva',
+      })
+    }
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({
+        erro: 'Reserva não encontrada.',
+      })
+    }
+
+    res.json({
+      mensagem: 'Reserva excluída com sucesso',
+      id: id,
     })
   })
 })
