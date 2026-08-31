@@ -21,6 +21,12 @@
     <script src="script.js" defer></script>
   </head>
   <body>
+    <div
+      id="toast-container"
+      class="toast-container"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
     <div class="app-general">
       <!-- Popup Adicionar Meta -->
       <div class="popup-modal modal-popup display-none" id="new-goals-popup">
@@ -345,26 +351,37 @@
           </button>
           <button
             onclick="mostrarPagina('expenses')"
-            class="btn-header btn-header-active"
+            class="btn-header"
             id="btn-expenses"
           >
             Lançamentos
           </button>
           <button
             onclick="mostrarPagina('fixedExpenses')"
-            class="btn-header btn-header-active"
+            class="btn-header"
             id="btn-fixedExpenses"
           >
             Fixos
           </button>
           <button
             onclick="mostrarPagina('reserved')"
-            class="btn-header btn-header-active"
+            class="btn-header"
             id="btn-reserved"
           >
             Reservas
           </button>
         </nav>
+        <button
+          type="button"
+          class="btn-logout"
+          onclick="
+            confirmarLogout(() => {
+              window.location.href = 'login.html'
+            })
+          "
+        >
+          Sair
+        </button>
       </header>
       <main>
         <!-- Seção do Dashboard -->

@@ -49,11 +49,47 @@ let indiceReservaSelecionada = null //INDICE PRA MUDAR VALOR NA RESERVA
 let tipoSelecionado = 'despesa' //TIPO DE LANÇAMENTO
 let pagoOuNaoPago = 'naoPago' //MUDAR O ESTADO DO GASTO FIXO
 
+const paginaAtual = window.location.pathname
+
 // ================= APP DATA ==================
 
 const dataAtual = new Date()
 const anoMesAtual =
   dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1)
+
+function showPopup(mensagem = 'Operação realizada.', duracao = 2500) {
+  let container = document.getElementById('toast-container')
+
+  if (!container) {
+    container = document.createElement('div')
+    container.id = 'toast-container'
+    container.className = 'toast-container'
+    document.body.appendChild(container)
+  }
+
+  const toast = document.createElement('div')
+  toast.className = 'toast'
+  toast.textContent = mensagem
+
+  container.appendChild(toast)
+
+  requestAnimationFrame(() => {
+    toast.classList.add('show')
+  })
+
+  window.clearTimeout(toast.hideTimer)
+  toast.hideTimer = window.setTimeout(() => {
+    toast.classList.add('hide')
+    window.setTimeout(() => {
+      toast.remove()
+      if (!container.hasChildNodes()) {
+        container.remove()
+      }
+    }, 220)
+  }, duracao)
+}
+
+window.showPopup = showPopup
 
 const mesEAno = String(anoMesAtual)
 let [ano, mes] = mesEAno.split('-')
@@ -101,6 +137,11 @@ function primeiraLetraMaior(texto) {
 
 function adicionarNovaCategoria() {
   const inputNome = document.getElementById('new-category-name')
+
+  if (!inputNome) {
+    return
+  }
+
   const nomeCategoria = inputNome.value.trim()
 
   if (nomeCategoria === '') return
@@ -121,16 +162,24 @@ function adicionarNovaCategoria() {
 function renderizarCategoriasDeGasto() {
   const htmlCategoriaMeta = document.getElementById('category-select-goals')
   const htmlCategoria = document.getElementById('category-select')
+
+  if (!htmlCategoriaMeta || !htmlCategoria) {
+    return
+  }
+
   htmlCategoriaMeta.innerHTML = ''
   htmlCategoria.innerHTML = ''
+
   appData.categoriasGasto.forEach((gasto) => {
     const nomeFormatado = primeiraLetraMaior(gasto.nome)
+
     htmlCategoria.innerHTML += `
-      <option value="${gasto.nome}">${nomeFormatado}</option>
-    `
+            <option value="${gasto.nome}">${nomeFormatado}</option>
+        `
+
     htmlCategoriaMeta.innerHTML += `
-      <option value="${gasto.nome}">${nomeFormatado}</option>
-    `
+            <option value="${gasto.nome}">${nomeFormatado}</option>
+        `
   })
 }
 
@@ -142,15 +191,21 @@ const btnUltimosGastos = document.querySelector('#btn-open-last')
 const gridUltimosGastos = document.querySelector('#grid-last')
 let status = 'fechado'
 
-btnUltimosGastos.addEventListener('click', () => {
-  if (appData.lancamentos.length === 0) {
-    gridUltimosGastos.innerHTML = '<span>Nenhum lançamento ainda</span>'
-    return
-  }
-  atualizarGridUltimos()
-})
+if (btnUltimosGastos) {
+  btnUltimosGastos.addEventListener('click', () => {
+    if (appData.lancamentos.length === 0) {
+      gridUltimosGastos.innerHTML = '<span>Nenhum lançamento ainda</span>'
+      return
+    }
+    atualizarGridUltimos()
+  })
+}
 
 function atualizarGridUltimos() {
+  if (!gridUltimosGastos) {
+    return
+  }
+
   if (status === 'fechado') {
     const copiaLancamentos = appData.lancamentos.slice()
     const arrayLançamentos = copiaLancamentos.reverse()
@@ -182,6 +237,10 @@ function formatarTexto(texto) {
 }
 
 function mostrarBuscaLancamentos(busca) {
+  if (!gridLancamentos) {
+    return
+  }
+
   if (busca.length === 0) {
     renderizarGridLancamentos()
     return
@@ -206,7 +265,13 @@ function mostrarBuscaLancamentos(busca) {
 }
 
 function buscarLancamentos() {
-  const textoDigitado = document.getElementById('search-text').value
+  const inputBusca = document.getElementById('search-text')
+
+  if (!inputBusca) {
+    return
+  }
+
+  const textoDigitado = inputBusca.value
   const textoFormatado = formatarTexto(textoDigitado)
   const filtroApp = appData.lancamentos.filter((L) => {
     return formatarTexto(L.categoria) === textoFormatado
@@ -217,35 +282,41 @@ function buscarLancamentos() {
 
 // ===================== Funções de metas =====================
 
-btnCriarMeta.addEventListener('click', () => {
-  const nomeMeta = document.getElementById('category-select-goals').value
-  const valorMeta = document.getElementById('new-goals-input-value').value
+if (btnCriarMeta) {
+  btnCriarMeta.addEventListener('click', () => {
+    const nomeMeta = document.getElementById('category-select-goals').value
+    const valorMeta = document.getElementById('new-goals-input-value').value
 
-  if (!nomeMeta) {
-    alert('Por favor, digite o nome da meta.')
-    return
-  }
-  if (Number(valorMeta) < 0) {
-    alert('Por favor, insira um numero válido')
-    return
-  }
+    if (!nomeMeta) {
+      showPopup('Por favor, digite o nome da meta.', 2200)
+      return
+    }
+    if (Number(valorMeta) < 0) {
+      showPopup('Por favor, insira um número válido.', 2200)
+      return
+    }
 
-  const novaMeta = {
-    mesCriado: appData.mesAtivo,
-    nome: nomeMeta,
-    valorMax: valorMeta,
-  }
+    const novaMeta = {
+      mesCriado: appData.mesAtivo,
+      nome: nomeMeta,
+      valorMax: valorMeta,
+    }
 
-  appData.metas.push(novaMeta)
-  salvarDados()
+    appData.metas.push(novaMeta)
+    salvarDados()
 
-  document.getElementById('category-select-goals').value = ''
-  document.getElementById('new-goals-input-value').value = ''
+    document.getElementById('category-select-goals').value = ''
+    document.getElementById('new-goals-input-value').value = ''
 
-  atualizarTudo()
-})
+    atualizarTudo()
+  })
+}
 
 function renderizarDoisVisores() {
+  if (!visorExMeta || !visorMainMeta) {
+    return
+  }
+
   visorExMeta.innerHTML = ``
   visorMainMeta.innerHTML = ``
 
@@ -334,6 +405,10 @@ renderizarDoisVisores()
 // =================== Funções do mês =====================
 
 function atualizarVisorMes(ano, mes) {
+  if (!visorMes) {
+    return
+  }
+
   const mesmes = new Date(ano, mes - 1)
   const textoMes = mesmes.toLocaleString('pt-BR', { month: 'long' })
   const mesMaiusculo = textoMes.charAt(0).toUpperCase() + textoMes.slice(1)
@@ -342,7 +417,9 @@ function atualizarVisorMes(ano, mes) {
 
 const mesAnoInicial = appData.mesAtivo
 const [anoInicial, mesInicial] = mesAnoInicial.split('-')
-atualizarVisorMes(Number(anoInicial), Number(mesInicial))
+if (visorMes) {
+  atualizarVisorMes(Number(anoInicial), Number(mesInicial))
+}
 
 function diminuirOuAumentarMes(AumOuDim) {
   mesAno = String(appData.mesAtivo)
@@ -424,8 +501,6 @@ async function carregarLancamento() {
   atualizarTudo()
 }
 
-carregarLancamento()
-
 //============== BANCOS PARA SELECIOAR ===============//
 
 function renderizarAbasBancos() {
@@ -463,52 +538,54 @@ function selecionarBanco(id) {
   atualizarTudo()
 }
 
-btnSubmitBanco.addEventListener('click', async () => {
-  const inputNome = document.querySelector('#banco-name')
-  const inputSaldo = document.querySelector('#banco-saldo-inicial')
+if (btnSubmitBanco) {
+  btnSubmitBanco.addEventListener('click', async () => {
+    const inputNome = document.querySelector('#banco-name')
+    const inputSaldo = document.querySelector('#banco-saldo-inicial')
 
-  if (!inputNome.value) {
-    alert('Por favor, digite o nome do banco.')
-    return
-  }
+    if (!inputNome.value) {
+      showPopup('Por favor, digite o nome do banco.', 2200)
+      return
+    }
 
-  if (Number(inputSaldo.value) < 0) {
-    alert('Por favor, insira um numero válido')
-    return
-  }
+    if (Number(inputSaldo.value) < 0) {
+      showPopup('Por favor, insira um número válido.', 2200)
+      return
+    }
 
-  const novoBanco = {
-    mesCriado: appData.mesAtivo,
-    nome: inputNome.value,
-    saldoInicial: Number(inputSaldo.value) || 0,
-  }
+    const novoBanco = {
+      mesCriado: appData.mesAtivo,
+      nome: inputNome.value,
+      saldoInicial: Number(inputSaldo.value) || 0,
+    }
 
-  const resposta = await fetch('/bancos', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(novoBanco),
+    const resposta = await fetch('/bancos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(novoBanco),
+    })
+
+    const resultado = await resposta.json()
+
+    console.log(resultado)
+
+    appData.bancos.push(resultado.banco)
+    selecionarBanco(resultado.banco.id)
+
+    inputNome.value = ''
+    inputSaldo.value = ''
+    modalPopupBanco.classList.add('display-none')
+
+    carregarBancos()
+
+    if (existeBanco === 'nao') {
+      existeBanco = 'sim'
+      console.log(existeBanco)
+    }
   })
-
-  const resultado = await resposta.json()
-
-  console.log(resultado)
-
-  appData.bancos.push(resultado.banco)
-  selecionarBanco(resultado.banco.id)
-
-  inputNome.value = ''
-  inputSaldo.value = ''
-  modalPopupBanco.classList.add('display-none')
-
-  carregarBancos()
-
-  if (existeBanco === 'nao') {
-    existeBanco = 'sim'
-    console.log(existeBanco)
-  }
-})
+}
 
 async function carregarBancos() {
   const resposta = await fetch('/bancos')
@@ -528,8 +605,6 @@ async function carregarBancos() {
 
   atualizarTudo()
 }
-
-carregarBancos()
 
 let existeBanco = appData.bancos.length > 0 ? 'sim' : 'nao'
 
@@ -609,98 +684,106 @@ async function carregarReservas() {
   atualizarTudo()
 }
 
-carregarReservas()
-
 //BOTAO PRA ADICIONAR NOVA RESERVA
-btnAddReserva.addEventListener('click', async () => {
-  const novaReserva = {
-    nome: document.querySelector('#reserve-name').value,
-    valor: Number(document.querySelector('#reserve-value').value),
-  }
-
-  const totalBancos = appData.bancos.reduce((soma, b) => {
-    if (b.mesCriado === appData.mesAtivo) {
-      return soma + Number(b.saldoInicial)
+if (btnAddReserva) {
+  btnAddReserva.addEventListener('click', async () => {
+    const novaReserva = {
+      nome: document.querySelector('#reserve-name').value,
+      valor: Number(document.querySelector('#reserve-value').value),
     }
-    return soma
-  }, 0)
-  let dinheiroLivre = totalBancos
 
-  appData.lancamentos.forEach((item) => {
-    if (item.mesAno !== appData.mesAtivo) {
+    const totalBancos = appData.bancos.reduce((soma, b) => {
+      if (b.mesCriado === appData.mesAtivo) {
+        return soma + Number(b.saldoInicial)
+      }
+      return soma
+    }, 0)
+    let dinheiroLivre = totalBancos
+
+    appData.lancamentos.forEach((item) => {
+      if (item.mesAno !== appData.mesAtivo) {
+        return
+      }
+
+      if (item.tipo === 'ganho') {
+        dinheiroLivre += Number(item.valor)
+      }
+      if (item.tipo === 'despesa') {
+        dinheiroLivre -= Number(item.valor)
+      }
+    })
+    appData.reservas.forEach((item) => {
+      dinheiroLivre -= Number(item.valor)
+    })
+
+    if (novaReserva.valor < 0 || novaReserva.valor > dinheiroLivre) {
+      showPopup('Valor inválido para a reserva.', 2400)
+      return
+    }
+    if (!novaReserva.nome) {
+      showPopup('Por favor, insira um nome para a reserva.', 2200)
       return
     }
 
-    if (item.tipo === 'ganho') {
-      dinheiroLivre += Number(item.valor)
-    }
-    if (item.tipo === 'despesa') {
-      dinheiroLivre -= Number(item.valor)
-    }
+    const resposta = await fetch('/reservas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(novaReserva),
+    })
+
+    const resultado = await resposta.json()
+
+    appData.reservas.push(resultado.reserva)
+
+    document.querySelector('#reserve-name').value = ''
+    document.querySelector('#reserve-value').value = ''
+
+    atualizarTudo()
+
+    abrirOuFecharPopup('popup-reserve', 'fechar')
   })
-  appData.reservas.forEach((item) => {
-    dinheiroLivre -= Number(item.valor)
-  })
-
-  if (novaReserva.valor < 0 || novaReserva.valor > dinheiroLivre) {
-    alert('Valor inválido')
-    return
-  }
-  if (!novaReserva.nome) {
-    alert('Por favor, insira um nome')
-    return
-  }
-
-  const resposta = await fetch('/reservas', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(novaReserva),
-  })
-
-  const resultado = await resposta.json()
-
-  appData.reservas.push(resultado.reserva)
-
-  document.querySelector('#reserve-name').value = ''
-  document.querySelector('#reserve-value').value = ''
-
-  atualizarTudo()
-
-  abrirOuFecharPopup('popup-reserve', 'fechar')
-})
+}
 
 // ADICIONAR VALOR PRA RESERVA USANDO INDICE
-btnAdicionarValorReserva.addEventListener('click', () => {
-  if (indiceReservaSelecionada === null) return
-  const valorPraRetirar = Number(
-    document.querySelector('#plus-value-reserve').value,
-  )
-  appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
-  salvarDados()
-  atualizarTudo()
-  abrirOuFecharPopup('modal-add', 'fechar')
-  document.querySelector('#plus-value-reserve').value = ''
-  indiceReservaSelecionada = null
-})
+if (btnAdicionarValorReserva) {
+  btnAdicionarValorReserva.addEventListener('click', () => {
+    if (indiceReservaSelecionada === null) return
+    const valorPraRetirar = Number(
+      document.querySelector('#plus-value-reserve').value,
+    )
+    appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
+    salvarDados()
+    atualizarTudo()
+    abrirOuFecharPopup('modal-add', 'fechar')
+    document.querySelector('#plus-value-reserve').value = ''
+    indiceReservaSelecionada = null
+  })
+}
 
 //RETIRAR O VALOR DA RESERVA USANDO INDICE
-btnTirarValor.addEventListener('click', () => {
-  if (indiceReservaSelecionada === null) return
-  const valorPraAdicionar = Number(
-    document.querySelector('#minus-value-reserve').value,
-  )
-  appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
-  salvarDados()
-  atualizarTudo()
-  abrirOuFecharPopup('modal-minus', 'fechar')
-  document.querySelector('#minus-value-reserve').value = ''
-  indiceReservaSelecionada = null
-})
+if (btnTirarValor) {
+  btnTirarValor.addEventListener('click', () => {
+    if (indiceReservaSelecionada === null) return
+    const valorPraAdicionar = Number(
+      document.querySelector('#minus-value-reserve').value,
+    )
+    appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
+    salvarDados()
+    atualizarTudo()
+    abrirOuFecharPopup('modal-minus', 'fechar')
+    document.querySelector('#minus-value-reserve').value = ''
+    indiceReservaSelecionada = null
+  })
+}
 
 //MOSTRA NA PAGINA AS RESERVAS
 function renderizarGridReservas() {
+  if (!gridReservas || !totalReservadoVisor) {
+    return
+  }
+
   valorTotalReservado = 0
   gridReservas.innerHTML = ''
   totalReservadoVisor.innerHTML = 'R$ 0,00'
@@ -762,7 +845,7 @@ function deletarGastoFixo(indice) {
 
 function renderizarGridGastosFixos() {
   const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
-  if (!gridGastosFixos) return
+  if (!gridGastosFixos || !gastosFixosMain) return
 
   gastosFixosMain.innerHTML = ''
   gridGastosFixos.innerHTML = ''
@@ -801,6 +884,11 @@ if (btnAddGastoFixo) {
       pagoOuPendente: 'naoPago',
       valor: document.getElementById('fixed-expense-value').value,
       nome: document.getElementById('fixed-expense-name').value,
+    }
+
+    if (!novaPendencia.nome || !novaPendencia.valor) {
+      showPopup('Preencha nome e valor do gasto fixo.', 2200)
+      return
     }
 
     appData.pendencias.push(novaPendencia)
@@ -916,101 +1004,218 @@ async function deletarLancamento(id) {
 
 //deixa o botao sem o visual de selecionado
 function desmarcarBotao() {
-  btnGasto.classList.remove('btn-selected-ex')
-  btnRecebimento.classList.remove('btn-selected-in')
+  if (btnGasto) btnGasto.classList.remove('btn-selected-ex')
+  if (btnRecebimento) btnRecebimento.classList.remove('btn-selected-in')
 }
 
 //seleciona o tipo pra gasto
-btnGasto.addEventListener('click', () => {
-  btnRecebimento.classList.remove('btn-selected-in')
-  btnGasto.classList.add('btn-selected-ex')
-  tipoSelecionado = 'despesa'
-})
+if (btnGasto) {
+  btnGasto.addEventListener('click', () => {
+    btnRecebimento.classList.remove('btn-selected-in')
+    btnGasto.classList.add('btn-selected-ex')
+    tipoSelecionado = 'despesa'
+  })
+}
 
 //seleciona o tipo pra ganho
-btnRecebimento.addEventListener('click', () => {
-  console.log('mudou')
-  btnGasto.classList.remove('btn-selected-ex')
-  btnRecebimento.classList.add('btn-selected-in')
-  tipoSelecionado = 'ganho'
-})
+if (btnRecebimento) {
+  btnRecebimento.addEventListener('click', () => {
+    console.log('mudou')
+    btnGasto.classList.remove('btn-selected-ex')
+    btnRecebimento.classList.add('btn-selected-in')
+    tipoSelecionado = 'ganho'
+  })
+}
 
-btnAddLancamento.addEventListener('click', async () => {
-  if (existeBanco === 'sim') {
-    const inputData = document.getElementById('dateInput').value
-    const mesAnoDoLancamento = appData.mesAtivo
-    const dataLancamento = inputData
-      ? new Date(inputData).getTime()
-      : Date.now()
-    const novoLancamento = {
-      tipo: tipoSelecionado,
-      valor: Number(document.getElementById('valueInput').value),
-      categoria: document.getElementById('category-select').value,
-      descricao: document.getElementById('descriptionInput').value,
-      forma: document.getElementById('payment-select').value,
-      data: dataLancamento,
-      mesAno: mesAnoDoLancamento,
-      bancoId: appData.bancoAtual,
-    }
+if (btnAddLancamento) {
+  btnAddLancamento.addEventListener('click', async () => {
+    if (existeBanco === 'sim') {
+      const inputData = document.getElementById('dateInput').value
+      const mesAnoDoLancamento = appData.mesAtivo
+      const dataLancamento = inputData
+        ? new Date(inputData).getTime()
+        : Date.now()
+      const novoLancamento = {
+        tipo: tipoSelecionado,
+        valor: Number(document.getElementById('valueInput').value),
+        categoria: document.getElementById('category-select').value,
+        descricao: document.getElementById('descriptionInput').value,
+        forma: document.getElementById('payment-select').value,
+        data: dataLancamento,
+        mesAno: mesAnoDoLancamento,
+        bancoId: appData.bancoAtual,
+      }
 
-    if (novoLancamento.tipo === 'despesa') {
-      const metaEncontrada = appData.metas.find(
-        (metas) =>
-          metas.nome === novoLancamento.categoria &&
-          metas.mesCriado === appData.mesAtivo,
-      )
+      if (novoLancamento.tipo === 'despesa') {
+        const metaEncontrada = appData.metas.find(
+          (metas) =>
+            metas.nome === novoLancamento.categoria &&
+            metas.mesCriado === appData.mesAtivo,
+        )
 
-      if (metaEncontrada) {
-        const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
-          return (
-            lancamentos.mesAno === appData.mesAtivo &&
-            lancamentos.categoria === metaEncontrada.nome &&
-            lancamentos.tipo === 'despesa'
+        if (metaEncontrada) {
+          const gastosDaCategoria = appData.lancamentos.filter(
+            (lancamentos) => {
+              return (
+                lancamentos.mesAno === appData.mesAtivo &&
+                lancamentos.categoria === metaEncontrada.nome &&
+                lancamentos.tipo === 'despesa'
+              )
+            },
           )
-        })
 
-        const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
-          return soma + Number(lancamento.valor)
-        }, 0)
+          const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
+            return soma + Number(lancamento.valor)
+          }, 0)
 
-        gastoComInput = totalGasto + novoLancamento.valor
+          gastoComInput = totalGasto + novoLancamento.valor
 
-        if (gastoComInput > metaEncontrada.valorMax) {
-          let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
-          if (resposta === false) {
-            return
+          if (gastoComInput > metaEncontrada.valorMax) {
+            let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
+            if (resposta === false) {
+              return
+            }
           }
         }
       }
+
+      const resposta = await fetch('/lancamentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoLancamento),
+      })
+
+      const resultado = await resposta.json()
+      console.log(resultado)
+
+      appData.lancamentos.push(resultado.lancamento)
+      atualizarTudo()
+      abrirOuFecharPopup('popup-modal', 'fechar')
+
+      document.getElementById('valueInput').value = ''
+      document.getElementById('category-select').value = ''
+      document.getElementById('descriptionInput').value = ''
+      document.getElementById('payment-select').value = ''
+      tipoSelecionado = 'despesa'
+    } else {
+      showPopup('Você não possui nenhum banco. Crie um banco primeiro.', 2600)
+      abrirOuFecharPopup('popup-novo-banco', 'abrir')
+      return
+    }
+  })
+}
+
+//-----------------------------------------------------------------
+// login/cadastro functions //
+
+const btnCriarContaLogin = document.querySelector('#btn-criar-conta')
+
+if (btnCriarContaLogin) {
+  btnCriarContaLogin.addEventListener('click', () => {
+    window.location.href = 'cadastro.html'
+  })
+}
+
+async function confirmarLogout(callback) {
+  const desejaSair = window.confirm('Deseja realmente sair?')
+
+  if (!desejaSair) {
+    return
+  }
+
+  const resposta = await fetch('/logout', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (resposta.ok) {
+    if (typeof callback === 'function') {
+      callback()
+    }
+  } else {
+    showPopup('Não foi possível sair agora. Tente novamente.', 2600)
+  }
+}
+
+const loginForm = document.querySelector('#login-form')
+
+if (loginForm) {
+  loginForm.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+    const emailDig = document.querySelector('#email')
+    const senhaDig = document.querySelector('#senha')
+
+    const email = emailDig.value
+    const senha = senhaDig.value
+
+    const novaConta = {
+      email: email,
+      senha: senha,
     }
 
-    const resposta = await fetch('/lancamentos', {
+    const resposta = await fetch('/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(novoLancamento),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(novaConta),
+    })
+
+    if (resposta.ok) {
+      window.location.href = 'index.html'
+    } else {
+      showPopup('E-mail ou senha inválidos.', 2600)
+    }
+  })
+}
+
+//cadastro
+
+const signupForm = document.querySelector('#signup-form')
+
+if (signupForm) {
+  signupForm.addEventListener('submit', async (evento) => {
+    evento.preventDefault()
+
+    const nome = document.querySelector('#nome').value
+    const email = document.querySelector('#email').value
+    const senha = document.querySelector('#senha').value
+    const confirmarSenha = document.querySelector('#confirmar-senha').value
+
+    if (senha !== confirmarSenha) {
+      showPopup('As senhas não coincidem.', 2600)
+      return
+    }
+
+    const novaConta = {
+      nome: nome,
+      email: email,
+      senha: senha,
+    }
+
+    const resposta = await fetch('/cadastro', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(novaConta),
     })
 
     const resultado = await resposta.json()
-    console.log(resultado)
 
-    appData.lancamentos.push(resultado.lancamento)
-    //salvarDados()
-    atualizarTudo()
-    abrirOuFecharPopup('popup-modal', 'fechar')
+    if (resposta.ok) {
+      showPopup('Conta criada com sucesso!', 2600)
 
-    document.getElementById('valueInput').value = ''
-    document.getElementById('category-select').value = ''
-    document.getElementById('descriptionInput').value = ''
-    document.getElementById('payment-select').value = ''
-    tipoSelecionado = 'despesa'
-  } else {
-    alert(
-      'Você não possui nenhum banco. Por favor, crie um banco primeiramente',
-    )
-    abrirOuFecharPopup('popup-novo-banco', 'abrir')
-    return
-  }
-})
+      setTimeout(() => {
+        window.location.href = 'login.html'
+      }, 1000)
+    } else {
+      showPopup(resultado.erro || 'Não foi possível criar a conta.', 2600)
+    }
+  })
+}
 
 //-----------------------------------------------------------------
 
@@ -1036,3 +1241,9 @@ function mostrarPagina(idPagina) {
 window.onload = () => mostrarPagina('dashboard')
 
 //-----------------------------------------------------------------
+
+if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
+  carregarLancamento()
+  carregarBancos()
+  carregarReservas()
+}

@@ -410,6 +410,22 @@ app.post('/login', (req, res) => {
   })
 })
 
+app.post('/logout', exigirLogin, (req, res) => {
+  req.session.destroy((erro) => {
+    if (erro) {
+      console.error('Erro ao deslogar', erro)
+
+      return res.status(500).json({
+        erro: 'Erro interno do servidor',
+      })
+    }
+
+    res.json({
+      mensagem: 'Usuario se deslogou do sistema!',
+    })
+  })
+})
+
 app.get('/me', (req, res) => {
   if (!req.session.usuarioId) {
     return res.status(401).json({

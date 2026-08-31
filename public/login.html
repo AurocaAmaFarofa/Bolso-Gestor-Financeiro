@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bolso — Entrar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --color-bg: #f3f5f9;
+        --color-surface: #ffffff;
+        --color-surface-soft: #eaeef4;
+        --color-ink: #101828;
+        --color-ink-soft: #67707e;
+        --color-accent: #2b4c8c;
+        --color-accent-soft: #dde6f5;
+        --color-income: #1f8a6f;
+        --color-income-soft: #dcf0e7;
+        --color-expense: #bf433f;
+        --color-expense-soft: #f6dfdc;
+        --color-reserve: #b8863a;
+        --color-reserve-soft: #f3e7d2;
+        --color-border: #dde2ea;
+
+        --font-display: 'Fraunces', serif;
+        --font-body: 'Plus Jakarta Sans', sans-serif;
+        --font-mono: 'Space Mono', monospace;
+
+        --radius-lg: 18px;
+        --radius-md: 10px;
+        --radius-sm: 7px;
+        --shadow-soft: 0 14px 32px -18px rgba(16, 24, 40, 0.22);
+        --transition: 0.2s ease;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        font-size: 15px;
+      }
+
+      body {
+        min-height: 100vh;
+        font-family: var(--font-body);
+        color: var(--color-ink);
+        background-color: var(--color-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      .toast-container {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .toast {
+        min-width: 220px;
+        max-width: 340px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: rgba(16, 24, 40, 0.92);
+        color: white;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        box-shadow: 0 10px 28px rgba(16, 24, 40, 0.18);
+        opacity: 0;
+        transform: translateY(-12px);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+        pointer-events: auto;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast.hide {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 39px,
+          var(--color-border) 40px
+        );
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .login-wrapper {
+        width: 100%;
+        max-width: 380px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
+        background-color: var(--color-accent);
+        color: var(--color-surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .brand-title {
+        font-family: var(--font-display);
+        font-size: 1.55rem;
+        letter-spacing: -0.02em;
+        color: var(--color-ink);
+      }
+
+      .login-card {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 28px 24px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .login-heading {
+        margin-bottom: 4px;
+      }
+
+      .login-heading h1 {
+        font-family: var(--font-display);
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--color-ink);
+      }
+
+      .login-heading p {
+        color: var(--color-ink-soft);
+        font-size: 0.85rem;
+        margin-top: 4px;
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--color-ink-soft);
+      }
+
+      .field input {
+        font-family: var(--font-body);
+        padding: 11px 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        font-size: 0.92rem;
+        transition: var(--transition);
+      }
+
+      .field input::placeholder {
+        color: var(--color-ink-soft);
+        opacity: 0.6;
+      }
+
+      .field input:focus {
+        outline: none;
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 3px var(--color-accent-soft);
+      }
+
+      .field-password-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .field-password-wrap input {
+        width: 100%;
+        padding-right: 66px;
+      }
+
+      .toggle-visibility {
+        position: absolute;
+        right: 6px;
+        min-height: 30px;
+        height: 30px;
+        padding: 0 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--color-ink-soft);
+        background-color: var(--color-surface-soft);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+
+      .row-between {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: -2px;
+      }
+
+      .remember {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.8rem;
+        color: var(--color-ink-soft);
+      }
+
+      .remember input {
+        width: 15px;
+        height: 15px;
+        accent-color: var(--color-accent);
+      }
+
+      .link-forgot {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--color-accent);
+        text-decoration: none;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .link-forgot:hover {
+        text-decoration: underline;
+      }
+
+      .btn-entrar {
+        font-family: var(--font-body);
+        width: 100%;
+        margin-top: 6px;
+        padding: 0.75rem 1rem;
+        min-height: 46px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-accent);
+        background-color: var(--color-accent);
+        color: var(--color-surface);
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color var(--transition),
+          border-color var(--transition),
+          transform var(--transition);
+      }
+
+      .btn-entrar:hover {
+        background-color: var(--color-ink);
+        border-color: var(--color-ink);
+      }
+
+      .btn-entrar:active {
+        transform: scale(0.98);
+      }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 20px 0 16px;
+        color: var(--color-ink-soft);
+        font-size: 0.75rem;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background-color: var(--color-border);
+      }
+
+      .signup-row {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--color-ink-soft);
+      }
+
+      .signup-row button {
+        background: none;
+        border: none;
+        font-family: var(--font-body);
+        font-weight: 700;
+        color: var(--color-accent);
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.85rem;
+      }
+
+      .signup-row button:hover {
+        text-decoration: underline;
+      }
+
+      .error-msg {
+        display: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--color-expense);
+        background-color: var(--color-expense-soft);
+        border-radius: var(--radius-sm);
+        padding: 8px 10px;
+        margin-top: 4px;
+      }
+
+      .error-msg.show {
+        display: block;
+        animation: shake 0.32s ease;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-4px);
+        }
+        75% {
+          transform: translateX(4px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="toast-container"
+      class="toast-container"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+    <div class="login-wrapper">
+      <div class="brand">
+        <div class="brand-mark">R$</div>
+        <div class="brand-title">Bolso</div>
+      </div>
+
+      <div class="login-card">
+        <div class="login-heading">
+          <h1>Entrar na sua conta</h1>
+          <p>Controle suas finanças e sua organização em um só lugar.</p>
+        </div>
+
+        <form class="login-form" id="login-form">
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="voce@email.com"
+              required
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="field">
+            <label for="senha">Senha</label>
+            <div class="field-password-wrap">
+              <input
+                type="password"
+                id="senha"
+                name="senha"
+                placeholder="Sua senha"
+                required
+                autocomplete="current-password"
+              />
+              <button type="button" class="toggle-visibility" id="toggle-senha">
+                mostrar
+              </button>
+            </div>
+          </div>
+
+          <div class="row-between">
+            <label class="remember">
+              <input type="checkbox" id="lembrar" />
+              Lembrar de mim
+            </label>
+            <button type="button" class="link-forgot" id="btn-esqueci">
+              Esqueci a senha
+            </button>
+          </div>
+
+          <div class="error-msg" id="error-msg">
+            Verifique seu e-mail e senha e tente novamente.
+          </div>
+
+          <button type="submit" class="btn-entrar">Entrar</button>
+        </form>
+
+        <div class="divider">ou</div>
+
+        <div class="signup-row">
+          Ainda não tem conta?
+          <button type="button" id="btn-criar-conta">Criar conta</button>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
