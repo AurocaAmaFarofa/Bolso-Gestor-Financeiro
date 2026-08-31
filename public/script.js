@@ -494,11 +494,34 @@ function atualizarTudo() {
 // ============ função pra pegar os itens do MySql =====//
 
 async function carregarLancamento() {
-  const resposta = await fetch('/lancamentos')
-  const lancamentos = await resposta.json()
-  appData.lancamentos = lancamentos
-  console.log('Lançamentos do banco: ', lancamentos)
-  atualizarTudo()
+  try {
+    const resposta = await fetch('/lancamentos')
+
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
+      return
+    }
+
+    if (!resposta.ok) {
+      console.error('Erro ao carregar lançamentos:', resposta.status)
+      return
+    }
+
+    const lancamentos = await resposta.json()
+
+    if (!Array.isArray(lancamentos)) {
+      console.error('Resposta inválida de /lancamentos:', lancamentos)
+      return
+    }
+
+    appData.lancamentos = lancamentos
+
+    console.log('Lançamentos do banco:', lancamentos)
+
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao carregar lançamentos:', erro)
+  }
 }
 
 //============== BANCOS PARA SELECIOAR ===============//
@@ -588,22 +611,43 @@ if (btnSubmitBanco) {
 }
 
 async function carregarBancos() {
-  const resposta = await fetch('/bancos')
-  const bancos = await resposta.json()
+  try {
+    const resposta = await fetch('/bancos')
 
-  appData.bancos = bancos
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
+      return
+    }
 
-  if (appData.bancos.length === 0) {
-    await criarBancoInicial()
+    if (!resposta.ok) {
+      console.error('Erro ao carregar bancos:', resposta.status)
+      return
+    }
+
+    const bancos = await resposta.json()
+
+    if (!Array.isArray(bancos)) {
+      console.error('Resposta inválida de /bancos:', bancos)
+      return
+    }
+
+    appData.bancos = bancos
+
+    if (appData.bancos.length === 0) {
+      await criarBancoInicial()
+      return
+    }
+
+    if (!appData.bancoAtual) {
+      selecionarBanco(appData.bancos[0].id)
+    }
+
+    console.log('Bancos do banco de dados:', bancos)
+
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao carregar bancos:', erro)
   }
-
-  if (!appData.bancoAtual) {
-    selecionarBanco(appData.bancos[0].id)
-  }
-
-  console.log('Bancos do banco de dados: ', bancos)
-
-  atualizarTudo()
 }
 
 let existeBanco = appData.bancos.length > 0 ? 'sim' : 'nao'
@@ -676,12 +720,34 @@ renderizarAbasBancos()
 //----------------------Coisas Das Reservas----------------------
 
 async function carregarReservas() {
-  const resposta = await fetch('/reservas')
-  const reservas = await resposta.json()
+  try {
+    const resposta = await fetch('/reservas')
 
-  appData.reservas = reservas
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
+      return
+    }
 
-  atualizarTudo()
+    if (!resposta.ok) {
+      console.error('Erro ao carregar reservas:', resposta.status)
+      return
+    }
+
+    const reservas = await resposta.json()
+
+    if (!Array.isArray(reservas)) {
+      console.error('Resposta inválida de /reservas:', reservas)
+      return
+    }
+
+    appData.reservas = reservas
+
+    console.log('Reservas do banco:', reservas)
+
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao carregar reservas:', erro)
+  }
 }
 
 //BOTAO PRA ADICIONAR NOVA RESERVA
