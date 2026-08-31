@@ -329,13 +329,30 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
 app.post('/cadastro', async (req, res) => {
   const { nome, email, senha } = req.body
 
-  if (!nome || !email || !senha) {
+  const nomeLimpo = nome?.trim()
+  const emailLimpo = email?.trim().toLowerCase()
+
+  if (!nomeLimpo || !emailLimpo || !senha) {
     return res.status(400).json({
       erro: 'Preencha todos os campos.',
     })
   }
 
+  if (senha.length < 6) {
+    return res.status(400).json({
+      erro: 'A senha deve ter pelo menos 6 caracteres.',
+    })
+  }
+
   try {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (!emailRegex.test(emailLimpo)) {
+      return res.status(400).json({
+        erro: 'Digite um e-mail válido.',
+      })
+    }
+
     const senhaHash = await bcrypt.hash(senha, 12)
 
     const sql = `
@@ -344,24 +361,34 @@ app.post('/cadastro', async (req, res) => {
       VALUES (?, ?, ?)
     `
 
-    conexao.query(sql, [nome, email, senhaHash], (erro, resultado) => {
-      if (erro) {
-        console.log('Erro ao cadastrar usuário:', erro)
+    conexao.query(
+      sql,
+      [nomeLimpo, emailLimpo, senhaHash],
+      (erro, resultado) => {
+        if (erro) {
+          if (erro.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+              erro: 'Este e-mail já está cadastrado.',
+            })
+          }
 
-        return res.status(500).json({
-          erro: 'Erro ao cadastrar usuário.',
+          console.error('Erro ao cadastrar usuário:', erro)
+
+          return res.status(500).json({
+            erro: 'Erro ao cadastrar usuário.',
+          })
+        }
+
+        return res.status(201).json({
+          mensagem: 'Usuário criado com sucesso!',
+          id: resultado.insertId,
         })
-      }
-
-      res.status(201).json({
-        mensagem: 'Usuário criado com sucesso!',
-        id: resultado.insertId,
-      })
-    })
+      },
+    )
   } catch (erro) {
-    console.log('Erro no cadastro:', erro)
+    console.error('Erro no cadastro:', erro)
 
-    res.status(500).json({
+    return res.status(500).json({
       erro: 'Erro interno do servidor.',
     })
   }

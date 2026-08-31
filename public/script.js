@@ -1283,6 +1283,15 @@ if (signupForm) {
   })
 }
 
+const btnFazerLogin = document.querySelector('#btn-fazer-login')
+
+if (btnFazerLogin) {
+  btnFazerLogin.addEventListener('click', () => {
+    window.location.href = 'login.html'
+    console.log('clicou')
+  })
+}
+
 //-----------------------------------------------------------------
 
 function mostrarPagina(idPagina) {
