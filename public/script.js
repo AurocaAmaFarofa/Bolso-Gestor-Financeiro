@@ -1322,24 +1322,314 @@ window.onload = () => mostrarPagina('dashboard')
 //-----------------------------------------------------------------
 
 const nomeUsuario = document.querySelector('#nome-usuario')
+const nomeAdmin = document.querySelector('#admin-user-name')
 
 async function colocarNomeUser() {
+  if (!nomeUsuario && !nomeAdmin) {
+    return
+  }
+
   try {
     const resposta = await fetch('/usuario-atual')
 
     if (!resposta.ok) {
-      return
+      throw new Error('Não foi possível carregar o usuário.')
     }
 
     const usuario = await resposta.json()
 
-    nomeUsuario.textContent = `Olá, ${usuario.nome}`
+    if (nomeUsuario) {
+      nomeUsuario.textContent = usuario.nome
+    }
+
+    if (nomeAdmin) {
+      nomeAdmin.textContent = usuario.nome
+    }
   } catch (erro) {
     console.error('Erro ao carregar usuário:', erro)
   }
 }
 
 colocarNomeUser()
+
+//-----------------------------------------------------------------
+// Convites
+
+const linksConvites = {}
+const formGerarConvite = document.getElementById('form-gerar-convite')
+const resultadoConvite = document.getElementById('resultado-convite')
+const inputLinkConvite = document.getElementById('input-link-convite')
+const btnCopiarLink = document.getElementById('btn-copiar-link')
+const tabelaConvitesBody = document.getElementById('tabela-convites-body')
+const filtrosConvites = document.getElementById('filtros-convites')
+
+// Gerar convite
+if (formGerarConvite) {
+  formGerarConvite.addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    const email = document.getElementById('input-email-convite').value.trim()
+
+    const validade = document.getElementById('select-validade-convite').value
+
+    try {
+      const resposta = await fetch('/convites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email || null,
+          validade: validade,
+        }),
+      })
+
+      const resultado = await resposta.json()
+
+      console.log('Resposta do servidor:', resultado)
+
+      if (!resposta.ok) {
+        console.error('Erro ao gerar convite:', resultado)
+
+        alert(resultado.erro || 'Erro ao gerar convite.')
+        return
+      }
+
+      inputLinkConvite.value = resultado.link
+
+      linksConvites[resultado.id] = resultado.link
+
+      resultadoConvite.classList.add('show')
+
+      formGerarConvite.reset()
+
+      await carregarConvites()
+
+      console.log('Convite criado com sucesso!')
+    } catch (erro) {
+      console.error('Erro ao conectar com o servidor:', erro)
+
+      alert('Não foi possível conectar ao servidor.')
+    }
+  })
+}
+
+// Copiar link do convite recém-criado
+if (btnCopiarLink) {
+  btnCopiarLink.addEventListener('click', async () => {
+    const link = inputLinkConvite.value
+
+    if (!link) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(link)
+
+      const textoOriginal = btnCopiarLink.innerText
+
+      btnCopiarLink.innerText = 'Copiado!'
+
+      setTimeout(() => {
+        btnCopiarLink.innerText = textoOriginal
+      }, 1500)
+    } catch (erro) {
+      console.error('Erro ao copiar convite:', erro)
+
+      inputLinkConvite.select()
+      document.execCommand('copy')
+    }
+  })
+}
+
+// Ações da tabela de convites
+if (tabelaConvitesBody) {
+  tabelaConvitesBody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-acao')
+
+    if (!btn || btn.disabled) {
+      return
+    }
+
+    const linha = btn.closest('tr')
+
+    if (!linha) {
+      return
+    }
+
+    const conviteId = linha.dataset.conviteId
+    const acao = btn.dataset.acao
+
+    if (acao === 'copiar') {
+      const link = linksConvites[conviteId]
+
+      if (!link) {
+        alert('O link deste convite não está mais disponível.')
+        return
+      }
+
+      try {
+        await navigator.clipboard.writeText(link)
+
+        const textoOriginal = btn.innerText
+
+        btn.innerText = 'Copiado!'
+
+        setTimeout(() => {
+          btn.innerText = textoOriginal
+        }, 1500)
+      } catch (erro) {
+        console.error('Erro ao copiar convite:', erro)
+        alert('Não foi possível copiar o convite.')
+      }
+    }
+
+    if (acao === 'cancelar') {
+      console.log('Cancelar convite:', conviteId)
+    }
+  })
+}
+
+// Filtros
+if (filtrosConvites) {
+  filtrosConvites.addEventListener('click', (e) => {
+    const btn = e.target.closest('.filtro-btn')
+
+    if (!btn) {
+      return
+    }
+
+    filtrosConvites
+      .querySelectorAll('.filtro-btn')
+      .forEach((b) => b.classList.remove('filtro-ativo'))
+
+    btn.classList.add('filtro-ativo')
+
+    const filtro = btn.dataset.filtro
+
+    const linhas = document.querySelectorAll('#tabela-convites-body tr')
+
+    linhas.forEach((linha) => {
+      if (filtro === 'todos' || linha.dataset.status === filtro) {
+        linha.style.display = ''
+      } else {
+        linha.style.display = 'none'
+      }
+    })
+  })
+}
+
+function formatarData(data) {
+  if (!data) {
+    return '-'
+  }
+
+  return new Date(data).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+async function carregarConvites() {
+  if (!tabelaConvitesBody) {
+    return
+  }
+
+  try {
+    const resposta = await fetch('/convites')
+
+    const resultado = await resposta.json()
+
+    if (!resposta.ok) {
+      console.error('Erro ao carregar convites:', resultado)
+      return
+    }
+
+    renderizarConvites(resultado)
+  } catch (erro) {
+    console.error('Erro ao conectar com o servidor:', erro)
+  }
+}
+
+function renderizarConvites(convites) {
+  tabelaConvitesBody.innerHTML = ''
+
+  if (convites.length === 0) {
+    return
+  }
+
+  convites.forEach((convite) => {
+    const linha = document.createElement('tr')
+
+    let status
+    let statusTexto
+
+    if (convite.usado) {
+      status = 'utilizado'
+      statusTexto = 'Utilizado'
+    } else if (new Date(convite.expira_em) <= new Date()) {
+      status = 'expirado'
+      statusTexto = 'Expirado'
+    } else {
+      status = 'disponivel'
+      statusTexto = 'Disponível'
+    }
+
+    linha.dataset.conviteId = convite.id
+    linha.dataset.status = status
+
+    const email = convite.email || 'Sem e-mail vinculado'
+
+    linha.innerHTML = `
+      <td class="email-convite ${
+        convite.email ? '' : 'sem-email'
+      }">${email}</td>
+
+      <td class="data-convite">
+        ${formatarData(convite.criado_em)}
+      </td>
+
+      <td class="data-convite">
+        ${formatarData(convite.expira_em)}
+      </td>
+
+      <td>
+        <span class="status-badge status-${status}">
+          ${statusTexto}
+        </span>
+      </td>
+
+      <td>
+        <div class="acoes-convite">
+          <button
+            type="button"
+            class="btn-acao btn-acao-copiar"
+            data-acao="copiar"
+            ${status !== 'disponivel' ? 'disabled' : ''}
+          >
+            Copiar
+          </button>
+
+          <button
+            type="button"
+            class="btn-acao btn-acao-cancelar"
+            data-acao="cancelar"
+            ${status !== 'disponivel' ? 'disabled' : ''}
+          >
+            Cancelar
+          </button>
+        </div>
+      </td>
+    `
+
+    tabelaConvitesBody.appendChild(linha)
+  })
+}
+
+carregarConvites()
 
 //-----------------------------------------------------------------
 

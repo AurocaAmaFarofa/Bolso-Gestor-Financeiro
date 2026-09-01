@@ -1,14 +1,18 @@
 require('dotenv').config()
+
 const mysql = require('mysql2')
 const express = require('express')
 const path = require('path')
 const bcrypt = require('bcryptjs')
 const session = require('express-session')
 const crypto = require('crypto')
+
 const app = express()
+
 const PORT = 3000
-app.use(express.static(path.join(__dirname, 'public')))
+
 app.use(express.json())
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -20,6 +24,12 @@ app.use(
     },
   }),
 )
+
+app.get('/convites.html', exigirAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'convites.html'))
+})
+
+app.use(express.static(path.join(__dirname, 'public')))
 
 const conexao = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -631,26 +641,36 @@ app.get('/convites/verificar', (req, res) => {
 })
 
 function exigirAdmin(req, res, next) {
-  if (!req.session.usuarioId) {
+  if (!req.session || !req.session.usuarioId) {
     return res.status(401).json({
       erro: 'Você precisa estar logado.',
     })
   }
 
-  const sql = 'SELECT role FROM usuarios WHERE id = ?'
+  const sql = `
+    SELECT role
+    FROM usuarios
+    WHERE id = ?
+  `
 
   conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
     if (erro) {
-      console.log('Erro ao verificar permissão:', erro)
+      console.error('Erro ao verificar administrador:', erro)
 
       return res.status(500).json({
         erro: 'Erro interno do servidor.',
       })
     }
 
-    if (resultados.length === 0 || resultados[0].role !== 'admin') {
+    if (resultados.length === 0) {
+      return res.status(401).json({
+        erro: 'Usuário não encontrado.',
+      })
+    }
+
+    if (resultados[0].role !== 'admin') {
       return res.status(403).json({
-        erro: 'Você não tem permissão para realizar esta ação.',
+        erro: 'Acesso permitido apenas para administradores.',
       })
     }
 
@@ -686,5 +706,96 @@ app.get('/usuario-atual', exigirLogin, (req, res) => {
       nome: resultados[0].nome,
       email: resultados[0].email,
     })
+  })
+})
+
+app.post('/convites', exigirAdmin, (req, res) => {
+  console.log('POST /convites recebido')
+  console.log('Dados recebidos:', req.body)
+
+  const { email, validade } = req.body
+
+  const emailLimpo = email?.trim().toLowerCase() || null
+
+  const validades = {
+    '1h': 60 * 60 * 1000,
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
+  }
+
+  if (!validades[validade]) {
+    return res.status(400).json({
+      erro: 'Validade do convite inválida.',
+    })
+  }
+
+  if (emailLimpo) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (!emailRegex.test(emailLimpo)) {
+      return res.status(400).json({
+        erro: 'Digite um e-mail válido.',
+      })
+    }
+  }
+
+  const token = crypto.randomBytes(32).toString('hex')
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+  const expiraEm = new Date(Date.now() + validades[validade])
+
+  const sql = `
+    INSERT INTO convites
+    (email, token_hash, expira_em)
+    VALUES (?, ?, ?)
+  `
+
+  conexao.query(sql, [emailLimpo, tokenHash, expiraEm], (erro, resultado) => {
+    if (erro) {
+      console.error('Erro ao criar convite:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao gerar convite.',
+      })
+    }
+
+    console.log(`Convite criado com sucesso! ID: ${resultado.insertId}`)
+
+    const link =
+      `${req.protocol}://${req.get('host')}` + `/cadastro.html?convite=${token}`
+
+    return res.status(201).json({
+      mensagem: 'Convite gerado com sucesso!',
+      id: resultado.insertId,
+      link,
+      expiraEm,
+    })
+  })
+})
+
+app.get('/convites', exigirAdmin, (req, res) => {
+  const sql = `
+    SELECT
+      id,
+      email,
+      expira_em,
+      usado,
+      criado_em
+    FROM convites
+    ORDER BY criado_em DESC
+  `
+
+  conexao.query(sql, (erro, resultados) => {
+    if (erro) {
+      console.error('Erro ao buscar convites:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao buscar convites.',
+      })
+    }
+
+    return res.json(resultados)
   })
 })
