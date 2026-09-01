@@ -4,6 +4,7 @@ const express = require('express')
 const path = require('path')
 const bcrypt = require('bcryptjs')
 const session = require('express-session')
+const crypto = require('crypto')
 const app = express()
 const PORT = 3000
 app.use(express.static(path.join(__dirname, 'public')))
@@ -327,7 +328,7 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
 })
 
 app.post('/cadastro', async (req, res) => {
-  const { nome, email, senha } = req.body
+  const { nome, email, senha, convite } = req.body
 
   const nomeLimpo = nome?.trim()
   const emailLimpo = email?.trim().toLowerCase()
@@ -344,6 +345,12 @@ app.post('/cadastro', async (req, res) => {
     })
   }
 
+  if (!convite) {
+    return res.status(403).json({
+      erro: 'É necessário um convite para criar uma conta.',
+    })
+  }
+
   try {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -353,38 +360,87 @@ app.post('/cadastro', async (req, res) => {
       })
     }
 
-    const senhaHash = await bcrypt.hash(senha, 12)
+    const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
 
-    const sql = `
-      INSERT INTO usuarios
-      (nome, email, senha_hash)
-      VALUES (?, ?, ?)
+    const sqlConvite = `
+      SELECT *
+      FROM convites
+      WHERE token_hash = ?
+        AND usado = FALSE
+        AND expira_em > NOW()
+      LIMIT 1
     `
 
-    conexao.query(
-      sql,
-      [nomeLimpo, emailLimpo, senhaHash],
-      (erro, resultado) => {
-        if (erro) {
-          if (erro.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({
-              erro: 'Este e-mail já está cadastrado.',
+    conexao.query(sqlConvite, [tokenHash], async (erro, convites) => {
+      if (erro) {
+        console.error('Erro ao verificar convite:', erro)
+
+        return res.status(500).json({
+          erro: 'Erro interno do servidor.',
+        })
+      }
+
+      if (convites.length === 0) {
+        return res.status(403).json({
+          erro: 'Convite inválido, expirado ou já utilizado.',
+        })
+      }
+
+      const conviteValido = convites[0]
+      const senhaHash = await bcrypt.hash(senha, 12)
+
+      const sql = `
+          INSERT INTO usuarios
+          (nome, email, senha_hash)
+          VALUES (?, ?, ?)
+        `
+
+      conexao.query(
+        sql,
+        [nomeLimpo, emailLimpo, senhaHash],
+        (erro, resultado) => {
+          if (erro) {
+            if (erro.code === 'ER_DUP_ENTRY') {
+              return res.status(409).json({
+                erro: 'Este e-mail já está cadastrado.',
+              })
+            }
+
+            console.error('Erro ao cadastrar usuário:', erro)
+
+            return res.status(500).json({
+              erro: 'Erro ao cadastrar usuário.',
             })
           }
 
-          console.error('Erro ao cadastrar usuário:', erro)
+          const sqlUsarConvite = `
+              UPDATE convites
+              SET usado = TRUE
+              WHERE id = ?
+            `
 
-          return res.status(500).json({
-            erro: 'Erro ao cadastrar usuário.',
+          conexao.query(sqlUsarConvite, [conviteValido.id], (erro) => {
+            if (erro) {
+              console.error(
+                'Usuário criado, mas houve erro ao marcar convite:',
+                erro,
+              )
+
+              return res.status(500).json({
+                erro: 'Usuário criado, mas houve um erro ao finalizar o convite.',
+              })
+            }
+
+            req.session.usuarioId = resultado.insertId
+
+            return res.status(201).json({
+              mensagem: 'Usuário criado com sucesso!',
+              id: resultado.insertId,
+            })
           })
-        }
-
-        return res.status(201).json({
-          mensagem: 'Usuário criado com sucesso!',
-          id: resultado.insertId,
-        })
-      },
-    )
+        },
+      )
+    })
   } catch (erro) {
     console.error('Erro no cadastro:', erro)
 
@@ -474,3 +530,161 @@ function exigirLogin(req, res, next) {
 
   next()
 }
+
+app.post('/convites', exigirLogin, exigirAdmin, (req, res) => {
+  const { email } = req.body
+
+  if (!email) {
+    return res.status(400).json({
+      erro: 'Informe o email do convite.',
+    })
+  }
+
+  const token = crypto.randomBytes(32).toString('hex')
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+  const expiraEm = new Date(Date.now() + 15 * 60 * 1000)
+
+  const sql = `
+    INSERT INTO convites
+    (email, token_hash, expira_em)
+    VALUES (?, ?, ?)
+  `
+
+  conexao.query(sql, [email, tokenHash, expiraEm], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao criar convite:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao criar convite.',
+      })
+    }
+
+    const linkConvite = `http://localhost:3000/cadastro.html?convite=${token}`
+
+    res.status(201).json({
+      mensagem: 'Convite criado com sucesso.',
+      id: resultado.insertId,
+      convite: linkConvite,
+      expiraEm,
+    })
+  })
+})
+
+app.get('/convites/verificar', (req, res) => {
+  const { token } = req.query
+
+  if (!token) {
+    return res.status(400).json({
+      valido: false,
+      erro: 'Token não informado.',
+    })
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+  const sql = `
+    SELECT id, email, expira_em, usado
+    FROM convites
+    WHERE token_hash = ?
+  `
+
+  conexao.query(sql, [tokenHash], (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao verificar convite:', erro)
+
+      return res.status(500).json({
+        valido: false,
+        erro: 'Erro interno do servidor.',
+      })
+    }
+
+    if (resultados.length === 0) {
+      return res.status(400).json({
+        valido: false,
+        erro: 'Convite inválido.',
+      })
+    }
+
+    const convite = resultados[0]
+
+    if (convite.usado) {
+      return res.status(400).json({
+        valido: false,
+        erro: 'Este convite já foi utilizado.',
+      })
+    }
+
+    if (new Date(convite.expira_em) <= new Date()) {
+      return res.status(400).json({
+        valido: false,
+        erro: 'Este convite expirou.',
+      })
+    }
+
+    res.json({
+      valido: true,
+      email: convite.email,
+    })
+  })
+})
+
+function exigirAdmin(req, res, next) {
+  if (!req.session.usuarioId) {
+    return res.status(401).json({
+      erro: 'Você precisa estar logado.',
+    })
+  }
+
+  const sql = 'SELECT role FROM usuarios WHERE id = ?'
+
+  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao verificar permissão:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro interno do servidor.',
+      })
+    }
+
+    if (resultados.length === 0 || resultados[0].role !== 'admin') {
+      return res.status(403).json({
+        erro: 'Você não tem permissão para realizar esta ação.',
+      })
+    }
+
+    next()
+  })
+}
+
+app.get('/usuario-atual', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT id, nome, email
+    FROM usuarios
+    WHERE id = ?
+    LIMIT 1
+  `
+
+  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
+    if (erro) {
+      console.error('Erro ao buscar usuário atual:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro interno do servidor.',
+      })
+    }
+
+    if (resultados.length === 0) {
+      return res.status(404).json({
+        erro: 'Usuário não encontrado.',
+      })
+    }
+
+    return res.json({
+      id: resultados[0].id,
+      nome: resultados[0].nome,
+      email: resultados[0].email,
+    })
+  })
+})

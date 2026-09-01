@@ -1245,6 +1245,9 @@ if (signupForm) {
   signupForm.addEventListener('submit', async (evento) => {
     evento.preventDefault()
 
+    const parametros = new URLSearchParams(window.location.search)
+    const convite = parametros.get('convite')
+
     const nome = document.querySelector('#nome').value
     const email = document.querySelector('#email').value
     const senha = document.querySelector('#senha').value
@@ -1259,6 +1262,7 @@ if (signupForm) {
       nome: nome,
       email: email,
       senha: senha,
+      convite: convite,
     }
 
     const resposta = await fetch('/cadastro', {
@@ -1275,7 +1279,7 @@ if (signupForm) {
       showPopup('Conta criada com sucesso!', 2600)
 
       setTimeout(() => {
-        window.location.href = 'login.html'
+        window.location.href = 'index.html'
       }, 1000)
     } else {
       showPopup(resultado.erro || 'Não foi possível criar a conta.', 2600)
@@ -1314,6 +1318,28 @@ function mostrarPagina(idPagina) {
 }
 
 window.onload = () => mostrarPagina('dashboard')
+
+//-----------------------------------------------------------------
+
+const nomeUsuario = document.querySelector('#nome-usuario')
+
+async function colocarNomeUser() {
+  try {
+    const resposta = await fetch('/usuario-atual')
+
+    if (!resposta.ok) {
+      return
+    }
+
+    const usuario = await resposta.json()
+
+    nomeUsuario.textContent = `Olá, ${usuario.nome}`
+  } catch (erro) {
+    console.error('Erro ao carregar usuário:', erro)
+  }
+}
+
+colocarNomeUser()
 
 //-----------------------------------------------------------------
 
