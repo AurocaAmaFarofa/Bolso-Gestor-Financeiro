@@ -337,6 +337,8 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
   })
 })
 
+//              CADASTRO
+
 app.post('/cadastro', async (req, res) => {
   const { nome, email, senha, convite } = req.body
 
@@ -397,6 +399,16 @@ app.post('/cadastro', async (req, res) => {
       }
 
       const conviteValido = convites[0]
+
+      if (
+        conviteValido.email &&
+        conviteValido.email.toLowerCase() !== emailLimpo
+      ) {
+        return res.status(403).json({
+          erro: 'Este convite está vinculado a outro e-mail.',
+        })
+      }
+
       const senhaHash = await bcrypt.hash(senha, 12)
 
       const sql = `
@@ -541,46 +553,7 @@ function exigirLogin(req, res, next) {
   next()
 }
 
-app.post('/convites', exigirLogin, exigirAdmin, (req, res) => {
-  const { email } = req.body
-
-  if (!email) {
-    return res.status(400).json({
-      erro: 'Informe o email do convite.',
-    })
-  }
-
-  const token = crypto.randomBytes(32).toString('hex')
-
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-
-  const expiraEm = new Date(Date.now() + 15 * 60 * 1000)
-
-  const sql = `
-    INSERT INTO convites
-    (email, token_hash, expira_em)
-    VALUES (?, ?, ?)
-  `
-
-  conexao.query(sql, [email, tokenHash, expiraEm], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao criar convite:', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao criar convite.',
-      })
-    }
-
-    const linkConvite = `http://localhost:3000/cadastro.html?convite=${token}`
-
-    res.status(201).json({
-      mensagem: 'Convite criado com sucesso.',
-      id: resultado.insertId,
-      convite: linkConvite,
-      expiraEm,
-    })
-  })
-})
+//convites
 
 app.get('/convites/verificar', (req, res) => {
   const { token } = req.query
@@ -730,14 +703,18 @@ app.post('/convites', exigirAdmin, (req, res) => {
     })
   }
 
-  if (emailLimpo) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailLimpo) {
+    return res.status(400).json({
+      erro: 'Informe um e-mail para gerar o convite.',
+    })
+  }
 
-    if (!emailRegex.test(emailLimpo)) {
-      return res.status(400).json({
-        erro: 'Digite um e-mail válido.',
-      })
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  if (!emailRegex.test(emailLimpo)) {
+    return res.status(400).json({
+      erro: 'Digite um e-mail válido.',
+    })
   }
 
   const token = crypto.randomBytes(32).toString('hex')

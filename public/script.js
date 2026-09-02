@@ -1355,7 +1355,9 @@ colocarNomeUser()
 //-----------------------------------------------------------------
 // Convites
 
-const linksConvites = {}
+const CHAVE_CONVITES_STORAGE = 'bolso_convites_temporarios'
+const TEMPO_LINK_STORAGE = 6 * 60 * 60 * 1000 // 6 horas
+
 const formGerarConvite = document.getElementById('form-gerar-convite')
 const resultadoConvite = document.getElementById('resultado-convite')
 const inputLinkConvite = document.getElementById('input-link-convite')
@@ -1363,7 +1365,72 @@ const btnCopiarLink = document.getElementById('btn-copiar-link')
 const tabelaConvitesBody = document.getElementById('tabela-convites-body')
 const filtrosConvites = document.getElementById('filtros-convites')
 
+//-----------------------------------------------------------------
+// Armazenamento temporário dos links
+
+function obterConvitesTemporarios() {
+  const dados = localStorage.getItem(CHAVE_CONVITES_STORAGE)
+
+  if (!dados) {
+    return []
+  }
+
+  try {
+    return JSON.parse(dados)
+  } catch (erro) {
+    console.error('Erro ao ler convites temporários:', erro)
+    return []
+  }
+}
+
+function salvarConviteTemporario(id, link) {
+  const convites = obterConvitesTemporarios()
+
+  const novoConvite = {
+    id: id,
+    link: link,
+    salvoEm: Date.now(),
+  }
+
+  const convitesAtualizados = convites.filter(
+    (convite) => String(convite.id) !== String(id),
+  )
+
+  convitesAtualizados.push(novoConvite)
+
+  localStorage.setItem(
+    CHAVE_CONVITES_STORAGE,
+    JSON.stringify(convitesAtualizados),
+  )
+}
+
+function limparConvitesTemporarios() {
+  const agora = Date.now()
+
+  const convites = obterConvitesTemporarios()
+
+  const convitesValidos = convites.filter((convite) => {
+    return agora - convite.salvoEm < TEMPO_LINK_STORAGE
+  })
+
+  localStorage.setItem(CHAVE_CONVITES_STORAGE, JSON.stringify(convitesValidos))
+}
+
+function obterLinkTemporario(id) {
+  const convites = obterConvitesTemporarios()
+
+  const convite = convites.find((convite) => String(convite.id) === String(id))
+
+  return convite ? convite.link : null
+}
+
+// Limpa links antigos assim que a página é carregada
+
+limparConvitesTemporarios()
+
+//-----------------------------------------------------------------
 // Gerar convite
+
 if (formGerarConvite) {
   formGerarConvite.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -1392,20 +1459,37 @@ if (formGerarConvite) {
         console.error('Erro ao gerar convite:', resultado)
 
         alert(resultado.erro || 'Erro ao gerar convite.')
+
         return
       }
 
+      if (!resultado.link) {
+        console.error('Servidor não retornou o link do convite:', resultado)
+
+        alert(
+          'O convite foi criado, mas o link não foi retornado pelo servidor.',
+        )
+
+        return
+      }
+
+      // Mostra o link na tela
+
       inputLinkConvite.value = resultado.link
 
-      linksConvites[resultado.id] = resultado.link
+      // Salva temporariamente no navegador
+
+      salvarConviteTemporario(resultado.id, resultado.link)
 
       resultadoConvite.classList.add('show')
 
       formGerarConvite.reset()
 
+      // Atualiza a tabela
+
       await carregarConvites()
 
-      console.log('Convite criado com sucesso!')
+      console.log('Convite criado e link armazenado temporariamente!')
     } catch (erro) {
       console.error('Erro ao conectar com o servidor:', erro)
 
@@ -1414,7 +1498,9 @@ if (formGerarConvite) {
   })
 }
 
+//-----------------------------------------------------------------
 // Copiar link do convite recém-criado
+
 if (btnCopiarLink) {
   btnCopiarLink.addEventListener('click', async () => {
     const link = inputLinkConvite.value
@@ -1437,12 +1523,15 @@ if (btnCopiarLink) {
       console.error('Erro ao copiar convite:', erro)
 
       inputLinkConvite.select()
+
       document.execCommand('copy')
     }
   })
 }
 
+//-----------------------------------------------------------------
 // Ações da tabela de convites
+
 if (tabelaConvitesBody) {
   tabelaConvitesBody.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-acao')
@@ -1460,11 +1549,17 @@ if (tabelaConvitesBody) {
     const conviteId = linha.dataset.conviteId
     const acao = btn.dataset.acao
 
+    //-----------------------------------------------------------------
+    // Copiar
+
     if (acao === 'copiar') {
-      const link = linksConvites[conviteId]
+      const link = obterLinkTemporario(conviteId)
 
       if (!link) {
-        alert('O link deste convite não está mais disponível.')
+        alert(
+          'O link deste convite não está mais disponível neste navegador. Gere um novo convite.',
+        )
+
         return
       }
 
@@ -1480,9 +1575,13 @@ if (tabelaConvitesBody) {
         }, 1500)
       } catch (erro) {
         console.error('Erro ao copiar convite:', erro)
+
         alert('Não foi possível copiar o convite.')
       }
     }
+
+    //-----------------------------------------------------------------
+    // Cancelar
 
     if (acao === 'cancelar') {
       console.log('Cancelar convite:', conviteId)
@@ -1490,7 +1589,9 @@ if (tabelaConvitesBody) {
   })
 }
 
+//-----------------------------------------------------------------
 // Filtros
+
 if (filtrosConvites) {
   filtrosConvites.addEventListener('click', (e) => {
     const btn = e.target.closest('.filtro-btn')
@@ -1499,9 +1600,9 @@ if (filtrosConvites) {
       return
     }
 
-    filtrosConvites
-      .querySelectorAll('.filtro-btn')
-      .forEach((b) => b.classList.remove('filtro-ativo'))
+    filtrosConvites.querySelectorAll('.filtro-btn').forEach((b) => {
+      b.classList.remove('filtro-ativo')
+    })
 
     btn.classList.add('filtro-ativo')
 
@@ -1519,6 +1620,9 @@ if (filtrosConvites) {
   })
 }
 
+//-----------------------------------------------------------------
+// Formatação de datas
+
 function formatarData(data) {
   if (!data) {
     return '-'
@@ -1533,6 +1637,9 @@ function formatarData(data) {
   })
 }
 
+//-----------------------------------------------------------------
+// Carregar convites
+
 async function carregarConvites() {
   if (!tabelaConvitesBody) {
     return
@@ -1545,6 +1652,7 @@ async function carregarConvites() {
 
     if (!resposta.ok) {
       console.error('Erro ao carregar convites:', resultado)
+
       return
     }
 
@@ -1553,6 +1661,9 @@ async function carregarConvites() {
     console.error('Erro ao conectar com o servidor:', erro)
   }
 }
+
+//-----------------------------------------------------------------
+// Renderizar convites
 
 function renderizarConvites(convites) {
   tabelaConvitesBody.innerHTML = ''
@@ -1582,11 +1693,13 @@ function renderizarConvites(convites) {
     linha.dataset.status = status
 
     const email = convite.email || 'Sem e-mail vinculado'
+    const linkDisponivel = obterLinkTemporario(convite.id) !== null
+    const podeCopiar = status === 'disponivel' && linkDisponivel
 
     linha.innerHTML = `
-      <td class="email-convite ${
-        convite.email ? '' : 'sem-email'
-      }">${email}</td>
+      <td class="email-convite ${convite.email ? '' : 'sem-email'}">
+        ${email}
+      </td>
 
       <td class="data-convite">
         ${formatarData(convite.criado_em)}
@@ -1608,7 +1721,7 @@ function renderizarConvites(convites) {
             type="button"
             class="btn-acao btn-acao-copiar"
             data-acao="copiar"
-            ${status !== 'disponivel' ? 'disabled' : ''}
+            ${!podeCopiar ? 'disabled' : ''}
           >
             Copiar
           </button>
@@ -1621,6 +1734,7 @@ function renderizarConvites(convites) {
           >
             Cancelar
           </button>
+
         </div>
       </td>
     `
@@ -1628,6 +1742,9 @@ function renderizarConvites(convites) {
     tabelaConvitesBody.appendChild(linha)
   })
 }
+
+//-----------------------------------------------------------------
+// Carregar tabela ao abrir a página
 
 carregarConvites()
 
