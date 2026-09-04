@@ -374,94 +374,151 @@ app.post('/cadastro', async (req, res) => {
 
     const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
 
-    const sqlConvite = `
-      SELECT *
-      FROM convites
-      WHERE token_hash = ?
-        AND usado = FALSE
-        AND expira_em > NOW()
-      LIMIT 1
-    `
-
-    conexao.query(sqlConvite, [tokenHash], async (erro, convites) => {
+    conexao.beginTransaction(async (erro) => {
       if (erro) {
-        console.error('Erro ao verificar convite:', erro)
+        console.error('Erro ao iniciar transação:', erro)
 
         return res.status(500).json({
           erro: 'Erro interno do servidor.',
         })
       }
 
-      if (convites.length === 0) {
-        return res.status(403).json({
-          erro: 'Convite inválido, expirado ou já utilizado.',
-        })
-      }
+      const sqlConvite = `
+        SELECT *
+        FROM convites
+        WHERE token_hash = ?
+          AND usado = FALSE
+          AND expira_em > NOW()
+        LIMIT 1
+        FOR UPDATE
+      `
 
-      const conviteValido = convites[0]
+      conexao.query(sqlConvite, [tokenHash], async (erro, convites) => {
+        if (erro) {
+          return conexao.rollback(() => {
+            console.error('Erro ao verificar convite:', erro)
 
-      if (
-        conviteValido.email &&
-        conviteValido.email.toLowerCase() !== emailLimpo
-      ) {
-        return res.status(403).json({
-          erro: 'Este convite está vinculado a outro e-mail.',
-        })
-      }
+            return res.status(500).json({
+              erro: 'Erro interno do servidor.',
+            })
+          })
+        }
 
-      const senhaHash = await bcrypt.hash(senha, 12)
+        if (convites.length === 0) {
+          return conexao.rollback(() => {
+            return res.status(403).json({
+              erro: 'Convite inválido, expirado ou já utilizado.',
+            })
+          })
+        }
 
-      const sql = `
+        const conviteValido = convites[0]
+
+        if (
+          conviteValido.email &&
+          conviteValido.email.toLowerCase() !== emailLimpo
+        ) {
+          return conexao.rollback(() => {
+            return res.status(403).json({
+              erro: 'Este convite está vinculado a outro e-mail.',
+            })
+          })
+        }
+
+        let senhaHash
+
+        try {
+          senhaHash = await bcrypt.hash(senha, 12)
+        } catch (erro) {
+          return conexao.rollback(() => {
+            console.error('Erro ao gerar hash da senha:', erro)
+
+            return res.status(500).json({
+              erro: 'Erro interno do servidor.',
+            })
+          })
+        }
+
+        const sqlUsuario = `
           INSERT INTO usuarios
           (nome, email, senha_hash)
           VALUES (?, ?, ?)
         `
 
-      conexao.query(
-        sql,
-        [nomeLimpo, emailLimpo, senhaHash],
-        (erro, resultado) => {
-          if (erro) {
-            if (erro.code === 'ER_DUP_ENTRY') {
-              return res.status(409).json({
-                erro: 'Este e-mail já está cadastrado.',
+        conexao.query(
+          sqlUsuario,
+          [nomeLimpo, emailLimpo, senhaHash],
+          (erro, resultado) => {
+            if (erro) {
+              return conexao.rollback(() => {
+                if (erro.code === 'ER_DUP_ENTRY') {
+                  return res.status(409).json({
+                    erro: 'Este e-mail já está cadastrado.',
+                  })
+                }
+
+                console.error('Erro ao cadastrar usuário:', erro)
+
+                return res.status(500).json({
+                  erro: 'Erro ao cadastrar usuário.',
+                })
               })
             }
 
-            console.error('Erro ao cadastrar usuário:', erro)
-
-            return res.status(500).json({
-              erro: 'Erro ao cadastrar usuário.',
-            })
-          }
-
-          const sqlUsarConvite = `
+            const sqlUsarConvite = `
               UPDATE convites
               SET usado = TRUE
               WHERE id = ?
+                AND usado = FALSE
             `
 
-          conexao.query(sqlUsarConvite, [conviteValido.id], (erro) => {
-            if (erro) {
-              console.error(
-                'Usuário criado, mas houve erro ao marcar convite:',
-                erro,
-              )
+            conexao.query(
+              sqlUsarConvite,
+              [conviteValido.id],
+              (erro, resultadoUpdate) => {
+                if (erro || resultadoUpdate.affectedRows === 0) {
+                  return conexao.rollback(() => {
+                    console.error('Erro ao utilizar convite:', erro)
 
-              return res.status(500).json({
-                erro: 'Usuário criado, mas houve um erro ao finalizar o convite.',
-              })
-            }
+                    return res.status(500).json({
+                      erro: 'Erro ao finalizar o cadastro.',
+                    })
+                  })
+                }
 
-            req.session.usuarioId = resultado.insertId
+                conexao.commit((erro) => {
+                  if (erro) {
+                    return conexao.rollback(() => {
+                      console.error('Erro ao finalizar transação:', erro)
 
-            return res.status(201).json({
-              mensagem: 'Usuário criado com sucesso!',
-              id: resultado.insertId,
-            })
-          })
-        },
-      )
+                      return res.status(500).json({
+                        erro: 'Erro ao finalizar o cadastro.',
+                      })
+                    })
+                  }
+
+                  req.session.regenerate((erro) => {
+                    if (erro) {
+                      console.error('Erro ao regenerar sessão:', erro)
+
+                      return res.status(500).json({
+                        erro: 'Usuário criado, mas houve erro ao iniciar sessão.',
+                      })
+                    }
+
+                    req.session.usuarioId = resultado.insertId
+
+                    return res.status(201).json({
+                      mensagem: 'Usuário criado com sucesso!',
+                      id: resultado.insertId,
+                    })
+                  })
+                })
+              },
+            )
+          },
+        )
+      })
     })
   } catch (erro) {
     console.error('Erro no cadastro:', erro)
