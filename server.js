@@ -339,7 +339,7 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
 
 //              CADASTRO
 
-app.post('/cadastro', async (req, res) => {
+app.post('/cadastro', (req, res) => {
   const { nome, email, senha, convite } = req.body
 
   const nomeLimpo = nome?.trim()
@@ -363,73 +363,69 @@ app.post('/cadastro', async (req, res) => {
     })
   }
 
-  try {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-    if (!emailRegex.test(emailLimpo)) {
-      return res.status(400).json({
-        erro: 'Digite um e-mail válido.',
+  if (!emailRegex.test(emailLimpo)) {
+    return res.status(400).json({
+      erro: 'Digite um e-mail válido.',
+    })
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
+
+  conexao.beginTransaction((erro) => {
+    if (erro) {
+      console.error('Erro ao iniciar transação:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro interno do servidor.',
       })
     }
 
-    const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
+    const sqlConvite = `
+      SELECT *
+      FROM convites
+      WHERE token_hash = ?
+        AND usado = FALSE
+        AND expira_em > NOW()
+      LIMIT 1
+      FOR UPDATE
+    `
 
-    conexao.beginTransaction(async (erro) => {
+    conexao.query(sqlConvite, [tokenHash], (erro, convites) => {
       if (erro) {
-        console.error('Erro ao iniciar transação:', erro)
+        return conexao.rollback(() => {
+          console.error('Erro ao verificar convite:', erro)
 
-        return res.status(500).json({
-          erro: 'Erro interno do servidor.',
+          return res.status(500).json({
+            erro: 'Erro interno do servidor.',
+          })
         })
       }
 
-      const sqlConvite = `
-        SELECT *
-        FROM convites
-        WHERE token_hash = ?
-          AND usado = FALSE
-          AND expira_em > NOW()
-        LIMIT 1
-        FOR UPDATE
-      `
+      if (convites.length === 0) {
+        return conexao.rollback(() => {
+          return res.status(403).json({
+            erro: 'Convite inválido, expirado ou já utilizado.',
+          })
+        })
+      }
 
-      conexao.query(sqlConvite, [tokenHash], async (erro, convites) => {
+      const conviteValido = convites[0]
+
+      if (
+        conviteValido.email &&
+        conviteValido.email.toLowerCase() !== emailLimpo
+      ) {
+        return conexao.rollback(() => {
+          return res.status(403).json({
+            erro: 'Este convite está vinculado a outro e-mail.',
+          })
+        })
+      }
+
+      bcrypt.hash(senha, 12, (erro, senhaHash) => {
         if (erro) {
-          return conexao.rollback(() => {
-            console.error('Erro ao verificar convite:', erro)
-
-            return res.status(500).json({
-              erro: 'Erro interno do servidor.',
-            })
-          })
-        }
-
-        if (convites.length === 0) {
-          return conexao.rollback(() => {
-            return res.status(403).json({
-              erro: 'Convite inválido, expirado ou já utilizado.',
-            })
-          })
-        }
-
-        const conviteValido = convites[0]
-
-        if (
-          conviteValido.email &&
-          conviteValido.email.toLowerCase() !== emailLimpo
-        ) {
-          return conexao.rollback(() => {
-            return res.status(403).json({
-              erro: 'Este convite está vinculado a outro e-mail.',
-            })
-          })
-        }
-
-        let senhaHash
-
-        try {
-          senhaHash = await bcrypt.hash(senha, 12)
-        } catch (erro) {
           return conexao.rollback(() => {
             console.error('Erro ao gerar hash da senha:', erro)
 
@@ -448,7 +444,7 @@ app.post('/cadastro', async (req, res) => {
         conexao.query(
           sqlUsuario,
           [nomeLimpo, emailLimpo, senhaHash],
-          (erro, resultado) => {
+          (erro, resultadoUsuario) => {
             if (erro) {
               return conexao.rollback(() => {
                 if (erro.code === 'ER_DUP_ENTRY') {
@@ -506,11 +502,11 @@ app.post('/cadastro', async (req, res) => {
                       })
                     }
 
-                    req.session.usuarioId = resultado.insertId
+                    req.session.usuarioId = resultadoUsuario.insertId
 
                     return res.status(201).json({
                       mensagem: 'Usuário criado com sucesso!',
-                      id: resultado.insertId,
+                      id: resultadoUsuario.insertId,
                     })
                   })
                 })
@@ -520,13 +516,7 @@ app.post('/cadastro', async (req, res) => {
         )
       })
     })
-  } catch (erro) {
-    console.error('Erro no cadastro:', erro)
-
-    return res.status(500).json({
-      erro: 'Erro interno do servidor.',
-    })
-  }
+  })
 })
 
 app.post('/login', (req, res) => {
