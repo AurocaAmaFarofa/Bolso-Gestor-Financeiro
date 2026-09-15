@@ -6,12 +6,15 @@ const path = require('path')
 const bcrypt = require('bcryptjs')
 const session = require('express-session')
 const crypto = require('crypto')
+const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
 
 const app = express()
 
 const PORT = 3000
 
 app.use(express.json())
+app.use(cookieParser())
 
 app.use(
   session({
@@ -54,7 +57,7 @@ app.get('/lancamentos', exigirLogin, (req, res) => {
     WHERE usuarioId = ?
   `
 
-  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
+  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
     if (erro) {
       console.error('Erro ao buscar lançamentos:', erro)
 
@@ -88,7 +91,7 @@ app.post('/lancamentos', exigirLogin, (req, res) => {
     data,
     mesAno,
     bancoId,
-    req.session.usuarioId,
+    req.usuarioId,
   ]
 
   conexao.query(sql, valores, (erro, resultado) => {
@@ -127,7 +130,7 @@ app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
   WHERE id = ? AND usuarioId = ?
   `
 
-  conexao.query(sql, [id, req.session.usuarioId], (erro, resultado) => {
+  conexao.query(sql, [id, req.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao excluir: ', erro)
 
@@ -163,7 +166,7 @@ app.get('/bancos', exigirLogin, (req, res) => {
     WHERE usuarioId = ?
   `
 
-  conexao.query(sql, [req.session.usuarioId], (erro, resultado) => {
+  conexao.query(sql, [req.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao buscar bancos: ', erro)
 
@@ -185,7 +188,7 @@ app.post('/bancos', exigirLogin, (req, res) => {
     VALUES (?, ?, ?, ?)
   `
 
-  const valores = [nome, saldoInicial, mesCriado, req.session.usuarioId]
+  const valores = [nome, saldoInicial, mesCriado, req.usuarioId]
 
   conexao.query(sql, valores, (erro, resultado) => {
     if (erro) {
@@ -220,7 +223,7 @@ app.delete('/bancos/:id', exigirLogin, (req, res) => {
     WHERE bancoId = ? AND usuarioId = ?
   `
 
-  conexao.query(sqlLancamentos, [id, req.session.usuarioId], (erro) => {
+  conexao.query(sqlLancamentos, [id, req.usuarioId], (erro) => {
     if (erro) {
       console.log('Erro ao excluir lançamentos do banco:', erro)
 
@@ -236,7 +239,7 @@ app.delete('/bancos/:id', exigirLogin, (req, res) => {
       WHERE id = ? AND usuarioId = ?
     `
 
-    conexao.query(sqlBanco, [id, req.session.usuarioId], (erro, resultado) => {
+    conexao.query(sqlBanco, [id, req.usuarioId], (erro, resultado) => {
       if (erro) {
         console.log('Erro ao excluir banco:', erro)
 
@@ -261,7 +264,7 @@ app.get('/reservas', exigirLogin, (req, res) => {
     WHERE usuarioId = ?
   `
 
-  conexao.query(sql, [req.session.usuarioId], (erro, resultado) => {
+  conexao.query(sql, [req.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao buscar reservas')
 
@@ -283,7 +286,7 @@ app.post('/reservas', exigirLogin, (req, res) => {
     VALUES (?, ?, ?)
   `
 
-  const valores = [nome, valor, req.session.usuarioId]
+  const valores = [nome, valor, req.usuarioId]
 
   conexao.query(sql, valores, (erro, resultado) => {
     if (erro) {
@@ -315,7 +318,7 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
     WHERE id = ? AND usuarioId = ?
   `
 
-  conexao.query(sql, [id, req.session.usuarioId], (erro, resultado) => {
+  conexao.query(sql, [id, req.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao excluir reserva:', erro)
 
@@ -486,28 +489,30 @@ app.post('/cadastro', (req, res) => {
                   if (erro) {
                     return conexao.rollback(() => {
                       console.error('Erro ao finalizar transação:', erro)
-
                       return res.status(500).json({
                         erro: 'Erro ao finalizar o cadastro.',
                       })
                     })
                   }
 
-                  req.session.regenerate((erro) => {
-                    if (erro) {
-                      console.error('Erro ao regenerar sessão:', erro)
+                  const token = jwt.sign(
+                    { sub: resultadoUsuario.insertId },
+                    process.env.JWT_SECRET,
+                    {
+                      expiresIn: '1d',
+                    },
+                  )
 
-                      return res.status(500).json({
-                        erro: 'Usuário criado, mas houve erro ao iniciar sessão.',
-                      })
-                    }
+                  res.cookie('token', token, {
+                    httpOnly: true,
+                    sameSite: 'lax',
+                    secure: process.env.NODE_ENV === 'production',
+                    maxAge: 1000 * 60 * 60 * 24,
+                  })
 
-                    req.session.usuarioId = resultadoUsuario.insertId
-
-                    return res.status(201).json({
-                      mensagem: 'Usuário criado com sucesso!',
-                      id: resultadoUsuario.insertId,
-                    })
+                  return res.status(201).json({
+                    mensagem: 'Usuário criado com sucesso!',
+                    id: resultadoUsuario.insertId,
                   })
                 })
               },
@@ -549,7 +554,16 @@ app.post('/login', (req, res) => {
       })
     }
 
-    req.session.usuarioId = usuario.id
+    const token = jwt.sign({ sub: usuario.id }, process.env.JWT_SECRET, {
+      expiresIn: '1d',
+    })
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24,
+    })
 
     res.json({
       mensagem: 'Login realizado com sucesso!',
@@ -562,42 +576,40 @@ app.post('/login', (req, res) => {
   })
 })
 
-app.post('/logout', exigirLogin, (req, res) => {
-  req.session.destroy((erro) => {
-    if (erro) {
-      console.error('Erro ao deslogar', erro)
+app.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
 
-      return res.status(500).json({
-        erro: 'Erro interno do servidor',
-      })
-    }
-
-    res.json({
-      mensagem: 'Usuario se deslogou do sistema!',
-    })
+  res.json({
+    mensagem: 'Usuário se deslogou do sistema!',
   })
 })
 
 app.get('/me', (req, res) => {
-  if (!req.session.usuarioId) {
-    return res.status(401).json({
-      erro: 'Não autenticado',
-    })
-  }
-
   res.json({
-    usuarioId: req.session.usuarioId,
+    usuarioId: req.usuarioId,
   })
 })
 
 function exigirLogin(req, res, next) {
-  if (!req.session.usuarioId) {
-    return res.status(401).json({
-      erro: 'Você precisa estar logado.',
-    })
+  const token = req.cookies.token
+
+  if (!token) {
+    return res.status(401).json({ erro: 'Você precisa estar logado.' })
   }
 
-  next()
+  try {
+    const decodificado = jwt.verify(token, process.env.JWT_SECRET)
+
+    req.usuarioId = decodificado.sub
+
+    next()
+  } catch (erro) {
+    return res.status(401).json({ erro: 'Sessão inválida ou expirada.' })
+  }
 }
 
 //convites
@@ -661,40 +673,36 @@ app.get('/convites/verificar', (req, res) => {
 })
 
 function exigirAdmin(req, res, next) {
-  if (!req.session || !req.session.usuarioId) {
-    return res.status(401).json({
-      erro: 'Você precisa estar logado.',
-    })
-  }
-
-  const sql = `
+  exigirLogin(req, res, () => {
+    const sql = `
     SELECT role
     FROM usuarios
     WHERE id = ?
   `
 
-  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.error('Erro ao verificar administrador:', erro)
+    conexao.query(sql, [req.usuarioId], (erro, resultados) => {
+      if (erro) {
+        console.error('Erro ao verificar administrador:', erro)
 
-      return res.status(500).json({
-        erro: 'Erro interno do servidor.',
-      })
-    }
+        return res.status(500).json({
+          erro: 'Erro interno do servidor.',
+        })
+      }
 
-    if (resultados.length === 0) {
-      return res.status(401).json({
-        erro: 'Usuário não encontrado.',
-      })
-    }
+      if (resultados.length === 0) {
+        return res.status(401).json({
+          erro: 'Usuário não encontrado.',
+        })
+      }
 
-    if (resultados[0].role !== 'admin') {
-      return res.status(403).json({
-        erro: 'Acesso permitido apenas para administradores.',
-      })
-    }
+      if (resultados[0].role !== 'admin') {
+        return res.status(403).json({
+          erro: 'Acesso permitido apenas para administradores.',
+        })
+      }
 
-    next()
+      next()
+    })
   })
 }
 
@@ -706,7 +714,7 @@ app.get('/usuario-atual', exigirLogin, (req, res) => {
     LIMIT 1
   `
 
-  conexao.query(sql, [req.session.usuarioId], (erro, resultados) => {
+  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
     if (erro) {
       console.error('Erro ao buscar usuário atual:', erro)
 
