@@ -4,7 +4,6 @@ const mysql = require('mysql2')
 const express = require('express')
 const path = require('path')
 const bcrypt = require('bcryptjs')
-const session = require('express-session')
 const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
@@ -15,18 +14,6 @@ const PORT = 3000
 
 app.use(express.json())
 app.use(cookieParser())
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
-  }),
-)
 
 app.get('/convites.html', exigirAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'convites.html'))
@@ -343,20 +330,32 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
 //              CADASTRO
 
 app.post('/cadastro', (req, res) => {
-  const { nome, email, senha, convite } = req.body
+  const { nome, email, senha, confirmarSenha, convite } = req.body
 
   const nomeLimpo = nome?.trim()
   const emailLimpo = email?.trim().toLowerCase()
 
-  if (!nomeLimpo || !emailLimpo || !senha) {
+  if (typeof senha !== 'string' || typeof confirmarSenha !== 'string') {
     return res.status(400).json({
-      erro: 'Preencha todos os campos.',
+      erro: 'Senha inválida.',
     })
   }
 
-  if (senha.length < 6) {
+  if (typeof senha !== 'string' || senha.length < 12 || senha.length > 64) {
     return res.status(400).json({
-      erro: 'A senha deve ter pelo menos 6 caracteres.',
+      erro: 'A senha deve ter entre 12 e 64 caracteres.',
+    })
+  }
+
+  if (senha !== confirmarSenha) {
+    return res.status(400).json({
+      erro: 'As senhas não coincidem.',
+    })
+  }
+
+  if (!nomeLimpo || !emailLimpo || !senha) {
+    return res.status(400).json({
+      erro: 'Preencha todos os campos.',
     })
   }
 

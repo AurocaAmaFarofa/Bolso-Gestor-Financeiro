@@ -397,6 +397,14 @@
         animation: shake 0.32s ease;
       }
 
+      .strength-label.password-match {
+        color: var(--color-income);
+      }
+
+      .strength-label.password-mismatch {
+        color: var(--color-expense);
+      }
+
       @keyframes shake {
         0%,
         100% {
@@ -478,7 +486,8 @@
                 placeholder="Crie uma senha"
                 required
                 autocomplete="new-password"
-                minlength="6"
+                minlength="12"
+                maxlength="64"
               />
               <button type="button" class="toggle-visibility" id="toggle-senha">
                 mostrar
@@ -490,7 +499,7 @@
               <div class="strength-bar" id="bar-3"></div>
             </div>
             <div class="strength-label" id="strength-label">
-              Mínimo de 6 caracteres
+              Mínimo de 12 caracteres
             </div>
           </div>
 
@@ -513,13 +522,15 @@
                 mostrar
               </button>
             </div>
+
+            <div class="strength-label" id="confirmacao-label"></div>
           </div>
 
-          <label class="terms-row">
+          <!--<label class="terms-row">
             <input type="checkbox" id="termos" required />
             Li e aceito os <a href="#" id="link-termos">Termos de uso</a> e a
             <a href="#" id="link-privacidade">Política de privacidade</a>
-          </label>
+          </label>-->
 
           <div class="error-msg" id="error-msg">
             Confira os campos destacados antes de continuar.

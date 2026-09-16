@@ -1174,6 +1174,28 @@ if (btnAddLancamento) {
 //-----------------------------------------------------------------
 // login/cadastro functions //
 
+const botoesAlternarSenha = document.querySelectorAll('.toggle-visibility')
+
+botoesAlternarSenha.forEach((botao) => {
+  botao.addEventListener('click', () => {
+    const campoSenha = botao
+      .closest('.field-password-wrap')
+      ?.querySelector('input')
+
+    if (!campoSenha) {
+      return
+    }
+
+    const senhaVisivel = campoSenha.type === 'text'
+    campoSenha.type = senhaVisivel ? 'password' : 'text'
+    botao.textContent = senhaVisivel ? 'mostrar' : 'ocultar'
+    botao.setAttribute(
+      'aria-label',
+      senhaVisivel ? 'Mostrar senha' : 'Ocultar senha',
+    )
+  })
+})
+
 const btnCriarContaLogin = document.querySelector('#btn-criar-conta')
 
 if (btnCriarContaLogin) {
@@ -1239,6 +1261,100 @@ if (loginForm) {
 
 //cadastro
 
+const senhaInput = document.getElementById('senha')
+const confirmarSenhaInput = document.getElementById('confirmar-senha')
+
+const bar1 = document.getElementById('bar-1')
+const bar2 = document.getElementById('bar-2')
+const bar3 = document.getElementById('bar-3')
+
+const strengthLabel = document.getElementById('strength-label')
+const confirmacaoLabel = document.getElementById('confirmacao-label')
+
+function avaliarForcaSenha(senha) {
+  let pontos = 0
+
+  if (senha.length >= 12) {
+    pontos++
+  }
+
+  if (senha.length >= 16) {
+    pontos++
+  }
+
+  if (/[a-z]/.test(senha) && /[A-Z]/.test(senha)) {
+    pontos++
+  }
+
+  if (/[0-9]/.test(senha)) {
+    pontos++
+  }
+
+  if (/[^A-Za-z0-9]/.test(senha)) {
+    pontos++
+  }
+
+  return pontos
+}
+
+if (senhaInput && confirmarSenhaInput) {
+  senhaInput.addEventListener('input', atualizarForcaSenha)
+  senhaInput.addEventListener('input', verificarConfirmacaoSenha)
+  confirmarSenhaInput.addEventListener('input', verificarConfirmacaoSenha)
+}
+
+function atualizarForcaSenha() {
+  const senha = senhaInput.value
+  const pontos = avaliarForcaSenha(senha)
+
+  bar1.className = 'strength-bar'
+  bar2.className = 'strength-bar'
+  bar3.className = 'strength-bar'
+
+  if (senha.length === 0) {
+    strengthLabel.textContent = 'Mínimo de 12 caracteres'
+    return
+  }
+
+  if (senha.length < 12) {
+    bar1.classList.add('fraca')
+    strengthLabel.textContent = 'Senha muito curta'
+    return
+  }
+
+  if (pontos <= 2) {
+    bar1.classList.add('fraca')
+    strengthLabel.textContent = 'Senha fraca'
+  } else if (pontos <= 4) {
+    bar1.classList.add('media')
+    bar2.classList.add('media')
+    strengthLabel.textContent = 'Senha média'
+  } else {
+    bar1.classList.add('forte')
+    bar2.classList.add('forte')
+    bar3.classList.add('forte')
+    strengthLabel.textContent = 'Senha forte'
+  }
+}
+
+function verificarConfirmacaoSenha() {
+  const senha = senhaInput.value
+  const confirmacao = confirmarSenhaInput.value
+
+  if (confirmacao.length === 0) {
+    confirmacaoLabel.textContent = ''
+    return
+  }
+
+  if (senha === confirmacao) {
+    confirmacaoLabel.textContent = 'Senhas iguais'
+    confirmacaoLabel.className = 'strength-label password-match'
+  } else {
+    confirmacaoLabel.textContent = 'As senhas não coincidem'
+    confirmacaoLabel.className = 'strength-label password-mismatch'
+  }
+}
+
 const signupForm = document.querySelector('#signup-form')
 
 if (signupForm) {
@@ -1250,11 +1366,18 @@ if (signupForm) {
 
     const nome = document.querySelector('#nome').value
     const email = document.querySelector('#email').value
-    const senha = document.querySelector('#senha').value
-    const confirmarSenha = document.querySelector('#confirmar-senha').value
+    const senha = senhaInput.value
+    const confirmarSenha = confirmarSenhaInput.value
+
+    if (senha.length < 12 || senha.length > 64) {
+      alert('A senha deve ter entre 12 e 64 caracteres.')
+      senhaInput.focus()
+      return
+    }
 
     if (senha !== confirmarSenha) {
       showPopup('As senhas não coincidem.', 2600)
+      confirmarSenhaInput.focus()
       return
     }
 
@@ -1262,6 +1385,7 @@ if (signupForm) {
       nome: nome,
       email: email,
       senha: senha,
+      confirmarSenha: confirmarSenha,
       convite: convite,
     }
 
