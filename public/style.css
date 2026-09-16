@@ -1006,6 +1006,17 @@ select:focus {
   font-size: 0.95rem;
 }
 
+.app-copyright {
+  margin: 0;
+  padding: 8px 0 2px;
+  color: var(--color-ink-soft);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.8;
+}
+
 /* ============================================================
    ANIMAÇÕES
    ============================================================ */
