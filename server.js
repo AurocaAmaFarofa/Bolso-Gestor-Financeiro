@@ -23,13 +23,62 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 
   handler: (req, res) => {
-    console.log('🚨 RATE LIMIT ATINGIDO:', req.ip)
-
     return res.status(429).json({
       erro: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
     })
   },
 })
+
+const tentativasLogin = new Map()
+
+function registrarFalhaLogin(email) {
+  const agora = Date.now()
+
+  const dados = tentativasLogin.get(email) || {
+    falhas: 0,
+    bloqueadoAte: null,
+  }
+
+  dados.falhas += 1
+
+  if (dados.falhas >= 5) {
+    dados.bloqueadoAte = agora + 5 * 60 * 1000
+  }
+
+  tentativasLogin.set(email, dados)
+}
+
+function verificarBloqueioLogin(email) {
+  const dados = tentativasLogin.get(email)
+
+  if (!dados) {
+    return null
+  }
+
+  const agora = Date.now()
+
+  if (dados.bloqueadoAte && agora < dados.bloqueadoAte) {
+    return Math.ceil((dados.bloqueadoAte - agora) / 1000)
+  }
+
+  if (dados.bloqueadoAte && agora >= dados.bloqueadoAte) {
+    tentativasLogin.delete(email)
+  }
+
+  return null
+}
+
+function limparTentativasLogin() {
+  const agora = Date.now()
+
+  for (const [email, dados] of tentativasLogin.entries()) {
+    if (dados.bloqueadoAte && agora >= dados.bloqueadoAte) {
+      tentativasLogin.delete(email)
+    }
+  }
+}
+
+setInterval(limparTentativasLogin, 10 * 60 * 1000)
 
 app.get('/convites.html', exigirAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'convites.html'))
@@ -542,9 +591,30 @@ app.post('/cadastro', (req, res) => {
 app.post('/login', loginLimiter, (req, res) => {
   const { email, senha } = req.body
 
+  if (
+    typeof email !== 'string' ||
+    typeof senha !== 'string' ||
+    !email.trim() ||
+    !senha
+  ) {
+    return res.status(400).json({
+      erro: 'Email e senha são obrigatórios.',
+    })
+  }
+
+  const emailN = email.trim().toLowerCase()
+
+  const segundosRestantes = verificarBloqueioLogin(emailN)
+
+  if (segundosRestantes !== null) {
+    return res.status(429).json({
+      erro: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
+    })
+  }
+
   const sql = 'SELECT * FROM usuarios WHERE email = ?'
 
-  conexao.query(sql, [email], async (erro, resultados) => {
+  conexao.query(sql, [emailN], async (erro, resultados) => {
     if (erro) {
       console.error('Erro ao buscar usuário:', erro)
 
@@ -554,6 +624,8 @@ app.post('/login', loginLimiter, (req, res) => {
     }
 
     if (resultados.length === 0) {
+      registrarFalhaLogin(emailN)
+
       return res.status(401).json({
         erro: 'Email ou senha incorretos',
       })
@@ -564,10 +636,14 @@ app.post('/login', loginLimiter, (req, res) => {
     const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash)
 
     if (!senhaCorreta) {
+      registrarFalhaLogin(emailN)
+
       return res.status(401).json({
         erro: 'Email ou senha incorretos',
       })
     }
+
+    tentativasLogin.delete(emailN)
 
     const token = jwt.sign({ sub: usuario.id }, process.env.JWT_SECRET, {
       expiresIn: '1d',
