@@ -1253,6 +1253,9 @@ if (loginForm) {
 
     if (resposta.ok) {
       window.location.href = 'index.html'
+    } else if (resposta.status === 429) {
+      const dados = await resposta.json()
+      showPopup(dados.erro, 4000)
     } else {
       showPopup('E-mail ou senha inválidos.', 2600)
     }

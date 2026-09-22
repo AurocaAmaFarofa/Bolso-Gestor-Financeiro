@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
+const rateLimit = require('express-rate-limit')
 
 const app = express()
 
@@ -14,6 +15,21 @@ const PORT = 3000
 
 app.use(express.json())
 app.use(cookieParser())
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+
+  handler: (req, res) => {
+    console.log('🚨 RATE LIMIT ATINGIDO:', req.ip)
+
+    return res.status(429).json({
+      erro: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
+    })
+  },
+})
 
 app.get('/convites.html', exigirAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'convites.html'))
@@ -523,7 +539,7 @@ app.post('/cadastro', (req, res) => {
   })
 })
 
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const { email, senha } = req.body
 
   const sql = 'SELECT * FROM usuarios WHERE email = ?'
