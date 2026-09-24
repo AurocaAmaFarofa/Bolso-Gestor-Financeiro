@@ -922,3 +922,117 @@ app.get('/convites', exigirAdmin, (req, res) => {
     return res.json(resultados)
   })
 })
+
+//Gastos Fixos
+
+app.get('/gastos-fixos', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT id, nome, valor, status
+    FROM gastos_fixos
+    WHERE usuario_id = ?
+  `
+
+  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao buscar gastos fixos:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao buscar gastos fixos.',
+      })
+    }
+
+    res.json(resultados)
+  })
+})
+
+app.post('/gastos-fixos', exigirLogin, (req, res) => {
+  const nome = typeof req.body.nome === 'string' ? req.body.nome.trim() : ''
+  const valor = Number(req.body.valor)
+
+  if (!nome || nome.length > 100) {
+    return res.status(400).json({ erro: 'Nome inválido.' })
+  }
+
+  if (!Number.isFinite(valor) || valor <= 0) {
+    return res.status(400).json({ erro: 'Valor inválido.' })
+  }
+
+  const sql = `
+    INSERT INTO gastos_fixos
+    (usuario_id, nome, valor)
+    VALUES (?, ?, ?)
+  `
+
+  conexao.query(sql, [req.usuarioId, nome, valor], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao criar gasto fixo:', erro)
+
+      return res.status(500).json({
+        erro: 'Erro ao criar gasto fixo.',
+      })
+    }
+
+    res.status(201).json({
+      mensagem: 'Gasto fixo criado',
+      gastoFixo: {
+        id: resultado.insertId,
+        nome,
+        valor,
+        status: 'pendente',
+      },
+    })
+  })
+})
+
+app.patch('/gastos-fixos/:id', exigirLogin, (req, res) => {
+  const { status } = req.body
+
+  if (!['pendente', 'pago'].includes(status)) {
+    return res.status(400).json({ erro: 'Status inválido.' })
+  }
+
+  const sql = `
+    UPDATE gastos_fixos
+    SET status = ?
+    WHERE id = ? AND usuario_id = ?
+  `
+
+  conexao.query(
+    sql,
+    [status, req.params.id, req.usuarioId],
+    (erro, resultado) => {
+      if (erro) {
+        console.log('Erro ao atualizar gasto fixo:', erro)
+
+        return res.status(500).json({ erro: 'Erro ao atualizar gasto fixo.' })
+      }
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ erro: 'Gasto fixo não encontrado.' })
+      }
+
+      res.json({ mensagem: 'Status atualizado', status })
+    },
+  )
+})
+
+app.delete('/gastos-fixos/:id', exigirLogin, (req, res) => {
+  const sql = `
+    DELETE FROM gastos_fixos
+    WHERE id = ? AND usuario_id = ?
+  `
+
+  conexao.query(sql, [req.params.id, req.usuarioId], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao excluir gasto fixo:', erro)
+
+      return res.status(500).json({ erro: 'Erro ao excluir gasto fixo.' })
+    }
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ erro: 'Gasto fixo não encontrado.' })
+    }
+
+    res.json({ mensagem: 'Gasto fixo excluído', id: req.params.id })
+  })
+})

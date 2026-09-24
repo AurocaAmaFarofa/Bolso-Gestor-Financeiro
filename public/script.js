@@ -892,52 +892,110 @@ atualizarTudo()
 window.alternarStatusGastoFixo = alternarStatusGastoFixo
 window.deletarGastoFixo = deletarGastoFixo
 
-function alternarStatusGastoFixo(indice) {
-  if (appData.pendencias[indice].pagoOuPendente === 'naoPago') {
-    appData.pendencias[indice].pagoOuPendente = 'pago'
-  } else {
-    appData.pendencias[indice].pagoOuPendente = 'naoPago'
-  }
-
-  salvarDados()
-  atualizarTudo()
+function escaparHtml(texto) {
+  return String(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
-function deletarGastoFixo(indice) {
-  appData.pendencias.splice(indice, 1)
-  salvarDados()
-  atualizarTudo()
+async function carregarGastosFixos() {
+  try {
+    const resposta = await fetch('/gastos-fixos')
+
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
+      return
+    }
+
+    if (!resposta.ok) {
+      console.error('Erro ao carregar gastos fixos:', resposta.status)
+      return
+    }
+
+    const gastos = await resposta.json()
+
+    if (!Array.isArray(gastos)) return
+
+    appData.pendencias = gastos
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao carregar gastos fixos:', erro)
+  }
+}
+
+async function alternarStatusGastoFixo(id) {
+  const gasto = appData.pendencias.find((item) => item.id === id)
+  if (!gasto) return
+
+  const novoStatus = gasto.status === 'pago' ? 'pendente' : 'pago'
+
+  try {
+    const resposta = await fetch(`/gastos-fixos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: novoStatus }),
+    })
+
+    if (!resposta.ok) {
+      showPopup('Erro ao atualizar o gasto fixo.', 2200)
+      return
+    }
+
+    gasto.status = novoStatus
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao atualizar gasto fixo:', erro)
+  }
+}
+
+async function deletarGastoFixo(id) {
+  try {
+    const resposta = await fetch(`/gastos-fixos/${id}`, { method: 'DELETE' })
+
+    if (!resposta.ok) {
+      showPopup('Erro ao excluir o gasto fixo.', 2200)
+      return
+    }
+
+    appData.pendencias = appData.pendencias.filter((item) => item.id !== id)
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao excluir gasto fixo:', erro)
+  }
 }
 
 function renderizarGridGastosFixos() {
-  const pendencias = JSON.parse(localStorage.getItem('pendencias')) || []
   if (!gridGastosFixos || !gastosFixosMain) return
 
   gastosFixosMain.innerHTML = ''
   gridGastosFixos.innerHTML = ''
 
-  appData.pendencias.forEach((item, indice) => {
-    const ehPago = item.pagoOuPendente === 'pago'
+  appData.pendencias.forEach((item) => {
+    const ehPago = item.status === 'pago'
     const classeStatus = ehPago ? 'pago' : 'pending'
     const textoBotao = ehPago ? 'Pago' : 'Pendente'
+    const nomeSeguro = escaparHtml(item.nome)
+    const valorFormatado = Number(item.valor).toFixed(2).replace('.', ',')
 
     gridGastosFixos.innerHTML += `
     <div class="card-expenses">
       <div class="especifications">
-        <h2>${item.nome}</h2>
-        <p>R$ ${item.valor}</p>
+        <h2>${nomeSeguro}</h2>
+        <p>R$ ${valorFormatado}</p>
       </div>
       <div class="btns-new-expenses">
-        <button class="change-btn ${classeStatus}" onclick="alternarStatusGastoFixo(${indice})">
+        <button class="change-btn ${classeStatus}" onclick="alternarStatusGastoFixo(${item.id})">
           ${textoBotao}
         </button>
-        <button class="btn-delete" onclick="deletarGastoFixo(${indice})">Excluir</button>
+        <button class="btn-delete" onclick="deletarGastoFixo(${item.id})">Excluir</button>
       </div>
     </div>
     `
     gastosFixosMain.innerHTML += `
     <div class="fixed-card-main">
-      <h1 class="title-fixed-main">${item.nome}</h1>
+      <h1 class="title-fixed-main">${nomeSeguro}</h1>
       <p class="pending-type-main">${textoBotao}</p>
     </div>
     `
@@ -945,26 +1003,39 @@ function renderizarGridGastosFixos() {
 }
 
 if (btnAddGastoFixo) {
-  btnAddGastoFixo.addEventListener('click', () => {
-    const novaPendencia = {
-      pagoOuPendente: 'naoPago',
-      valor: document.getElementById('fixed-expense-value').value,
-      nome: document.getElementById('fixed-expense-name').value,
-    }
+  btnAddGastoFixo.addEventListener('click', async () => {
+    const nome = document.getElementById('fixed-expense-name').value.trim()
+    const valor = Number(document.getElementById('fixed-expense-value').value)
 
-    if (!novaPendencia.nome || !novaPendencia.valor) {
+    if (!nome || !valor) {
       showPopup('Preencha nome e valor do gasto fixo.', 2200)
       return
     }
 
-    appData.pendencias.push(novaPendencia)
-    salvarDados()
-    abrirOuFecharPopup('popup-fixed-expense', 'fechar')
+    try {
+      const resposta = await fetch('/gastos-fixos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, valor }),
+      })
 
-    document.getElementById('fixed-expense-value').value = ''
-    document.getElementById('fixed-expense-name').value = ''
+      if (!resposta.ok) {
+        showPopup('Erro ao salvar o gasto fixo.', 2200)
+        return
+      }
 
-    atualizarTudo()
+      const resultado = await resposta.json()
+
+      appData.pendencias.push(resultado.gastoFixo)
+
+      document.getElementById('fixed-expense-value').value = ''
+      document.getElementById('fixed-expense-name').value = ''
+
+      abrirOuFecharPopup('popup-fixed-expense', 'fechar')
+      atualizarTudo()
+    } catch (erro) {
+      console.error('Erro ao criar gasto fixo:', erro)
+    }
   })
 }
 
@@ -1881,4 +1952,5 @@ if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
   carregarLancamento()
   carregarBancos()
   carregarReservas()
+  carregarGastosFixos()
 }
