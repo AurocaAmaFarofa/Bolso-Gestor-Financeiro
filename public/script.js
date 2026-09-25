@@ -135,7 +135,30 @@ function primeiraLetraMaior(texto) {
   return textoMinusculo.charAt(0).toUpperCase() + textoMinusculo.slice(1)
 }
 
-function adicionarNovaCategoria() {
+window.excluirCategoria = excluirCategoria
+
+async function carregarCategorias() {
+  try {
+    const resposta = await fetch('/categorias')
+
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
+      return
+    }
+
+    if (!resposta.ok) {
+      console.error('Erro ao carregar categorias:', resposta.status)
+      return
+    }
+
+    appData.categoriasGasto = await resposta.json()
+    renderizarCategoriasDeGasto()
+  } catch (erro) {
+    console.error('Erro ao carregar categorias:', erro)
+  }
+}
+
+async function adicionarNovaCategoria() {
   const inputNome = document.getElementById('new-category-name')
 
   if (!inputNome) {
@@ -146,22 +169,62 @@ function adicionarNovaCategoria() {
 
   if (nomeCategoria === '') return
 
-  const novaCategoria = {
-    id: 'cat-' + Date.now(),
-    nome: nomeCategoria.toLowerCase(),
+  try {
+    const resposta = await fetch('/categorias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: nomeCategoria }),
+    })
+
+    const resultado = await resposta.json()
+
+    if (!resposta.ok) {
+      showPopup(resultado.erro || 'Erro ao criar categoria.', 2200)
+      return
+    }
+
+    appData.categoriasGasto.push(resultado.categoria)
+    renderizarCategoriasDeGasto()
+
+    inputNome.value = ''
+    abrirOuFecharPopup('popup-nova-categoria', 'fechar')
+  } catch (erro) {
+    console.error('Erro ao criar categoria:', erro)
   }
+}
 
-  appData.categoriasGasto.push(novaCategoria)
-  salvarDados()
-  renderizarCategoriasDeGasto()
+async function excluirCategoria(id) {
+  const categoria = appData.categoriasGasto.find((c) => c.id === id)
+  const nome = categoria ? primeiraLetraMaior(categoria.nome) : 'esta categoria'
 
-  inputNome.value = ''
-  abrirOuFecharPopup('popup-nova-categoria', 'fechar')
+  const confirmou = confirm(
+    `Excluir "${nome}"? Os lançamentos dela serão movidos para "Outros" e as metas dela serão apagadas.`,
+  )
+
+  if (!confirmou) return
+
+  try {
+    const resposta = await fetch(`/categorias/${id}`, { method: 'DELETE' })
+    const resultado = await resposta.json()
+
+    if (!resposta.ok) {
+      showPopup(resultado.erro || 'Erro ao excluir categoria.', 2200)
+      return
+    }
+
+    appData.categoriasGasto = appData.categoriasGasto.filter((c) => c.id !== id)
+    renderizarCategoriasDeGasto()
+    await carregarLancamento()
+    await carregarMetas()
+  } catch (erro) {
+    console.error('Erro ao excluir categoria:', erro)
+  }
 }
 
 function renderizarCategoriasDeGasto() {
   const htmlCategoriaMeta = document.getElementById('category-select-goals')
   const htmlCategoria = document.getElementById('category-select')
+  const listaCategorias = document.getElementById('lista-categorias')
 
   if (!htmlCategoriaMeta || !htmlCategoria) {
     return
@@ -169,21 +232,29 @@ function renderizarCategoriasDeGasto() {
 
   htmlCategoriaMeta.innerHTML = ''
   htmlCategoria.innerHTML = ''
+  if (listaCategorias) listaCategorias.innerHTML = ''
 
   appData.categoriasGasto.forEach((gasto) => {
-    const nomeFormatado = primeiraLetraMaior(gasto.nome)
+    const nomeFormatado = escaparHtml(primeiraLetraMaior(gasto.nome))
 
     htmlCategoria.innerHTML += `
-            <option value="${gasto.nome}">${nomeFormatado}</option>
+            <option value="${gasto.id}">${nomeFormatado}</option>
         `
 
     htmlCategoriaMeta.innerHTML += `
-            <option value="${gasto.nome}">${nomeFormatado}</option>
+            <option value="${gasto.id}">${nomeFormatado}</option>
         `
+
+    if (listaCategorias && gasto.nome !== 'outros') {
+      listaCategorias.innerHTML += `
+        <div class="item-categoria">
+          <span>${nomeFormatado}</span>
+          <button type="button" onclick="excluirCategoria(${gasto.id})">x</button>
+        </div>
+      `
+    }
   })
 }
-
-renderizarCategoriasDeGasto()
 
 // =============== Ultimos lançamentos ==========================
 
@@ -282,33 +353,69 @@ function buscarLancamentos() {
 
 // ===================== Funções de metas =====================
 
-if (btnCriarMeta) {
-  btnCriarMeta.addEventListener('click', () => {
-    const nomeMeta = document.getElementById('category-select-goals').value
-    const valorMeta = document.getElementById('new-goals-input-value').value
+window.deletarMeta = deletarMeta
 
-    if (!nomeMeta) {
-      showPopup('Por favor, digite o nome da meta.', 2200)
+async function carregarMetas() {
+  try {
+    const resposta = await fetch('/metas')
+
+    if (resposta.status === 401) {
+      window.location.href = 'login.html'
       return
     }
-    if (Number(valorMeta) < 0) {
+
+    if (!resposta.ok) {
+      console.error('Erro ao carregar metas:', resposta.status)
+      return
+    }
+
+    appData.metas = await resposta.json()
+    renderizarDoisVisores()
+  } catch (erro) {
+    console.error('Erro ao carregar metas:', erro)
+  }
+}
+
+if (btnCriarMeta) {
+  btnCriarMeta.addEventListener('click', async () => {
+    const categoriaId = document.getElementById('category-select-goals').value
+    const valorMeta = document.getElementById('new-goals-input-value').value
+
+    if (!categoriaId) {
+      showPopup('Por favor, escolha uma categoria.', 2200)
+      return
+    }
+    if (Number(valorMeta) <= 0) {
       showPopup('Por favor, insira um número válido.', 2200)
       return
     }
 
-    const novaMeta = {
-      mesCriado: appData.mesAtivo,
-      nome: nomeMeta,
-      valorMax: valorMeta,
+    try {
+      const resposta = await fetch('/metas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoriaId: Number(categoriaId),
+          valorMax: Number(valorMeta),
+          mesAno: appData.mesAtivo,
+        }),
+      })
+
+      const resultado = await resposta.json()
+
+      if (!resposta.ok) {
+        showPopup(resultado.erro || 'Erro ao criar meta.', 2200)
+        return
+      }
+
+      await carregarMetas()
+
+      document.getElementById('category-select-goals').value = ''
+      document.getElementById('new-goals-input-value').value = ''
+      abrirOuFecharPopup('new-goals-popup', 'fechar')
+    } catch (erro) {
+      console.error('Erro ao criar meta:', erro)
     }
-
-    appData.metas.push(novaMeta)
-    salvarDados()
-
-    document.getElementById('category-select-goals').value = ''
-    document.getElementById('new-goals-input-value').value = ''
-
-    atualizarTudo()
   })
 }
 
@@ -320,83 +427,82 @@ function renderizarDoisVisores() {
   visorExMeta.innerHTML = ``
   visorMainMeta.innerHTML = ``
 
-  console.log('Visor Principal:', visorMainMeta)
-  console.log('Visor Lançamentos:', visorExMeta)
+  if (!appData.metas) return
 
-  if (appData.metas) {
-    appData.metas.forEach((item, indice) => {
-      if (item.mesCriado !== appData.mesAtivo) {
-        return
-      }
+  appData.metas.forEach((item) => {
+    if (item.mes_ano !== appData.mesAtivo) {
+      return
+    }
 
-      const gastosDaCategoria = appData.lancamentos.filter((lancamentos) => {
-        return (
-          lancamentos.mesAno === appData.mesAtivo &&
-          lancamentos.categoria === item.nome &&
-          lancamentos.tipo === 'despesa'
-        )
-      })
-
-      const totalGastoMeta = gastosDaCategoria.reduce((soma, lancamento) => {
-        return soma + Number(lancamento.valor)
-      }, 0)
-
-      console.log(gastosDaCategoria)
-      console.log(totalGastoMeta)
-
-      const matematicaDaBarra = (totalGastoMeta / item.valorMax) * 100
-      const stringPorcentagem = matematicaDaBarra + '%'
-
-      const nomeMeta = item.nome
-      const nomeFormatado = primeiraLetraMaior(nomeMeta)
-
-      let cardMeta = `
-        <div class="current-balance card-meta-${indice}">
-          <div class="header-meta-card">
-            <h1>Gasto com ${nomeFormatado}</h1>
-            <button class="btn-delete" onclick="deletarMeta(${indice})">x</button>
-          </div>
-          <div class="progress-goal-container">
-            <div class="progress-goal-${indice} progress-goal"></div>
-          </div>
-        </div>
-      `
-
-      visorExMeta.innerHTML += cardMeta
-      visorMainMeta.innerHTML += cardMeta
-
-      const cardAtual = document.querySelectorAll(`.card-meta-${indice}`)
-      const barraProgresso = document.querySelectorAll(
-        `.progress-goal-${indice}`,
+    const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
+      return (
+        lancamento.mesAno === appData.mesAtivo &&
+        lancamento.categoria_id === item.categoria_id &&
+        lancamento.tipo === 'despesa'
       )
-
-      barraProgresso.forEach((barra) => {
-        if (matematicaDaBarra <= 50) {
-          barra.classList.add('progress-safe')
-        } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
-          barra.classList.add('progress-atention')
-        } else {
-          barra.classList.add('progress-alert')
-        }
-      })
-
-      const numeroFormatado = Number(matematicaDaBarra).toFixed(2)
-
-      cardAtual.forEach((card) => {
-        card.style.setProperty('--porcentagem-local', stringPorcentagem)
-        card.style.setProperty('--texto-porcentagem', `"%${numeroFormatado}"`)
-      })
-
-      let classeAlerta = ''
     })
-  }
+
+    const totalGastoMeta = gastosDaCategoria.reduce((soma, lancamento) => {
+      return soma + Number(lancamento.valor)
+    }, 0)
+
+    const valorMax = Number(item.valor_max)
+    const matematicaDaBarra = (totalGastoMeta / valorMax) * 100
+    const stringPorcentagem = matematicaDaBarra + '%'
+    const nomeFormatado = escaparHtml(primeiraLetraMaior(item.categoria))
+
+    let cardMeta = `
+      <div class="current-balance card-meta-${item.id}">
+        <div class="header-meta-card">
+          <h1>Gasto com ${nomeFormatado}</h1>
+          <button class="btn-delete" onclick="deletarMeta(${item.id})">x</button>
+        </div>
+        <div class="progress-goal-container">
+          <div class="progress-goal-${item.id} progress-goal"></div>
+        </div>
+      </div>
+    `
+
+    visorExMeta.innerHTML += cardMeta
+    visorMainMeta.innerHTML += cardMeta
+
+    const cardAtual = document.querySelectorAll(`.card-meta-${item.id}`)
+    const barraProgresso = document.querySelectorAll(
+      `.progress-goal-${item.id}`,
+    )
+
+    barraProgresso.forEach((barra) => {
+      if (matematicaDaBarra <= 50) {
+        barra.classList.add('progress-safe')
+      } else if (matematicaDaBarra >= 51 && matematicaDaBarra <= 99) {
+        barra.classList.add('progress-atention')
+      } else {
+        barra.classList.add('progress-alert')
+      }
+    })
+
+    const numeroFormatado = Number(matematicaDaBarra).toFixed(2)
+
+    cardAtual.forEach((card) => {
+      card.style.setProperty('--porcentagem-local', stringPorcentagem)
+      card.style.setProperty('--texto-porcentagem', `"%${numeroFormatado}"`)
+    })
+  })
 }
 
-function deletarMeta(indice) {
-  if (appData.metas) {
-    appData.metas.splice(indice, 1)
-    salvarDados()
-    atualizarTudo()
+async function deletarMeta(id) {
+  try {
+    const resposta = await fetch(`/metas/${id}`, { method: 'DELETE' })
+
+    if (!resposta.ok) {
+      showPopup('Erro ao excluir a meta.', 2200)
+      return
+    }
+
+    appData.metas = appData.metas.filter((item) => item.id !== id)
+    renderizarDoisVisores()
+  } catch (erro) {
+    console.error('Erro ao excluir meta:', erro)
   }
 }
 
@@ -1175,7 +1281,7 @@ if (btnAddLancamento) {
       const novoLancamento = {
         tipo: tipoSelecionado,
         valor: Number(document.getElementById('valueInput').value),
-        categoria: document.getElementById('category-select').value,
+        categoriaId: Number(document.getElementById('category-select').value),
         descricao: document.getElementById('descriptionInput').value,
         forma: document.getElementById('payment-select').value,
         data: dataLancamento,
@@ -1185,30 +1291,30 @@ if (btnAddLancamento) {
 
       if (novoLancamento.tipo === 'despesa') {
         const metaEncontrada = appData.metas.find(
-          (metas) =>
-            metas.nome === novoLancamento.categoria &&
-            metas.mesCriado === appData.mesAtivo,
+          (meta) =>
+            meta.categoria_id === novoLancamento.categoriaId &&
+            meta.mes_ano === appData.mesAtivo,
         )
 
         if (metaEncontrada) {
-          const gastosDaCategoria = appData.lancamentos.filter(
-            (lancamentos) => {
-              return (
-                lancamentos.mesAno === appData.mesAtivo &&
-                lancamentos.categoria === metaEncontrada.nome &&
-                lancamentos.tipo === 'despesa'
-              )
-            },
-          )
+          const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
+            return (
+              lancamento.mesAno === appData.mesAtivo &&
+              lancamento.categoria_id === metaEncontrada.categoria_id &&
+              lancamento.tipo === 'despesa'
+            )
+          })
 
           const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
             return soma + Number(lancamento.valor)
           }, 0)
 
-          gastoComInput = totalGasto + novoLancamento.valor
+          const gastoComInput = totalGasto + novoLancamento.valor
 
-          if (gastoComInput > metaEncontrada.valorMax) {
-            let resposta = confirm('Valor irá exeder a meta, deseja continuar?')
+          if (gastoComInput > Number(metaEncontrada.valor_max)) {
+            let resposta = confirm(
+              'Valor irá exceder a meta, deseja continuar?',
+            )
             if (resposta === false) {
               return
             }
@@ -1949,8 +2055,10 @@ carregarConvites()
 //-----------------------------------------------------------------
 
 if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
+  carregarCategorias()
   carregarLancamento()
   carregarBancos()
   carregarReservas()
   carregarGastosFixos()
+  carregarMetas()
 }

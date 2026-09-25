@@ -105,18 +105,17 @@ conexao.connect((erro) => {
 
 app.get('/lancamentos', exigirLogin, (req, res) => {
   const sql = `
-    SELECT * FROM lancamentos
-    WHERE usuarioId = ?
+    SELECT l.id, l.tipo, l.valor, l.descricao, l.forma, l.data, l.mesAno, l.bancoId,
+           l.categoria_id, c.nome AS categoria
+    FROM lancamentos l
+    JOIN categorias_gasto c ON c.id = l.categoria_id
+    WHERE l.usuarioId = ?
   `
 
   conexao.query(sql, [req.usuarioId], (erro, resultados) => {
     if (erro) {
       console.error('Erro ao buscar lançamentos:', erro)
-
-      res.status(500).json({
-        erro: 'Erro ao buscar lançamentos',
-      })
-
+      res.status(500).json({ erro: 'Erro ao buscar lançamentos' })
       return
     }
 
@@ -125,89 +124,276 @@ app.get('/lancamentos', exigirLogin, (req, res) => {
 })
 
 app.post('/lancamentos', exigirLogin, (req, res) => {
-  const { tipo, valor, categoria, descricao, forma, data, mesAno, bancoId } =
+  const { tipo, valor, categoriaId, descricao, forma, data, mesAno, bancoId } =
     req.body
 
-  const sql = `
-  INSERT INTO lancamentos
-  (tipo, valor, categoria, descricao, forma, data, mesAno, bancoId, usuarioId)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  const sqlCategoria = `
+    SELECT nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?
   `
 
-  const valores = [
-    tipo,
-    valor,
-    categoria,
-    descricao,
-    forma,
-    data,
-    mesAno,
-    bancoId,
-    req.usuarioId,
-  ]
+  conexao.query(
+    sqlCategoria,
+    [categoriaId, req.usuarioId],
+    (erro, categorias) => {
+      if (erro) {
+        console.log('erro ao validar categoria', erro)
+        return res.status(500).json({ erro: 'erro ao validar categoria' })
+      }
 
-  conexao.query(sql, valores, (erro, resultado) => {
-    if (erro) {
-      console.log('erro no lançamento', erro)
+      if (categorias.length === 0) {
+        return res.status(400).json({ erro: 'Categoria inválida.' })
+      }
 
-      res.status(500).json({ erro: 'erro ao inserir lançamento' })
+      const sql = `
+      INSERT INTO lancamentos
+      (tipo, valor, categoria_id, descricao, forma, data, mesAno, bancoId, usuarioId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
 
-      return
-    }
+      const valores = [
+        tipo,
+        valor,
+        categoriaId,
+        descricao,
+        forma,
+        data,
+        mesAno,
+        bancoId,
+        req.usuarioId,
+      ]
 
-    const novoLancamento = {
-      id: resultado.insertId,
-      tipo,
-      valor,
-      categoria,
-      descricao,
-      forma,
-      data,
-      mesAno,
-      bancoId,
-    }
+      conexao.query(sql, valores, (erro, resultado) => {
+        if (erro) {
+          console.log('erro no lançamento', erro)
+          return res.status(500).json({ erro: 'erro ao inserir lançamento' })
+        }
 
-    res.status(201).json({
-      mensagem: 'Lançamento criado',
-      lancamento: novoLancamento,
-    })
-  })
+        res.status(201).json({
+          mensagem: 'Lançamento criado',
+          lancamento: {
+            id: resultado.insertId,
+            tipo,
+            valor,
+            categoriaId,
+            categoria: categorias[0].nome,
+            descricao,
+            forma,
+            data,
+            mesAno,
+            bancoId,
+          },
+        })
+      })
+    },
+  )
 })
 
 app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
   const id = req.params.id
 
-  const sql = `
-  DELETE FROM lancamentos
-  WHERE id = ? AND usuarioId = ?
-  `
+  const sql = `DELETE FROM lancamentos WHERE id = ? AND usuarioId = ?`
 
   conexao.query(sql, [id, req.usuarioId], (erro, resultado) => {
     if (erro) {
       console.log('Erro ao excluir: ', erro)
-
-      res.status(500).json({
-        erro: 'Erro ao exlcuir',
-      })
-
-      return
+      return res.status(500).json({ erro: 'Erro ao exlcuir' })
     }
 
     if (resultado.affectedRows === 0) {
-      return res.status(404).json({
-        erro: 'Lançamento não encontrado.',
-      })
+      return res.status(404).json({ erro: 'Lançamento não encontrado.' })
     }
 
-    res.json({
-      mensagem: 'Excluido com sucesso',
-      id: id,
-    })
+    res.json({ mensagem: 'Excluido com sucesso', id: id })
   })
 })
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`)
+})
+
+// Categorias de gasto //
+
+app.get('/categorias', exigirLogin, (req, res) => {
+  const sql = `SELECT id, nome FROM categorias_gasto WHERE usuario_id = ? ORDER BY nome`
+
+  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao buscar categorias:', erro)
+      return res.status(500).json({ erro: 'Erro ao buscar categorias.' })
+    }
+
+    res.json(resultados)
+  })
+})
+
+app.post('/categorias', exigirLogin, (req, res) => {
+  const nome =
+    typeof req.body.nome === 'string' ? req.body.nome.trim().toLowerCase() : ''
+
+  if (!nome || nome.length > 100) {
+    return res.status(400).json({ erro: 'Nome inválido.' })
+  }
+
+  const sql = `INSERT INTO categorias_gasto (usuario_id, nome) VALUES (?, ?)`
+
+  conexao.query(sql, [req.usuarioId, nome], (erro, resultado) => {
+    if (erro) {
+      if (erro.code === 'ER_DUP_ENTRY') {
+        return res
+          .status(409)
+          .json({ erro: 'Você já tem uma categoria com esse nome.' })
+      }
+      console.log('Erro ao criar categoria:', erro)
+      return res.status(500).json({ erro: 'Erro ao criar categoria.' })
+    }
+
+    res.status(201).json({
+      mensagem: 'Categoria criada',
+      categoria: { id: resultado.insertId, nome },
+    })
+  })
+})
+
+app.delete('/categorias/:id', exigirLogin, (req, res) => {
+  const id = req.params.id
+
+  const sqlFallback = `SELECT id FROM categorias_gasto WHERE usuario_id = ? AND nome = 'outros'`
+
+  conexao.query(sqlFallback, [req.usuarioId], (erro, fallback) => {
+    if (erro) {
+      console.log('Erro ao localizar categoria "outros":', erro)
+      return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
+    }
+
+    if (fallback.length === 0 || Number(fallback[0].id) === Number(id)) {
+      return res.status(400).json({
+        erro: 'Não é possível excluir a categoria "outros", ela recebe os lançamentos das categorias excluídas.',
+      })
+    }
+
+    const idFallback = fallback[0].id
+
+    const sqlReatribuir = `
+      UPDATE lancamentos
+      SET categoria_id = ?
+      WHERE categoria_id = ? AND usuarioId = ?
+    `
+
+    conexao.query(sqlReatribuir, [idFallback, id, req.usuarioId], (erro) => {
+      if (erro) {
+        console.log('Erro ao reatribuir lançamentos:', erro)
+        return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
+      }
+
+      const sqlDeletarMetas = `DELETE FROM metas WHERE categoria_id = ? AND usuario_id = ?`
+
+      conexao.query(sqlDeletarMetas, [id, req.usuarioId], (erro) => {
+        if (erro) {
+          console.log('Erro ao excluir metas da categoria:', erro)
+          return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
+        }
+
+        const sqlDeletar = `DELETE FROM categorias_gasto WHERE id = ? AND usuario_id = ?`
+
+        conexao.query(sqlDeletar, [id, req.usuarioId], (erro, resultado) => {
+          if (erro) {
+            console.log('Erro ao excluir categoria:', erro)
+            return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
+          }
+
+          if (resultado.affectedRows === 0) {
+            return res.status(404).json({ erro: 'Categoria não encontrada.' })
+          }
+
+          res.json({ mensagem: 'Categoria excluída', id })
+        })
+      })
+    })
+  })
+})
+
+// Metas //
+
+app.get('/metas', exigirLogin, (req, res) => {
+  const sql = `
+    SELECT m.id, m.categoria_id, c.nome AS categoria, m.valor_max, m.mes_ano
+    FROM metas m
+    JOIN categorias_gasto c ON c.id = m.categoria_id
+    WHERE m.usuario_id = ?
+  `
+
+  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
+    if (erro) {
+      console.log('Erro ao buscar metas:', erro)
+      return res.status(500).json({ erro: 'Erro ao buscar metas.' })
+    }
+
+    res.json(resultados)
+  })
+})
+
+app.post('/metas', exigirLogin, (req, res) => {
+  const categoriaId = Number(req.body.categoriaId)
+  const valorMax = Number(req.body.valorMax)
+  const mesAno = req.body.mesAno
+
+  if (!Number.isInteger(categoriaId)) {
+    return res.status(400).json({ erro: 'Categoria inválida.' })
+  }
+
+  if (!Number.isFinite(valorMax) || valorMax <= 0) {
+    return res.status(400).json({ erro: 'Valor da meta inválido.' })
+  }
+
+  if (typeof mesAno !== 'string' || !/^\d{4}-\d{2}$/.test(mesAno)) {
+    return res.status(400).json({ erro: 'Mês inválido.' })
+  }
+
+  const sql = `
+    INSERT INTO metas (usuario_id, categoria_id, valor_max, mes_ano)
+    VALUES (?, ?, ?, ?)
+  `
+
+  conexao.query(
+    sql,
+    [req.usuarioId, categoriaId, valorMax, mesAno],
+    (erro, resultado) => {
+      if (erro) {
+        if (erro.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({
+            erro: 'Você já tem uma meta para essa categoria neste mês.',
+          })
+        }
+        if (erro.code === 'ER_NO_REFERENCED_ROW_2') {
+          return res.status(400).json({ erro: 'Categoria inválida.' })
+        }
+        console.log('Erro ao criar meta:', erro)
+        return res.status(500).json({ erro: 'Erro ao criar meta.' })
+      }
+
+      res.status(201).json({
+        mensagem: 'Meta criada',
+        meta: { id: resultado.insertId, categoriaId, valorMax, mesAno },
+      })
+    },
+  )
+})
+
+app.delete('/metas/:id', exigirLogin, (req, res) => {
+  const sql = `DELETE FROM metas WHERE id = ? AND usuario_id = ?`
+
+  conexao.query(sql, [req.params.id, req.usuarioId], (erro, resultado) => {
+    if (erro) {
+      console.log('Erro ao excluir meta:', erro)
+      return res.status(500).json({ erro: 'Erro ao excluir meta.' })
+    }
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ erro: 'Meta não encontrada.' })
+    }
+
+    res.json({ mensagem: 'Meta excluída', id: req.params.id })
+  })
 })
 
 // Bancos //
@@ -328,6 +514,8 @@ app.get('/reservas', exigirLogin, (req, res) => {
     res.json(resultado)
   })
 })
+
+// Criar coisa pra aumentar e diminuir valor da reserva
 
 app.post('/reservas', exigirLogin, (req, res) => {
   const { nome, valor } = req.body

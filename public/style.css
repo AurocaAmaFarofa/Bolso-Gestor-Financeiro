@@ -578,11 +578,36 @@ select {
 .popup-container input:focus,
 select:focus {
   outline: none;
-  padding: 10px;
-  font-size: 15px;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-soft);
   transition: var(--transition);
+}
+
+.lista-categorias {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.item-categoria {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+}
+
+.item-categoria button {
+  background: none;
+  border: none;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .btn-submit {
