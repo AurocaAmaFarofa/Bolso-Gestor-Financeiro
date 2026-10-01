@@ -2056,6 +2056,9 @@ if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
 }
 
 function handleGoogleLogin(response) {
+  const parametros = new URLSearchParams(window.location.search)
+  const convite = parametros.get('convite')
+
   const base64Url = response.credential.split('.')[1]
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
   const {
@@ -2074,7 +2077,7 @@ function handleGoogleLogin(response) {
   fetch('/api/auth/google-login', {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ googleId, name, email }),
+    body: JSON.stringify({ googleId, name, email, convite }),
   })
     .then((res) => res.json())
     .then((data) => {
