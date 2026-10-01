@@ -405,6 +405,10 @@
         color: var(--color-expense);
       }
 
+      .gap {
+        margin-top: 10px;
+      }
+
       @keyframes shake {
         0%,
         100% {
@@ -539,6 +543,19 @@
           <button type="submit" class="btn-entrar">Criar conta</button>
         </form>
 
+        <div
+          id="g_id_onload"
+          data-client_id="878733578437-8kgjjrua5amcaurlk83j44l6g9av827p.apps.googleusercontent.com"
+          data-callback="handleGoogleLogin"
+          data-auto_prompt="false"
+        ></div>
+
+        <div
+          class="g_id_signin gap"
+          data-type="standard"
+          data-size="large"
+        ></div>
+
         <div class="divider">ou</div>
 
         <div class="signup-row">
@@ -548,6 +565,7 @@
       </div>
       <p class="app-copyright">© 2026 Bolso</p>
     </div>
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
     <script src="script.js"></script>
   </body>
 </html>

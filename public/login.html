@@ -360,6 +360,10 @@
         animation: shake 0.32s ease;
       }
 
+      .gap {
+        margin-top: 10px;
+      }
+
       @keyframes shake {
         0%,
         100% {
@@ -449,9 +453,22 @@
           Ainda não tem conta?
           <button type="button" id="btn-criar-conta">Criar conta</button>
         </div>
+
+        <div
+          id="g_id_onload"
+          data-client_id="878733578437-8kgjjrua5amcaurlk83j44l6g9av827p.apps.googleusercontent.com"
+          data-callback="handleGoogleLogin"
+          data-auto_prompt="false"
+        ></div>
+        <div
+          class="g_id_signin gap"
+          data-type="standard"
+          data-size="large"
+        ></div>
       </div>
       <p class="app-copyright">© 2026 Bolso</p>
     </div>
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
     <script src="script.js"></script>
   </body>
 </html>

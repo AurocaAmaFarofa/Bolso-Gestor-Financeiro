@@ -13,8 +13,11 @@ const app = express()
 
 const PORT = 3000
 
+const authRoutes = require('./routes/auth')
+
 app.use(express.json())
 app.use(cookieParser())
+app.use('/api/auth', authRoutes)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -874,21 +877,30 @@ app.get('/me', (req, res) => {
 })
 
 function exigirLogin(req, res, next) {
-  const token = req.cookies.token
-
-  if (!token) {
-    return res.status(401).json({ erro: 'Você precisa estar logado.' })
+  const authHeader = req.headers.authorization
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1]
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      req.usuarioId = decoded.sub
+      return next()
+    } catch {
+      return res.status(401).json({ erro: 'Token inválido' })
+    }
   }
 
-  try {
-    const decodificado = jwt.verify(token, process.env.JWT_SECRET)
-
-    req.usuarioId = decodificado.sub
-
-    next()
-  } catch (erro) {
-    return res.status(401).json({ erro: 'Sessão inválida ou expirada.' })
+  const tokenCookie = req.cookies?.token
+  if (tokenCookie) {
+    try {
+      const decoded = jwt.verify(tokenCookie, process.env.JWT_SECRET)
+      req.usuarioId = decoded.sub
+      return next()
+    } catch {
+      return res.status(401).json({ erro: 'Token inválido' })
+    }
   }
+
+  return res.status(401).json({ erro: 'Não autenticado' })
 }
 
 //convites

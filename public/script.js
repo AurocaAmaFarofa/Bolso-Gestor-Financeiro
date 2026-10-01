@@ -172,7 +172,7 @@ async function adicionarNovaCategoria() {
   try {
     const resposta = await fetch('/categorias', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ nome: nomeCategoria }),
     })
 
@@ -393,7 +393,7 @@ if (btnCriarMeta) {
     try {
       const resposta = await fetch('/metas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           categoriaId: Number(categoriaId),
           valorMax: Number(valorMeta),
@@ -690,9 +690,7 @@ if (btnSubmitBanco) {
 
     const resposta = await fetch('/bancos', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
       body: JSON.stringify(novoBanco),
     })
 
@@ -744,7 +742,11 @@ async function carregarBancos() {
       return
     }
 
-    if (!appData.bancoAtual) {
+    const bancoAtualExiste = appData.bancos.some(
+      (banco) => Number(banco.id) === Number(appData.bancoAtual),
+    )
+
+    if (!bancoAtualExiste) {
       selecionarBanco(appData.bancos[0].id)
     }
 
@@ -767,9 +769,7 @@ async function criarBancoInicial() {
 
   const resposta = await fetch('/bancos', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: authHeaders(),
     body: JSON.stringify(novoBanco),
   })
 
@@ -899,9 +899,7 @@ if (btnAddReserva) {
 
     const resposta = await fetch('/reservas', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
       body: JSON.stringify(novaReserva),
     })
 
@@ -991,8 +989,6 @@ function excluirReservas(indice) {
   atualizarTudo()
 }
 
-atualizarTudo()
-
 //----------------------Coisas dos Gastos Fixos-------------------------
 
 window.alternarStatusGastoFixo = alternarStatusGastoFixo
@@ -1040,7 +1036,7 @@ async function alternarStatusGastoFixo(id) {
   try {
     const resposta = await fetch(`/gastos-fixos/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ status: novoStatus }),
     })
 
@@ -1121,7 +1117,7 @@ if (btnAddGastoFixo) {
     try {
       const resposta = await fetch('/gastos-fixos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ nome, valor }),
       })
 
@@ -1150,7 +1146,9 @@ if (btnAddGastoFixo) {
 function renderizarGridLancamentos() {
   if (gridLancamentos) gridLancamentos.innerHTML = ''
   const idProcurado = appData.bancoAtual
-  const bancoObjeto = appData.bancos.find((b) => b.id === idProcurado)
+  const bancoObjeto = appData.bancos.find(
+    (b) => b && Number(b.id) === Number(idProcurado),
+  )
   let saldoBancoSelecionadoNum = 0
   if (bancoObjeto) {
     if (bancoObjeto.mesCriado === appData.mesAtivo) {
@@ -1158,9 +1156,12 @@ function renderizarGridLancamentos() {
     }
   }
   let totalTodosBancosNum = appData.bancos.reduce((soma, b) => {
+    if (!b) return soma
+
     if (b.mesCriado === appData.mesAtivo) {
       return soma + Number(b.saldoInicial)
     }
+
     return soma
   }, 0)
   let totalGastoNum = 0
@@ -1220,8 +1221,6 @@ function renderizarGridLancamentos() {
       'R$ ' + saldoBancoSelecionadoNum.toFixed(2).replace('.', ',')
   }
 }
-
-renderizarGridLancamentos()
 
 async function deletarLancamento(id) {
   console.log(id)
@@ -1324,7 +1323,7 @@ if (btnAddLancamento) {
 
       const resposta = await fetch('/lancamentos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(novoLancamento),
       })
 
@@ -1390,9 +1389,7 @@ async function confirmarLogout(callback) {
 
   const resposta = await fetch('/logout', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: authHeaders(),
   })
 
   if (resposta.ok) {
@@ -1422,9 +1419,7 @@ if (loginForm) {
 
     const resposta = await fetch('/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
       body: JSON.stringify(novaConta),
     })
 
@@ -1571,9 +1566,7 @@ if (signupForm) {
 
     const resposta = await fetch('/cadastro', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
       body: JSON.stringify(novaConta),
     })
 
@@ -1746,9 +1739,7 @@ if (formGerarConvite) {
     try {
       const resposta = await fetch('/convites', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders(),
         body: JSON.stringify({
           email: email || null,
           validade: validade,
@@ -2055,10 +2046,51 @@ carregarConvites()
 //-----------------------------------------------------------------
 
 if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
+  console.log('AAAAAAAAAAAAAAAAAAAAAAA')
   carregarCategorias()
   carregarLancamento()
   carregarBancos()
   carregarReservas()
   carregarGastosFixos()
   carregarMetas()
+}
+
+function handleGoogleLogin(response) {
+  const base64Url = response.credential.split('.')[1]
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+  const {
+    sub: googleId,
+    name,
+    email,
+  } = JSON.parse(
+    decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    ),
+  )
+
+  fetch('/api/auth/google-login', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ googleId, name, email }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        window.location.href = '/index.html'
+      } else {
+        alert('Erro no login: ' + data.erro)
+      }
+    })
+    .catch((err) => console.error('Erro:', err))
+}
+
+function authHeaders() {
+  const token = localStorage.getItem('authToken')
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' }
 }
