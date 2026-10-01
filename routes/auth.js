@@ -33,6 +33,7 @@ router.post('/google-login', async (req, res) => {
 
     if (existing.length > 0) {
       usuarioId = existing[0].id
+
       // Atualiza google_id se fez cadastro normal antes
       if (!existing[0].google_id) {
         await conn.query('UPDATE usuarios SET google_id = ? WHERE id = ?', [
@@ -41,19 +42,11 @@ router.post('/google-login', async (req, res) => {
         ])
       }
     } else {
-      const [result] = await conn.query(
-        'INSERT INTO usuarios (google_id, nome, email, senha_hash) VALUES (?, ?, ?, ?)',
-        [googleId, name, email, 'google_oauth'],
-      )
-      usuarioId = result.insertId
+      conn.release()
 
-      // Cria categorias padrão
-      for (const cat of CATEGORIAS_PADRAO) {
-        await conn.query(
-          'INSERT INTO categorias_gasto (usuario_id, nome) VALUES (?, ?)',
-          [usuarioId, cat],
-        )
-      }
+      return res.status(403).json({
+        erro: 'Conta não encontrada. Faça o cadastro usando um convite antes de entrar com o Google.',
+      })
     }
 
     conn.release()
@@ -65,13 +58,17 @@ router.post('/google-login', async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
     })
 
     res.json({
       success: true,
-      usuario: { id: usuarioId, nome: name, email },
+      usuario: {
+        id: usuarioId,
+        nome: existing[0].nome,
+        email: existing[0].email,
+      },
     })
   } catch (error) {
     console.error('Erro no google-login:', error)
