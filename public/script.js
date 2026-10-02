@@ -1614,6 +1614,30 @@ function mostrarPagina(idPagina) {
   }
 }
 
+const navegacaoHeader = document.querySelector('.app-header nav')
+
+if (navegacaoHeader) {
+  navegacaoHeader.addEventListener(
+    'wheel',
+    (event) => {
+      const maxScroll = navegacaoHeader.scrollWidth - navegacaoHeader.clientWidth
+      const delta = event.deltaX || event.deltaY
+      const novoScroll = Math.max(
+        0,
+        Math.min(maxScroll, navegacaoHeader.scrollLeft + delta),
+      )
+
+      if (novoScroll === navegacaoHeader.scrollLeft) {
+        return
+      }
+
+      event.preventDefault()
+      navegacaoHeader.scrollLeft = novoScroll
+    },
+    { passive: false },
+  )
+}
+
 window.onload = () => mostrarPagina('dashboard')
 
 //-----------------------------------------------------------------
@@ -1661,8 +1685,34 @@ const inputLinkConvite = document.getElementById('input-link-convite')
 const btnCopiarLink = document.getElementById('btn-copiar-link')
 const tabelaConvitesBody = document.getElementById('tabela-convites-body')
 const filtrosConvites = document.getElementById('filtros-convites')
+const btnAbrirConvites = document.getElementById('btn-convites-abrir')
 
 //-----------------------------------------------------------------
+
+async function verificarUsuarioAdmin() {
+  try {
+    const resposta = await fetch('/usuario-atual')
+
+    if (!resposta.ok) {
+      throw new Error('Não foi possivel carregar o usuário')
+    }
+
+    const dados = await resposta.json()
+
+    if (!btnAbrirConvites) {
+      return
+    }
+
+    console.log('usuariofuncionou')
+
+    if (dados.admin === 'admin') {
+      console.log('é admin')
+      btnAbrirConvites.classList.remove('button-off')
+      btnAbrirConvites.classList.add('button-on')
+    }
+  } catch {}
+}
+
 // Armazenamento temporário dos links
 
 function obterConvitesTemporarios() {
@@ -2046,13 +2096,13 @@ carregarConvites()
 //-----------------------------------------------------------------
 
 if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
-  console.log('AAAAAAAAAAAAAAAAAAAAAAA')
   carregarCategorias()
   carregarLancamento()
   carregarBancos()
   carregarReservas()
   carregarGastosFixos()
   carregarMetas()
+  verificarUsuarioAdmin()
 }
 
 function handleGoogleLogin(response) {

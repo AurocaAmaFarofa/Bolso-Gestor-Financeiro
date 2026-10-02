@@ -999,7 +999,7 @@ function exigirAdmin(req, res, next) {
 
 app.get('/usuario-atual', exigirLogin, (req, res) => {
   const sql = `
-    SELECT id, nome, email
+    SELECT id, nome, email, role
     FROM usuarios
     WHERE id = ?
     LIMIT 1
@@ -1024,6 +1024,7 @@ app.get('/usuario-atual', exigirLogin, (req, res) => {
       id: resultados[0].id,
       nome: resultados[0].nome,
       email: resultados[0].email,
+      admin: resultados[0].role,
     })
   })
 })

@@ -1042,6 +1042,18 @@ select:focus {
   opacity: 0.8;
 }
 
+.button-on {
+  display: block !important;
+}
+
+.button-off {
+  display: none !important;
+}
+
+a {
+  text-decoration: none;
+}
+
 /* ============================================================
    ANIMAÇÕES
    ============================================================ */
