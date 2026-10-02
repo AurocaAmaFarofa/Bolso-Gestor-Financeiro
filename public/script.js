@@ -918,33 +918,86 @@ if (btnAddReserva) {
 
 // ADICIONAR VALOR PRA RESERVA USANDO INDICE
 if (btnAdicionarValorReserva) {
-  btnAdicionarValorReserva.addEventListener('click', () => {
+  btnAdicionarValorReserva.addEventListener('click', async () => {
     if (indiceReservaSelecionada === null) return
-    const valorPraRetirar = Number(
-      document.querySelector('#plus-value-reserve').value,
-    )
-    appData.reservas[indiceReservaSelecionada].valorI += valorPraRetirar
-    salvarDados()
-    atualizarTudo()
-    abrirOuFecharPopup('modal-add', 'fechar')
-    document.querySelector('#plus-value-reserve').value = ''
-    indiceReservaSelecionada = null
+
+    const valor = Number(document.querySelector('#plus-value-reserve').value)
+
+    if (!Number.isFinite(valor) || valor <= 0) {
+      showPopup('Insira um valor válido.', 2200)
+      return
+    }
+
+    try {
+      const resposta = await fetch(`/reservas/${indiceReservaSelecionada}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'adicionar', valor }),
+      })
+
+      if (!resposta.ok) {
+        showPopup('Erro ao atualizar reserva.', 2200)
+        return
+      }
+
+      const reserva = appData.reservas.find(
+        (r) => r.id === indiceReservaSelecionada,
+      )
+      if (reserva) reserva.valor = Number(reserva.valor) + valor
+
+      atualizarTudo()
+      abrirOuFecharPopup('modal-add', 'fechar')
+      document.querySelector('#plus-value-reserve').value = ''
+      indiceReservaSelecionada = null
+    } catch {
+      showPopup('Erro de conexão.', 2200)
+    }
   })
 }
 
 //RETIRAR O VALOR DA RESERVA USANDO INDICE
 if (btnTirarValor) {
-  btnTirarValor.addEventListener('click', () => {
+  btnTirarValor.addEventListener('click', async () => {
     if (indiceReservaSelecionada === null) return
-    const valorPraAdicionar = Number(
-      document.querySelector('#minus-value-reserve').value,
+
+    const valor = Number(document.querySelector('#minus-value-reserve').value)
+
+    if (!Number.isFinite(valor) || valor <= 0) {
+      showPopup('Insira um valor válido.', 2200)
+      return
+    }
+
+    const reserva = appData.reservas.find(
+      (r) => r.id === indiceReservaSelecionada,
     )
-    appData.reservas[indiceReservaSelecionada].valorI -= valorPraAdicionar
-    salvarDados()
-    atualizarTudo()
-    abrirOuFecharPopup('modal-minus', 'fechar')
-    document.querySelector('#minus-value-reserve').value = ''
-    indiceReservaSelecionada = null
+
+    if (reserva && valor > Number(reserva.valor)) {
+      showPopup('Valor maior que o saldo da reserva.', 2200)
+      return
+    }
+
+    try {
+      const resposta = await fetch(`/reservas/${indiceReservaSelecionada}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'retirar', valor }),
+      })
+
+      if (!resposta.ok) {
+        const dados = await resposta.json()
+        showPopup(dados.erro || 'Erro ao atualizar reserva.', 2200)
+        return
+      }
+
+      if (reserva) reserva.valor = Number(reserva.valor) - valor
+
+      atualizarTudo()
+      abrirOuFecharPopup('modal-minus', 'fechar')
+      document.querySelector('#minus-value-reserve').value = ''
+      indiceReservaSelecionada = null
+    } catch {
+      showPopup('Erro de conexão.', 2200)
+    }
   })
 }
 
@@ -958,7 +1011,6 @@ function renderizarGridReservas() {
   gridReservas.innerHTML = ''
   totalReservadoVisor.innerHTML = 'R$ 0,00'
 
-  //CRIA O INDICE PRA USAR NA HORA DE TROCAR OS VALORES
   appData.reservas.forEach((item, indice) => {
     gridReservas.innerHTML += `
       <div class="card-expenses">
@@ -968,14 +1020,14 @@ function renderizarGridReservas() {
         </div>
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
-            <button class="btn-plus-minus" id="plus-btn" onclick="abrirOuFecharPopup('modal-add', 'abrir', ${indice})">+</button>
-            <button class="btn-plus-minus" id="minus-btn" onclick="abrirOuFecharPopup('modal-minus', 'abrir', ${indice})">-</button>
+            <button class="btn-plus-minus" id="plus-btn" onclick="abrirOuFecharPopup('modal-add', 'abrir', ${item.id})">+</button>
+            <button class="btn-plus-minus" id="minus-btn" onclick="abrirOuFecharPopup('modal-minus', 'abrir', ${item.id})">-</button>
           </div>
-          <button class="btn-delete half" onclick="excluirReservas(${indice})">Excluir</button>
+          <button class="btn-delete half" onclick="excluirReservas(${item.id})">Excluir</button>
         </div>
       </div>
     `
-    //MUDA NA PAGINA DE INICIO
+
     valorTotalReservado += Number(item.valor)
     ;(totalReservadoVisor.textContent =
       'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
@@ -983,10 +1035,22 @@ function renderizarGridReservas() {
 }
 
 //FUNÇÃO PARA EXCLUIR A RESERVA
-function excluirReservas(indice) {
-  appData.reservas.splice(indice, 1)
-  salvarDados()
-  atualizarTudo()
+async function excluirReservas(id) {
+  if (!confirm('Tem certeza que deseja excluir esta reserva?')) return
+
+  try {
+    const resposta = await fetch(`/reservas/${id}`, { method: 'DELETE' })
+
+    if (!resposta.ok) {
+      showPopup('Erro ao excluir reserva.', 2200)
+      return
+    }
+
+    appData.reservas = appData.reservas.filter((r) => r.id !== id)
+    atualizarTudo()
+  } catch {
+    showPopup('Erro de conexão ao excluir reserva.', 2200)
+  }
 }
 
 //----------------------Coisas dos Gastos Fixos-------------------------
@@ -1620,7 +1684,8 @@ if (navegacaoHeader) {
   navegacaoHeader.addEventListener(
     'wheel',
     (event) => {
-      const maxScroll = navegacaoHeader.scrollWidth - navegacaoHeader.clientWidth
+      const maxScroll =
+        navegacaoHeader.scrollWidth - navegacaoHeader.clientWidth
       const delta = event.deltaX || event.deltaY
       const novoScroll = Math.max(
         0,

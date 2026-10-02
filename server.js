@@ -583,6 +583,62 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
   })
 })
 
+app.patch('/reservas/:id', exigirLogin, (req, res) => {
+  const id = Number(req.params.id)
+  const { tipo, valor } = req.body
+  const valorNum = Number(valor)
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'ID inválido.' })
+  }
+
+  if (!['adicionar', 'retirar'].includes(tipo)) {
+    return res.status(400).json({ erro: 'Tipo inválido.' })
+  }
+
+  if (!Number.isFinite(valorNum) || valorNum <= 0) {
+    return res.status(400).json({ erro: 'Valor inválido.' })
+  }
+
+  if (tipo === 'adicionar') {
+    const sql = `
+      UPDATE reservas SET valor = valor + ?
+      WHERE id = ? AND usuarioId = ?
+    `
+    conexao.query(sql, [valorNum, id, req.usuarioId], (erro, resultado) => {
+      if (erro) {
+        console.log('Erro ao atualizar reserva:', erro)
+        return res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
+      }
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ erro: 'Reserva não encontrada.' })
+      }
+      res.json({ mensagem: 'Reserva atualizada', id })
+    })
+  } else {
+    const sql = `
+      UPDATE reservas SET valor = valor - ?
+      WHERE id = ? AND usuarioId = ? AND valor >= ?
+    `
+    conexao.query(
+      sql,
+      [valorNum, id, req.usuarioId, valorNum],
+      (erro, resultado) => {
+        if (erro) {
+          console.log('Erro ao atualizar reserva:', erro)
+          return res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
+        }
+        if (resultado.affectedRows === 0) {
+          return res
+            .status(422)
+            .json({ erro: 'Saldo insuficiente ou reserva não encontrada.' })
+        }
+        res.json({ mensagem: 'Reserva atualizada', id })
+      },
+    )
+  }
+})
+
 //              CADASTRO
 
 app.post('/cadastro', (req, res) => {
