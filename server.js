@@ -8,15 +8,45 @@ const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
+const cors = require('cors')
 
 const app = express()
-
 const PORT = 3000
 
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:3000']
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Não permitido por CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 3600,
+}
+
+const authMiddleware = require('./middleware/auth')
 const authRoutes = require('./routes/auth')
+
+app.use(cors(corsOptions))
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains',
+  )
+  next()
+})
 
 app.use(express.json())
 app.use(cookieParser())
+
 app.use('/api/auth', authRoutes)
 
 const loginLimiter = rateLimit({
@@ -105,6 +135,8 @@ conexao.connect((erro) => {
 
   console.log('Conectado ao banco.')
 })
+
+const exigirLogin = authMiddleware
 
 app.get('/lancamentos', exigirLogin, (req, res) => {
   const sql = `
@@ -207,6 +239,19 @@ app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
     }
 
     res.json({ mensagem: 'Excluido com sucesso', id: id })
+  })
+})
+
+app.use((err, req, res, next) => {
+  if (err.message === 'Não permitido por CORS') {
+    return res.status(403).json({
+      erro: 'Acesso CORS não permitido',
+      origin: req.get('origin'),
+    })
+  }
+
+  res.status(500).json({
+    erro: 'Erro interno do servidor',
   })
 })
 
