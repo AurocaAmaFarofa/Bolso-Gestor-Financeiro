@@ -364,6 +364,23 @@
         margin-top: 10px;
       }
 
+      .btn-forgot-password {
+        font-family: var(--font-body);
+        width: 100%;
+        margin-top: 6px;
+        min-height: 16px;
+        border-radius: 0;
+        border: none;
+        background-color: transparent;
+        color: var(--color-ink-soft);
+        font-size: 0.92rem;
+        cursor: pointer;
+        transition:
+          background-color var(--transition),
+          border-color var(--transition),
+          transform var(--transition);
+      }
+
       @keyframes shake {
         0%,
         100% {
@@ -465,6 +482,12 @@
           data-type="standard"
           data-size="large"
         ></div>
+
+        <div>
+          <button id="esqueci-senha-btn" class="btn-forgot-password">
+            Esqueci minha senha
+          </button>
+        </div>
       </div>
       <p class="app-copyright">© 2026 Bolso</p>
     </div>

@@ -1444,6 +1444,14 @@ if (btnCriarContaLogin) {
   })
 }
 
+const btnRecuperarSenha = document.querySelector('#esqueci-senha-btn')
+
+if (btnRecuperarSenha) {
+  btnRecuperarSenha.addEventListener('click', () => {
+    window.location.href = 'recuperar-senha.html'
+  })
+}
+
 async function confirmarLogout(callback) {
   const desejaSair = window.confirm('Deseja realmente sair?')
 

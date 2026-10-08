@@ -28,6 +28,7 @@
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.23.3",
+    "nodemailer": "^10.0.16",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
     "sql.js": "^1.14.1"
