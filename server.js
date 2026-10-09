@@ -973,33 +973,6 @@ app.get('/me', (req, res) => {
   })
 })
 
-function exigirLogin(req, res, next) {
-  const authHeader = req.headers.authorization
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1]
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET)
-      req.usuarioId = decoded.sub
-      return next()
-    } catch {
-      return res.status(401).json({ erro: 'Token inválido' })
-    }
-  }
-
-  const tokenCookie = req.cookies?.token
-  if (tokenCookie) {
-    try {
-      const decoded = jwt.verify(tokenCookie, process.env.JWT_SECRET)
-      req.usuarioId = decoded.sub
-      return next()
-    } catch {
-      return res.status(401).json({ erro: 'Token inválido' })
-    }
-  }
-
-  return res.status(401).json({ erro: 'Não autenticado' })
-}
-
 //convites
 
 app.get('/convites/verificar', (req, res) => {
@@ -1062,31 +1035,26 @@ app.get('/convites/verificar', (req, res) => {
 
 function exigirAdmin(req, res, next) {
   exigirLogin(req, res, () => {
-    const sql = `
-    SELECT role
-    FROM usuarios
-    WHERE id = ?
-  `
+    if (!req.usuarioId) {
+      return res.status(401).json({ erro: 'Não autenticado' })
+    }
+
+    const sql = `SELECT role FROM usuarios WHERE id = ?`
 
     conexao.query(sql, [req.usuarioId], (erro, resultados) => {
       if (erro) {
         console.error('Erro ao verificar administrador:', erro)
-
-        return res.status(500).json({
-          erro: 'Erro interno do servidor.',
-        })
+        return res.status(500).json({ erro: 'Erro interno do servidor.' })
       }
 
       if (resultados.length === 0) {
-        return res.status(401).json({
-          erro: 'Usuário não encontrado.',
-        })
+        return res.status(401).json({ erro: 'Usuário não encontrado.' })
       }
 
       if (resultados[0].role !== 'admin') {
-        return res.status(403).json({
-          erro: 'Acesso permitido apenas para administradores.',
-        })
+        return res
+          .status(403)
+          .json({ erro: 'Acesso permitido apenas para administradores.' })
       }
 
       next()

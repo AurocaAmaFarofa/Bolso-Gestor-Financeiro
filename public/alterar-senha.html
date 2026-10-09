@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bolso — Alterar senha</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="copyright.css" />
+    <style>
+      :root {
+        --color-bg: #f3f5f9;
+        --color-surface: #ffffff;
+        --color-surface-soft: #eaeef4;
+        --color-ink: #101828;
+        --color-ink-soft: #67707e;
+        --color-accent: #2b4c8c;
+        --color-accent-soft: #dde6f5;
+        --color-income: #1f8a6f;
+        --color-income-soft: #dcf0e7;
+        --color-expense: #bf433f;
+        --color-expense-soft: #f6dfdc;
+        --color-reserve: #b8863a;
+        --color-border: #dde2ea;
+        --font-display: 'Fraunces', serif;
+        --font-body: 'Plus Jakarta Sans', sans-serif;
+        --font-mono: 'Space Mono', monospace;
+        --radius-lg: 18px;
+        --radius-sm: 7px;
+        --shadow-soft: 0 14px 32px -18px rgba(16, 24, 40, 0.22);
+        --transition: 0.2s ease;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        font-size: 15px;
+      }
+
+      body {
+        min-height: 100vh;
+        font-family: var(--font-body);
+        color: var(--color-ink);
+        background-color: var(--color-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 39px,
+          var(--color-border) 40px
+        );
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .login-wrapper {
+        width: 100%;
+        max-width: 400px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
+        background-color: var(--color-accent);
+        color: var(--color-surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .brand-title {
+        font-family: var(--font-display);
+        font-size: 1.55rem;
+        letter-spacing: -0.02em;
+        color: var(--color-ink);
+      }
+
+      .login-card {
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 28px 24px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .login-heading h1 {
+        font-family: var(--font-display);
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--color-ink);
+      }
+
+      .login-heading p {
+        color: var(--color-ink-soft);
+        font-size: 0.85rem;
+        margin-top: 4px;
+        line-height: 1.5;
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--color-ink-soft);
+      }
+
+      .field-password-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .field-password-wrap input {
+        width: 100%;
+        font-family: var(--font-body);
+        padding: 11px 76px 11px 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+        font-size: 0.92rem;
+        transition: var(--transition);
+      }
+
+      .field-password-wrap input::placeholder {
+        color: var(--color-ink-soft);
+        opacity: 0.6;
+      }
+
+      .field-password-wrap input:focus {
+        outline: none;
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 3px var(--color-accent-soft);
+      }
+
+      .toggle-visibility {
+        position: absolute;
+        right: 6px;
+        min-height: 30px;
+        height: 30px;
+        padding: 0 10px;
+        font-family: var(--font-body);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--color-ink-soft);
+        background-color: var(--color-surface-soft);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+
+      .hint,
+      .strength-label {
+        font-size: 0.74rem;
+        color: var(--color-ink-soft);
+      }
+
+      .strength-meter {
+        display: flex;
+        gap: 4px;
+        margin-top: 2px;
+      }
+
+      .strength-bar {
+        height: 4px;
+        flex: 1;
+        border-radius: 999px;
+        background-color: var(--color-surface-soft);
+        transition: background-color var(--transition);
+      }
+
+      .strength-bar.fraca {
+        background-color: var(--color-expense);
+      }
+
+      .strength-bar.media {
+        background-color: var(--color-reserve);
+      }
+
+      .strength-bar.forte {
+        background-color: var(--color-income);
+      }
+
+      .strength-label.password-match {
+        color: var(--color-income);
+      }
+
+      .strength-label.password-mismatch {
+        color: var(--color-expense);
+      }
+
+      .btn-entrar {
+        font-family: var(--font-body);
+        width: 100%;
+        margin-top: 6px;
+        padding: 0.75rem 1rem;
+        min-height: 46px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-accent);
+        background-color: var(--color-accent);
+        color: var(--color-surface);
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color var(--transition),
+          border-color var(--transition),
+          transform var(--transition);
+      }
+
+      .btn-entrar:hover:not(:disabled) {
+        background-color: var(--color-ink);
+        border-color: var(--color-ink);
+      }
+
+      .btn-entrar:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+
+      .btn-entrar:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      .form-message {
+        display: none;
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1.5;
+        border-radius: var(--radius-sm);
+        padding: 9px 10px;
+      }
+
+      .form-message.show {
+        display: block;
+      }
+
+      .form-message.error {
+        color: var(--color-expense);
+        background-color: var(--color-expense-soft);
+      }
+
+      .form-message.success {
+        color: var(--color-income);
+        background-color: var(--color-income-soft);
+      }
+
+      .signup-row {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--color-ink-soft);
+        margin-top: 20px;
+      }
+
+      .signup-row a {
+        font-weight: 700;
+        color: var(--color-accent);
+        text-decoration: none;
+      }
+
+      .signup-row a:hover {
+        text-decoration: underline;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="login-wrapper">
+      <div class="brand">
+        <div class="brand-mark">R$</div>
+        <div class="brand-title">Bolso</div>
+      </div>
+
+      <section class="login-card" aria-labelledby="alterar-senha-titulo">
+        <div class="login-heading">
+          <h1 id="alterar-senha-titulo">Crie uma nova senha</h1>
+          <p>
+            Escolha uma senha com pelo menos 12 caracteres e confirme para
+            continuar.
+          </p>
+        </div>
+
+        <form class="login-form" id="alterar-senha-form" novalidate>
+          <div class="field">
+            <label for="senha">Nova senha</label>
+            <div class="field-password-wrap">
+              <input
+                type="password"
+                id="senha"
+                name="senha"
+                placeholder="Digite sua nova senha"
+                required
+                autocomplete="new-password"
+                minlength="12"
+                maxlength="64"
+                aria-describedby="senha-requisitos strength-label"
+              />
+              <button
+                type="button"
+                class="toggle-visibility"
+                id="toggle-senha"
+                aria-label="Mostrar nova senha"
+                aria-pressed="false"
+              >
+                mostrar
+              </button>
+            </div>
+            <div class="strength-meter" aria-hidden="true">
+              <div class="strength-bar" id="bar-1"></div>
+              <div class="strength-bar" id="bar-2"></div>
+              <div class="strength-bar" id="bar-3"></div>
+            </div>
+            <div class="strength-label" id="strength-label">
+              Mínimo de 12 caracteres
+            </div>
+            <p class="hint" id="senha-requisitos">
+              Use entre 12 e 64 caracteres.
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="confirmar-senha">Confirmar nova senha</label>
+            <div class="field-password-wrap">
+              <input
+                type="password"
+                id="confirmar-senha"
+                name="confirmar-senha"
+                placeholder="Digite novamente a nova senha"
+                required
+                autocomplete="new-password"
+                aria-describedby="confirmacao-label"
+              />
+              <button
+                type="button"
+                class="toggle-visibility"
+                id="toggle-confirmar"
+                aria-label="Mostrar confirmação da senha"
+                aria-pressed="false"
+              >
+                mostrar
+              </button>
+            </div>
+            <div class="strength-label" id="confirmacao-label"></div>
+          </div>
+
+          <p
+            class="form-message"
+            id="form-message"
+            role="status"
+            aria-live="polite"
+          ></p>
+
+          <button type="submit" class="btn-entrar" id="btn-alterar-senha">
+            Alterar senha
+          </button>
+        </form>
+
+        <div class="signup-row">
+          <a href="login.html">Voltar para o login</a>
+        </div>
+      </section>
+      <p class="app-copyright">© 2026 Bolso</p>
+    </main>
+    <script src="recuperar-senha.js"></script>
+  </body>
+</html>
