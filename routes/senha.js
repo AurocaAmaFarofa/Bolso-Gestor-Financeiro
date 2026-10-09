@@ -1,19 +1,26 @@
 require('dotenv').config()
 
-const mysql = require('../db/connection')
+const conexao = require('../db/connections')
 const express = require('express')
 const crypto = require('crypto')
-const nodemailer = require('nodemailer')
+// const nodemailer = require('nodemailer')
 const bcrypt = require('bcryptjs')
 const app = express.Router()
 
-const transporter = nodemailer.createTransport({
+function queryCallback(sql, values, callback) {
+  conexao
+    .query(sql, values)
+    .then(([resultados]) => callback(null, resultados))
+    .catch((erro) => callback(erro, null))
+}
+
+/*const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'BolsoConnect@gmail.com',
     pass: process.env.SENHA_EMAIL_BOLSO,
   },
-})
+})*/
 
 app.post('/esqueci-senha', (req, res) => {
   const { email } = req.body
@@ -53,7 +60,7 @@ app.post('/esqueci-senha', (req, res) => {
 
   let userRetornadoBanco
 
-  mysql.query(sql, [emailLimpo], (erro, resul) => {
+  queryCallback(sql, [emailLimpo], (erro, resul) => {
     if (erro) {
       console.error('Erro ao procurar usuario')
 
@@ -79,7 +86,7 @@ app.post('/esqueci-senha', (req, res) => {
         VALUES (?, ?, ?)
       `
 
-    mysql.query(sql2, [usuarioId, tokenHash, expiraEm], (erro, resul2) => {
+    queryCallback(sql2, [usuarioId, tokenHash, expiraEm], (erro, resul2) => {
       if (erro) {
         console.error('Erro do servidor')
 
@@ -98,7 +105,18 @@ app.post('/esqueci-senha', (req, res) => {
 
       const link = `http://localhost:3000/alterar-senha.html?token=${token}`
 
-      const mailOptions = {
+      const resposta = {
+        mensagem:
+          'Se o email estiver cadastrado, você poderá continuar a recuperação.',
+      }
+
+      if (process.env.NODE_ENV !== 'production') {
+        resposta.linkRecuperacao = link
+      }
+
+      return res.status(200).json(resposta)
+
+      /*const mailOptions = {
         from: '"Bolso" <BolsoConnect@gmail.com>',
         to: emailLimpo,
         subject: 'Recuperação de Senha - Bolso',
@@ -114,9 +132,9 @@ app.post('/esqueci-senha', (req, res) => {
             <p>Se você não solicitou essa alteração, pode ignorar este e-mail com segurança.</p>
           </div>
         `,
-      }
+      }*/
 
-      transporter.sendMail(mailOptions, (erroEmail, info) => {
+      /*transporter.sendMail(mailOptions, (erroEmail, info) => {
         if (erroEmail) {
           console.error('Erro ao enviar e-mail:', erroEmail)
           return res.status(500).json({ erro: 'Falha ao enviar o e-mail.' })
@@ -127,7 +145,7 @@ app.post('/esqueci-senha', (req, res) => {
         return res.status(201).json({
           mensagem: 'E-mail de recuperação enviado com sucesso!',
         })
-      })
+      })*/
     })
   })
 })
@@ -181,7 +199,7 @@ app.post('/alterar-senha', (req, res) => {
     WHERE token = ?
   `
 
-  mysql.query(sql, [tokenHashPraVerificar], (erro, resposta) => {
+  queryCallback(sql, [tokenHashPraVerificar], (erro, resposta) => {
     if (erro) {
       console.error('Erro interno do servidor.')
       return res.status(500).json({ erro: 'Erro interno do servidor.' })
@@ -221,7 +239,7 @@ app.post('/alterar-senha', (req, res) => {
         WHERE id = ?
       `
 
-      mysql.query(sqlUser, [senhaHash, userId], (erro, resposta) => {
+      queryCallback(sqlUser, [senhaHash, userId], (erro, resposta) => {
         if (erro) {
           return res.status(500).json({ erro: 'Erro interno do servidor.' })
         }
@@ -236,7 +254,7 @@ app.post('/alterar-senha', (req, res) => {
           WHERE id = ?
         `
 
-        mysql.query(mysql2, [idRecuperarSenha], (erro, resposta) => {
+        queryCallback(mysql2, [idRecuperarSenha], (erro, resposta) => {
           if (erro) {
             return res.status(500).json({ erro: 'Erro interno do servidor.' })
           }

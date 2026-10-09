@@ -228,6 +228,28 @@
         background-color: var(--color-income-soft);
       }
 
+      .development-link {
+        margin-top: 10px;
+        padding: 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background-color: var(--color-surface-soft);
+        font-size: 0.78rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+      }
+
+      .development-link[hidden] {
+        display: none;
+      }
+
+      .development-link a {
+        display: block;
+        margin-top: 4px;
+        color: var(--color-accent);
+        font-weight: 600;
+      }
+
       .signup-row {
         text-align: center;
         font-size: 0.85rem;
@@ -288,6 +310,14 @@
             role="status"
             aria-live="polite"
           ></p>
+
+          <div class="development-link" id="development-link" hidden>
+            <span
+              >Link de recuperação para desenvolvimento (Link temporário!,
+              desaparecerá assim que você sair da pagina):</span
+            >
+            <a id="link-recuperacao"></a>
+          </div>
 
           <button type="submit" class="btn-entrar" id="btn-enviar-email">
             Enviar e-mail

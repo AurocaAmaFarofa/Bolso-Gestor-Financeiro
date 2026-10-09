@@ -5,11 +5,17 @@ if (recuperarSenhaForm) {
   const enviarEmailButton =
     recuperarSenhaForm.querySelector('#btn-enviar-email')
   const mensagemFormulario = recuperarSenhaForm.querySelector('#form-message')
+  const developmentLinkContainer =
+    recuperarSenhaForm.querySelector('#development-link')
+  const recoveryLink = recuperarSenhaForm.querySelector('#link-recuperacao')
 
   recuperarSenhaForm.addEventListener('submit', async (evento) => {
-    evento.preventDefault() // coloquei por que tava dando erro
+    evento.preventDefault()
     mensagemFormulario.textContent = ''
     mensagemFormulario.className = 'form-message'
+    developmentLinkContainer.hidden = true
+    recoveryLink.removeAttribute('href')
+    recoveryLink.textContent = ''
 
     if (!recuperarSenhaForm.reportValidity()) {
       return
@@ -46,8 +52,37 @@ if (recuperarSenhaForm) {
       }
 
       mensagemFormulario.textContent =
+        dados.mensagem ||
         'Se houver uma conta associada a este e-mail, você receberá as instruções para redefinir sua senha.'
       mensagemFormulario.className = 'form-message success show'
+
+      if (dados.linkRecuperacao) {
+        let linkRecuperacao
+        try {
+          linkRecuperacao = new URL(dados.linkRecuperacao)
+        } catch {
+          throw new Error(
+            'O servidor retornou um link de recuperação inválido.',
+          )
+        }
+
+        if (
+          !['http:', 'https:'].includes(linkRecuperacao.protocol) ||
+          linkRecuperacao.username ||
+          linkRecuperacao.password
+        ) {
+          throw new Error(
+            'O servidor retornou um link de recuperação inválido.',
+          )
+        }
+
+        recoveryLink.href = linkRecuperacao.href
+        recoveryLink.textContent = linkRecuperacao.href
+        recoveryLink.target = '_blank'
+        recoveryLink.rel = 'noopener noreferrer'
+        developmentLinkContainer.hidden = false
+      }
+
       recuperarSenhaForm.reset()
     } catch (erro) {
       console.error('Erro ao solicitar recuperação de senha:', erro)

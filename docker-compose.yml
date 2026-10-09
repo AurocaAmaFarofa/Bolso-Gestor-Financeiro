@@ -47,6 +47,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
+      SENHA_EMAIL_BOLSO: ${SENHA_EMAIL_BOLSO}
 
     depends_on:
       bolso-db:
