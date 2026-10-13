@@ -2179,39 +2179,40 @@ if (paginaAtual.endsWith('index.html') || paginaAtual === '/') {
 }
 
 function handleGoogleLogin(response) {
+  if (!response || typeof response.credential !== 'string') {
+    alert('Não foi possível obter a credencial do Google.')
+    return
+  }
+
   const parametros = new URLSearchParams(window.location.search)
   const convite = parametros.get('convite')
 
-  const base64Url = response.credential.split('.')[1]
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-  const {
-    sub: googleId,
-    name,
-    email,
-  } = JSON.parse(
-    decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(''),
-    ),
-  )
-
   fetch('/api/auth/google-login', {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ googleId, name, email, convite }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      credential: response.credential,
+      convite,
+    }),
   })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.success) {
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
-        window.location.href = '/index.html'
-      } else {
-        alert('Erro no login: ' + data.erro)
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.erro || 'Não foi possível entrar com o Google.')
       }
+
+      localStorage.setItem('usuario', JSON.stringify(data.usuario))
+
+      window.location.href = '/index.html'
     })
-    .catch((err) => console.error('Erro:', err))
+    .catch((error) => {
+      console.error('Erro no login Google:', error)
+      alert('Erro no login: ' + error.message)
+    })
 }
 
 function authHeaders() {
