@@ -690,36 +690,42 @@ app.post('/cadastro', (req, res) => {
   const nomeLimpo = nome?.trim()
   const emailLimpo = email?.trim().toLowerCase()
 
+  // 1. Validar os tipos das senhas.
   if (typeof senha !== 'string' || typeof confirmarSenha !== 'string') {
     return res.status(400).json({
       erro: 'Senha inválida.',
     })
   }
 
-  if (typeof senha !== 'string' || senha.length < 12 || senha.length > 64) {
+  // 2. Validar o tamanho da senha.
+  if (senha.length < 12 || senha.length > 64) {
     return res.status(400).json({
       erro: 'A senha deve ter entre 12 e 64 caracteres.',
     })
   }
 
+  // 3. Verificar se as senhas coincidem.
   if (senha !== confirmarSenha) {
     return res.status(400).json({
       erro: 'As senhas não coincidem.',
     })
   }
 
+  // 4. Verificar se os campos obrigatórios foram preenchidos.
   if (!nomeLimpo || !emailLimpo || !senha) {
     return res.status(400).json({
       erro: 'Preencha todos os campos.',
     })
   }
 
+  // 5. Verificar se foi informado um convite.
   if (!convite) {
     return res.status(403).json({
       erro: 'É necessário um convite para criar uma conta.',
     })
   }
 
+  // 6. Validar o formato do e-mail.
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   if (!emailRegex.test(emailLimpo)) {
@@ -728,8 +734,11 @@ app.post('/cadastro', (req, res) => {
     })
   }
 
+  // 7. Gerar o hash SHA-256 do convite para consultar o banco.
   const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
 
+  // 8. Iniciar a transação.
+  // Todas as operações seguintes precisam usar esta mesma conexão.
   conexao.beginTransaction((erro) => {
     if (erro) {
       console.error('Erro ao iniciar transação:', erro)
@@ -739,6 +748,7 @@ app.post('/cadastro', (req, res) => {
       })
     }
 
+    // 9. Buscar o convite e bloquear sua linha durante a transação.
     const sqlConvite = `
       SELECT *
       FROM convites
@@ -760,6 +770,7 @@ app.post('/cadastro', (req, res) => {
         })
       }
 
+      // 10. Verificar se o convite existe e está válido.
       if (convites.length === 0) {
         return conexao.rollback(() => {
           return res.status(403).json({
@@ -770,6 +781,7 @@ app.post('/cadastro', (req, res) => {
 
       const conviteValido = convites[0]
 
+      // 11. Verificar se o convite pertence ao e-mail informado.
       if (
         conviteValido.email &&
         conviteValido.email.toLowerCase() !== emailLimpo
@@ -781,6 +793,7 @@ app.post('/cadastro', (req, res) => {
         })
       }
 
+      // 12. Gerar o hash seguro da senha.
       bcrypt.hash(senha, 12, (erro, senhaHash) => {
         if (erro) {
           return conexao.rollback(() => {
@@ -792,9 +805,10 @@ app.post('/cadastro', (req, res) => {
           })
         }
 
+        // 13. Criar o usuário.
         const sqlUsuario = `
           INSERT INTO usuarios
-          (nome, email, senha_hash)
+            (nome, email, senha_hash)
           VALUES (?, ?, ?)
         `
 
@@ -818,6 +832,10 @@ app.post('/cadastro', (req, res) => {
               })
             }
 
+            // Guardar o ID do usuário recém-criado.
+            const usuarioId = resultadoUsuario.insertId
+
+            // 14. Marcar o convite como utilizado.
             const sqlUsarConvite = `
               UPDATE convites
               SET usado = TRUE
@@ -839,36 +857,101 @@ app.post('/cadastro', (req, res) => {
                   })
                 }
 
-                conexao.commit((erro) => {
-                  if (erro) {
-                    return conexao.rollback(() => {
-                      console.error('Erro ao finalizar transação:', erro)
-                      return res.status(500).json({
-                        erro: 'Erro ao finalizar o cadastro.',
-                      })
-                    })
+                // 15. Definir as categorias que todo usuário receberá.
+                const sqlCategoria = `
+                  INSERT INTO categorias_gasto
+                    (usuario_id, nome)
+                  VALUES (?, ?)
+                `
+
+                const CATEGORIAS_PADRAO = [
+                  'alimentação',
+                  'lazer',
+                  'transporte',
+                  'moradia',
+                  'saúde',
+                  'contas',
+                  'outros',
+                ]
+
+                // 16. Inserir uma categoria por vez.
+                function inserirCategoria(indice) {
+                  // Se o índice chegou ao tamanho do array,
+                  // todas as categorias foram inseridas.
+                  if (indice === CATEGORIAS_PADRAO.length) {
+                    return finalizarCadastro()
                   }
 
-                  const token = jwt.sign(
-                    { sub: resultadoUsuario.insertId },
-                    process.env.JWT_SECRET,
-                    {
-                      expiresIn: '1d',
+                  // Pegar a categoria correspondente ao índice atual.
+                  const categoria = CATEGORIAS_PADRAO[indice]
+
+                  // Executar a inserção no banco.
+                  conexao.query(
+                    sqlCategoria,
+                    [usuarioId, categoria],
+                    (erro) => {
+                      // Se a inserção falhar, desfazer a transação.
+                      if (erro) {
+                        return conexao.rollback(() => {
+                          console.error(
+                            'Erro ao inserir categoria padrão:',
+                            erro,
+                          )
+
+                          return res.status(500).json({
+                            erro: 'Erro ao finalizar cadastro.',
+                          })
+                        })
+                      }
+
+                      // A consulta terminou sem erro.
+                      // Agora podemos tentar inserir a próxima categoria.
+                      inserirCategoria(indice + 1)
                     },
                   )
+                }
 
-                  res.cookie('token', token, {
-                    httpOnly: true,
-                    sameSite: 'lax',
-                    secure: process.env.NODE_ENV === 'production',
-                    maxAge: 1000 * 60 * 60 * 24,
-                  })
+                // 17. Só confirmar a transação depois das categorias.
+                function finalizarCadastro() {
+                  conexao.commit((erro) => {
+                    if (erro) {
+                      return conexao.rollback(() => {
+                        console.error('Erro ao finalizar transação:', erro)
 
-                  return res.status(201).json({
-                    mensagem: 'Usuário criado com sucesso!',
-                    id: resultadoUsuario.insertId,
+                        return res.status(500).json({
+                          erro: 'Erro ao finalizar o cadastro.',
+                        })
+                      })
+                    }
+
+                    // 18. A transação foi confirmada.
+                    // Gerar o JWT para autenticar o usuário.
+                    const token = jwt.sign(
+                      { sub: usuarioId },
+                      process.env.JWT_SECRET,
+                      {
+                        expiresIn: '1d',
+                      },
+                    )
+
+                    // 19. Enviar o JWT em um cookie HTTP-only.
+                    res.cookie('token', token, {
+                      httpOnly: true,
+                      sameSite: 'lax',
+                      secure: process.env.NODE_ENV === 'production',
+                      maxAge: 1000 * 60 * 60 * 24,
+                    })
+
+                    // 20. Responder que o cadastro foi concluído.
+                    return res.status(201).json({
+                      mensagem: 'Usuário criado com sucesso!',
+                      id: usuarioId,
+                    })
                   })
-                })
+                }
+
+                // 21. Iniciar a inserção pela primeira categoria.
+                inserirCategoria(0)
               },
             )
           },
