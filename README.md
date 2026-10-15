@@ -52,6 +52,12 @@ O sistema apresenta informações como:
 - **Saldo Total:** soma dos saldos das contas.
 - **Gasto no Mês:** total de despesas realizadas no período selecionado.
 
+### Perfil e conta
+
+- Consulta do nome, e-mail e tipo da conta autenticada.
+- Exclusão da conta após confirmação explícita; a operação usa a identidade
+  validada pelo JWT e remove os dados financeiros associados.
+
 ---
 
 # Tecnologias

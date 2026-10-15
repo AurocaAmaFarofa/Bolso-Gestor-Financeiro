@@ -32,6 +32,7 @@ const corsOptions = {
 const authMiddleware = require('./middleware/auth')
 const authRoutes = require('./routes/auth')
 const senhas = require('./routes/senha')
+const users = require('./routes/users')
 
 app.use(cors(corsOptions))
 
@@ -46,6 +47,7 @@ app.use(cookieParser())
 
 app.use('/api/auth', authRoutes)
 app.use('/senhas', senhas)
+app.use('/usuarios', users)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

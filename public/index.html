@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -371,6 +371,14 @@
           >
             Reservas
           </button>
+          <button
+            onclick="mostrarPagina('profile')"
+            class="btn-header"
+            id="btn-profile"
+            aria-controls="profile"
+          >
+            Perfil
+          </button>
           <a href="convites.html"
             ><button
               class="btn-header button-off"
@@ -577,7 +585,89 @@
             </div>
           </div>
         </section>
+        <section id="profile" class="page" aria-labelledby="profile-title">
+          <header class="page-header">
+            <h1 id="profile-title">Seu perfil</h1>
+          </header>
+          <div class="current-balance profile-card">
+            <div class="profile-avatar" aria-hidden="true">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="profile-information" aria-live="polite">
+              <h2 id="profile-name">Carregando perfil...</h2>
+              <p>
+                <span class="profile-label">E-mail</span>
+                <span id="profile-email">—</span>
+              </p>
+              <p>
+                <span class="profile-label">Tipo de conta</span>
+                <span id="profile-role">—</span>
+              </p>
+              <p id="profile-load-status" role="status"></p>
+            </div>
+          </div>
+          <div class="current-balance account-danger-zone">
+            <h2>Excluir conta</h2>
+            <p>
+              Essa ação é permanente e remove seu perfil e os dados associados.
+              Você não poderá desfazê-la.
+            </p>
+            <button
+              type="button"
+              id="btn-excluir-conta"
+              class="account-delete-button"
+              aria-haspopup="dialog"
+            >
+              <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+              Excluir conta
+            </button>
+          </div>
+        </section>
       </main>
+      <dialog
+        id="delete-account-dialog"
+        class="account-dialog"
+        aria-labelledby="delete-account-title"
+        aria-describedby="delete-account-description"
+      >
+        <div class="account-dialog-content">
+          <div class="account-dialog-icon" aria-hidden="true">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h2 id="delete-account-title">Tem certeza?</h2>
+          <p id="delete-account-description">
+            Ao confirmar, sua conta e os dados associados serão excluídos
+            permanentemente. Essa ação não pode ser desfeita.
+          </p>
+          <label
+            id="delete-account-password-field"
+            class="account-password-field"
+            for="delete-account-password"
+          >
+            Digite sua senha para confirmar
+            <input
+              id="delete-account-password"
+              name="senha"
+              type="password"
+              autocomplete="current-password"
+              form="delete-account-form"
+              required
+            />
+          </label>
+          <form
+            id="delete-account-form"
+            method="dialog"
+            class="account-dialog-actions"
+          >
+            <button type="submit" value="cancel" formnovalidate>
+              Manter minha conta
+            </button>
+            <button type="submit" value="confirm" class="account-delete-button">
+              Sim, excluir conta
+            </button>
+          </form>
+        </div>
+      </dialog>
       <p class="app-copyright">© 2026 Bolso</p>
     </div>
   </body>

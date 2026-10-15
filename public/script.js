@@ -1465,6 +1465,7 @@ async function confirmarLogout(callback) {
   })
 
   if (resposta.ok) {
+    localStorage.removeItem('metodoAutenticacao')
     if (typeof callback === 'function') {
       callback()
     }
@@ -1496,6 +1497,7 @@ if (loginForm) {
     })
 
     if (resposta.ok) {
+      localStorage.setItem('metodoAutenticacao', 'senha')
       window.location.href = 'index.html'
     } else if (resposta.status === 429) {
       const dados = await resposta.json()
@@ -1717,9 +1719,13 @@ window.onload = () => mostrarPagina('dashboard')
 
 const nomeUsuario = document.querySelector('#nome-usuario')
 const nomeAdmin = document.querySelector('#admin-user-name')
+const nomePerfil = document.querySelector('#profile-name')
+const emailPerfil = document.querySelector('#profile-email')
+const tipoContaPerfil = document.querySelector('#profile-role')
+const statusPerfil = document.querySelector('#profile-load-status')
 
 async function colocarNomeUser() {
-  if (!nomeUsuario && !nomeAdmin) {
+  if (!nomeUsuario && !nomeAdmin && !nomePerfil) {
     return
   }
 
@@ -1739,12 +1745,144 @@ async function colocarNomeUser() {
     if (nomeAdmin) {
       nomeAdmin.textContent = usuario.nome
     }
+    if (nomePerfil) {
+      nomePerfil.textContent = usuario.nome
+    }
+    if (emailPerfil) {
+      emailPerfil.textContent = usuario.email
+    }
+    if (tipoContaPerfil) {
+      tipoContaPerfil.textContent =
+        usuario.admin === 'admin' ? 'Administrador' : 'Usuário'
+    }
   } catch (erro) {
     console.error('Erro ao carregar usuário:', erro)
+    if (nomePerfil) {
+      nomePerfil.textContent = 'Perfil indisponível'
+    }
+    if (statusPerfil) {
+      statusPerfil.textContent =
+        'Não foi possível carregar seus dados. Atualize a página e tente novamente.'
+    }
   }
 }
 
 colocarNomeUser()
+
+const botaoExcluirConta = document.querySelector('#btn-excluir-conta')
+const dialogExcluirConta = document.querySelector('#delete-account-dialog')
+const senhaExcluirConta = document.querySelector('#delete-account-password')
+const campoSenhaExcluirConta = document.querySelector(
+  '#delete-account-password-field',
+)
+
+function confirmarExclusaoConta(callback) {
+  if (!dialogExcluirConta || typeof callback !== 'function') {
+    return
+  }
+
+  const metodoAutenticacao =
+    localStorage.getItem('metodoAutenticacao') === 'google' ? 'google' : 'senha'
+  const requerSenha = metodoAutenticacao === 'senha'
+
+  if (campoSenhaExcluirConta && senhaExcluirConta) {
+    campoSenhaExcluirConta.hidden = !requerSenha
+    senhaExcluirConta.required = requerSenha
+    senhaExcluirConta.value = ''
+  }
+
+  dialogExcluirConta.addEventListener(
+    'close',
+    async () => {
+      if (dialogExcluirConta.returnValue === 'confirm') {
+        await callback()
+      }
+    },
+    { once: true },
+  )
+
+  dialogExcluirConta.showModal()
+}
+
+async function excluirConta() {
+  if (botaoExcluirConta) {
+    botaoExcluirConta.disabled = true
+  }
+
+  try {
+    const metodoAutenticacao =
+      localStorage.getItem('metodoAutenticacao') === 'google'
+        ? 'google'
+        : 'senha'
+    const requerSenha = metodoAutenticacao === 'senha'
+    const dadosExclusao = {
+      origemAutenticacao: metodoAutenticacao,
+      exigirSenha: requerSenha,
+      ...(requerSenha ? { senha: senhaExcluirConta.value } : {}),
+    }
+
+    // Para contas Google, não envie o client_id nem um google_id vindo do navegador:
+    // ambos não provam quem está fazendo a solicitação. Primeiro peça uma nova
+    // credencial ao Google Identity Services; no callback, inclua
+    // `credential: respostaGoogle.credential` em `dadosExclusao`.
+    // No servidor, valide essa credencial e compare o `sub` verificado com o
+    // `google_id` do usuário encontrado por `req.usuarioId` (identidade do JWT).
+    const resposta = await fetch('/usuarios', {
+      method: 'DELETE',
+      headers: authHeaders(),
+      credentials: 'same-origin',
+      body: JSON.stringify({ dadosExclusao, credential: response.credential }),
+    })
+    const resultado = await resposta.json()
+
+    if (!resposta.ok) {
+      throw new Error(resultado.erro || 'Não foi possível excluir a conta.')
+    }
+
+    for (const chave of [
+      'usuario',
+      'token',
+      'authToken',
+      'BolsoappData',
+      'lancamentos',
+      'pendencias',
+      'reservas',
+      'bolso_convites_temporarios',
+      'metodoAutenticacao',
+    ]) {
+      localStorage.removeItem(chave)
+    }
+
+    window.location.href = '/login.html'
+  } catch (erro) {
+    console.error('Erro ao excluir conta:', erro)
+    showPopup(erro.message || 'Não foi possível excluir a conta.', 4000)
+    if (botaoExcluirConta) {
+      botaoExcluirConta.disabled = false
+    }
+  } finally {
+    if (senhaExcluirConta) {
+      senhaExcluirConta.value = ''
+    }
+  }
+}
+
+if (botaoExcluirConta) {
+  botaoExcluirConta.addEventListener('click', () =>
+    confirmarExclusaoConta(excluirConta),
+  )
+}
+
+if (dialogExcluirConta) {
+  dialogExcluirConta.addEventListener('close', () => {
+    if (dialogExcluirConta.returnValue !== 'confirm' && senhaExcluirConta) {
+      senhaExcluirConta.value = ''
+    }
+    if (botaoExcluirConta) {
+      botaoExcluirConta.focus()
+    }
+  })
+}
 
 //-----------------------------------------------------------------
 // Convites
@@ -2184,6 +2322,10 @@ function handleGoogleLogin(response) {
     return
   }
 
+  // `response.credential` é um ID token assinado pelo Google e é o valor
+  // enviado para validação no servidor; o `data-client_id` do HTML identifica
+  // apenas o aplicativo. Para exclusão, solicite uma credencial nova em vez de
+  // confiar em um google_id enviado pelo cliente ou guardar este token antigo.
   const parametros = new URLSearchParams(window.location.search)
   const convite = parametros.get('convite')
 
@@ -2206,6 +2348,7 @@ function handleGoogleLogin(response) {
       }
 
       localStorage.setItem('usuario', JSON.stringify(data.usuario))
+      localStorage.setItem('metodoAutenticacao', 'google')
 
       window.location.href = '/index.html'
     })
