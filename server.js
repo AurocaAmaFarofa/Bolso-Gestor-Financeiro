@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
 const cors = require('cors')
+const fs = require('fs')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -134,6 +135,7 @@ const conexao = mysql.createConnection({
   database: process.env.DB_NAME,
   charset: 'utf8mb4',
   ssl: {
+    ca: fs.readFileSync('/etc/secrets/aiven-ca.pem'),
     rejectUnauthorized: true,
   },
 })
