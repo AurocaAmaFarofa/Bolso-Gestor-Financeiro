@@ -34,6 +34,8 @@ const corsOptions = {
   maxAge: 3600,
 }
 
+app.set('trust proxy', 1)
+
 const authMiddleware = require('./middleware/auth')
 const authRoutes = require('./routes/auth')
 const senhas = require('./routes/senha')
