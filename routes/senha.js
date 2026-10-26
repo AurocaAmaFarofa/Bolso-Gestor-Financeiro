@@ -22,7 +22,7 @@ function queryCallback(sql, values, callback) {
   },
 })*/
 
-app.post('/esqueci-senha', (req, res) => {
+/*app.post('/esqueci-senha', (req, res) => {
   const { email } = req.body
 
   if (!email) {
@@ -134,7 +134,7 @@ app.post('/esqueci-senha', (req, res) => {
         `,
       }*/
 
-      /*transporter.sendMail(mailOptions, (erroEmail, info) => {
+/*transporter.sendMail(mailOptions, (erroEmail, info) => {
         if (erroEmail) {
           console.error('Erro ao enviar e-mail:', erroEmail)
           return res.status(500).json({ erro: 'Falha ao enviar o e-mail.' })
@@ -145,12 +145,12 @@ app.post('/esqueci-senha', (req, res) => {
         return res.status(201).json({
           mensagem: 'E-mail de recuperação enviado com sucesso!',
         })
-      })*/
+      })
     })
   })
-})
+})*/
 
-app.post('/alterar-senha', (req, res) => {
+/*app.post('/alterar-senha', (req, res) => {
   const { senha, confirmarSenha, token } = req.body
 
   if (token === null || !token) {
@@ -271,5 +271,6 @@ app.post('/alterar-senha', (req, res) => {
     })
   })
 })
+*/
 
 module.exports = app

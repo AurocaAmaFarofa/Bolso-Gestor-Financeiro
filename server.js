@@ -11,11 +11,14 @@ const rateLimit = require('express-rate-limit')
 const cors = require('cors')
 
 const app = express()
-const PORT = 3000
+const PORT = process.env.PORT || 3000
 
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:3000']
+    const allowedOrigins = [
+      'http://localhost:3000',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean)
 
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
@@ -121,10 +124,14 @@ app.use(express.static(path.join(__dirname, 'public')))
 
 const conexao = mysql.createConnection({
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   charset: 'utf8mb4',
+  ssl: {
+    rejectUnauthorized: true,
+  },
 })
 
 conexao.connect((erro) => {
@@ -255,8 +262,8 @@ app.use((err, req, res, next) => {
   })
 })
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`)
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`)
 })
 
 // Categorias de gasto //

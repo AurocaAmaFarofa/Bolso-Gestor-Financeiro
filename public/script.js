@@ -1804,6 +1804,17 @@ function confirmarExclusaoConta(callback) {
   dialogExcluirConta.showModal()
 }
 
+function handleGoogleDeleteConfirmation(response) {
+  if (!response || typeof response.credential !== 'string') {
+    alert('Não foi possível confirmar sua identidade com o Google.')
+    return
+  }
+
+  const credential = response.credential
+
+  return credential
+}
+
 async function excluirConta() {
   if (botaoExcluirConta) {
     botaoExcluirConta.disabled = true
@@ -1821,17 +1832,13 @@ async function excluirConta() {
       ...(requerSenha ? { senha: senhaExcluirConta.value } : {}),
     }
 
-    // Para contas Google, não envie o client_id nem um google_id vindo do navegador:
-    // ambos não provam quem está fazendo a solicitação. Primeiro peça uma nova
-    // credencial ao Google Identity Services; no callback, inclua
-    // `credential: respostaGoogle.credential` em `dadosExclusao`.
-    // No servidor, valide essa credencial e compare o `sub` verificado com o
-    // `google_id` do usuário encontrado por `req.usuarioId` (identidade do JWT).
+    const credencialGoogle = await handleGoogleDeleteConfirmation()
+
     const resposta = await fetch('/usuarios', {
       method: 'DELETE',
       headers: authHeaders(),
       credentials: 'same-origin',
-      body: JSON.stringify({ dadosExclusao, credential: response.credential }),
+      body: JSON.stringify({ dadosExclusao, credential: credencialGoogle }),
     })
     const resultado = await resposta.json()
 
