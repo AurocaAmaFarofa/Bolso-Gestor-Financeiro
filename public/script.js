@@ -277,22 +277,57 @@ function atualizarGridUltimos() {
     return
   }
 
+  if (appData.lancamentos.length === 0) {
+    gridUltimosGastos.innerHTML = '<span>Nenhum lançamento ainda</span>'
+    if (btnUltimosGastos) {
+      btnUltimosGastos.disabled = true
+      btnUltimosGastos.setAttribute('aria-expanded', 'false')
+      btnUltimosGastos.setAttribute(
+        'aria-label',
+        'Sem lançamentos recentes',
+      )
+    }
+    return
+  }
+
   if (status === 'fechado') {
+    if (btnUltimosGastos) {
+      btnUltimosGastos.disabled = false
+      btnUltimosGastos.setAttribute('aria-expanded', 'true')
+      btnUltimosGastos.setAttribute(
+        'aria-label',
+        'Recolher lançamentos recentes',
+      )
+    }
     const copiaLancamentos = appData.lancamentos.slice()
     const arrayLançamentos = copiaLancamentos.reverse()
     const primeirosLan = arrayLançamentos.slice(0, 3)
     gridUltimosGastos.innerHTML = ''
     primeirosLan.forEach((item) => {
+      const valor = Number(item.valor)
+      const data = new Date(item.data)
+      const dataFormatada = Number.isNaN(data.getTime())
+        ? ''
+        : data.toLocaleDateString('pt-BR')
+      const tipoFormatado = item.tipo === 'ganho' ? 'Receita' : 'Despesa'
+
       gridUltimosGastos.innerHTML += `
         <div class="card-expenses cards-last">
-          <h1 class="card-text-last">${item.descricao}</h1>
-          <h1 class="card-text-last">${item.valor}</h1>
-          <h1 class="card-text-last">${item.tipo}</h1>
+          <h3 class="card-text-last">${escaparHtml(item.descricao)}</h3>
+          <strong class="card-text-last recent-amount ${item.tipo === 'ganho' ? 'recent-income' : 'recent-expense'}">${moedaBRL.format(valor)}</strong>
+          <p class="card-text-last recent-description">${tipoFormatado} · ${escaparHtml(item.categoria || 'Sem categoria')}${dataFormatada ? ` · ${dataFormatada}` : ''}</p>
         </div>
       `
     })
     status = 'aberto'
   } else {
+    if (btnUltimosGastos) {
+      btnUltimosGastos.setAttribute('aria-expanded', 'false')
+      btnUltimosGastos.setAttribute(
+        'aria-label',
+        'Expandir lançamentos recentes',
+      )
+    }
     gridUltimosGastos.innerHTML = ''
     status = 'fechado'
   }
@@ -488,6 +523,13 @@ function renderizarDoisVisores() {
       card.style.setProperty('--texto-porcentagem', `"%${numeroFormatado}"`)
     })
   })
+
+  if (!appData.metas.some((item) => item.mes_ano === appData.mesAtivo)) {
+    const vazio =
+      '<p class="data-empty-state">Nenhuma meta para este mês. Crie uma meta em Lançamentos.</p>'
+    visorMainMeta.innerHTML = vazio
+    visorExMeta.innerHTML = vazio
+  }
 }
 
 async function deletarMeta(id) {
@@ -595,11 +637,436 @@ function atualizarTudo() {
   renderizarGridReservas()
   renderizarDoisVisores()
   atualizarGridUltimos()
+  renderizarAnalises()
 }
+
+const moedaBRL = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+function normalizarMes(mes) {
+  const correspondencia = String(mes || '').match(/^(\d{4})-(\d{1,2})$/)
+  if (!correspondencia) return null
+
+  const numeroMes = Number(correspondencia[2])
+  if (numeroMes < 1 || numeroMes > 12) return null
+
+  return `${correspondencia[1]}-${String(numeroMes).padStart(2, '0')}`
+}
+
+function obterMesLancamento(lancamento) {
+  const mesLancamento = normalizarMes(lancamento.mesAno)
+  if (mesLancamento) return mesLancamento
+
+  if (lancamento.data === null || lancamento.data === undefined) return null
+  const data =
+    typeof lancamento.data === 'number' || /^\d+$/.test(String(lancamento.data))
+      ? new Date(Number(lancamento.data))
+      : new Date(lancamento.data)
+
+  if (Number.isNaN(data.getTime())) return null
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+}
+
+function obterLancamentosDoMes(mes) {
+  return appData.lancamentos.filter(
+    (lancamento) => obterMesLancamento(lancamento) === mes,
+  )
+}
+
+function obterResumoDoMes(mes) {
+  return obterLancamentosDoMes(mes).reduce(
+    (resumo, lancamento) => {
+      const valor = Number(lancamento.valor)
+      if (!Number.isFinite(valor)) return resumo
+
+      if (lancamento.tipo === 'ganho') {
+        resumo.receitas += valor
+      } else {
+        resumo.despesas += valor
+      }
+
+      resumo.quantidade += 1
+      return resumo
+    },
+    { receitas: 0, despesas: 0, quantidade: 0 },
+  )
+}
+
+function formatarVariacaoMensal(resumoAtual, resumoAnterior, propriedade) {
+  const valorAtual = resumoAtual[propriedade]
+  const valorAnterior = resumoAnterior[propriedade]
+
+  if (resumoAtual.quantidade === 0 && resumoAnterior.quantidade === 0) {
+    return 'Sem comparação'
+  }
+  if (valorAnterior === 0) {
+    return valorAtual === 0 ? 'Sem variação' : 'Novo neste mês'
+  }
+
+  const variacao = ((valorAtual - valorAnterior) / valorAnterior) * 100
+  const sinal = variacao > 0 ? '+' : ''
+  return `${sinal}${variacao.toFixed(1).replace('.', ',')}% vs. mês anterior`
+}
+
+function gerarMesesHistoricos(mesReferencia, quantidade) {
+  const [ano, mes] = mesReferencia.split('-').map(Number)
+  const dataReferencia = new Date(ano, mes - 1, 1)
+
+  return Array.from({ length: quantidade }, (_, indice) => {
+    const dataMes = new Date(
+      dataReferencia.getFullYear(),
+      dataReferencia.getMonth() - quantidade + indice + 1,
+      1,
+    )
+    return {
+      chave: `${dataMes.getFullYear()}-${String(dataMes.getMonth() + 1).padStart(2, '0')}`,
+      label: dataMes
+        .toLocaleDateString('pt-BR', { month: 'short' })
+        .replace('.', ''),
+    }
+  })
+}
+
+function estadoVazioGrafico(mensagem) {
+  return `<div class="chart-empty" role="status"><span class="chart-empty-icon" aria-hidden="true"><i class="fa-solid fa-chart-simple"></i></span><p>${mensagem}</p></div>`
+}
+
+function renderizarGraficoBarras(meses, resumoPorMes, id, compacto = false) {
+  const elemento = document.getElementById(id)
+  if (!elemento) return
+
+  const dados = meses.map((mes) => ({
+    ...mes,
+    ...(resumoPorMes.get(mes.chave) || {
+      receitas: 0,
+      despesas: 0,
+      quantidade: 0,
+    }),
+  }))
+
+  if (!dados.some((mes) => mes.quantidade > 0)) {
+    elemento.innerHTML = estadoVazioGrafico(
+      'Ainda não há lançamentos neste período.',
+    )
+    return
+  }
+
+  const largura = 720
+  const altura = compacto ? 190 : 260
+  const margem = {
+    topo: 12,
+    direita: 12,
+    baixo: 34,
+    esquerda: compacto ? 12 : 70,
+  }
+  const areaLargura = largura - margem.esquerda - margem.direita
+  const areaAltura = altura - margem.topo - margem.baixo
+  const maximo = Math.max(
+    1,
+    ...dados.flatMap((mes) => [mes.receitas, mes.despesas]),
+  )
+  const topoEscala = maximo * 1.12
+  const grupo = areaLargura / dados.length
+  const barraLargura = Math.min(compacto ? 14 : 24, grupo * 0.3)
+  const linhas = compacto ? 2 : 4
+  let conteudo = ''
+
+  for (let linha = 0; linha <= linhas; linha += 1) {
+    const y = margem.topo + (areaAltura / linhas) * linha
+    const valor = topoEscala * (1 - linha / linhas)
+    conteudo += `<line class="chart-grid-line" x1="${margem.esquerda}" y1="${y}" x2="${largura - margem.direita}" y2="${y}"/>`
+    if (!compacto) {
+      conteudo += `<text class="chart-axis-label" x="${margem.esquerda - 10}" y="${y + 4}" text-anchor="end">${moedaBRL.format(valor)}</text>`
+    }
+  }
+
+  dados.forEach((mes, indice) => {
+    const centro = margem.esquerda + grupo * indice + grupo / 2
+    const receitasAltura = (mes.receitas / topoEscala) * areaAltura
+    const despesasAltura = (mes.despesas / topoEscala) * areaAltura
+    const xReceita = centro - barraLargura - 2
+    const xDespesa = centro + 2
+    const yReceita = margem.topo + areaAltura - receitasAltura
+    const yDespesa = margem.topo + areaAltura - despesasAltura
+    const tituloMes = `${mes.label} — receitas ${moedaBRL.format(mes.receitas)}, despesas ${moedaBRL.format(mes.despesas)}`
+
+    conteudo += `<rect class="chart-bar chart-bar-income" x="${xReceita}" y="${yReceita}" width="${barraLargura}" height="${Math.max(0, receitasAltura)}" rx="4"><title>${escaparHtml(tituloMes)}</title></rect>`
+    conteudo += `<rect class="chart-bar chart-bar-expense" x="${xDespesa}" y="${yDespesa}" width="${barraLargura}" height="${Math.max(0, despesasAltura)}" rx="4"><title>${escaparHtml(tituloMes)}</title></rect>`
+    conteudo += `<text class="chart-month-label" x="${centro}" y="${altura - 9}" text-anchor="middle">${escaparHtml(mes.label)}</text>`
+  })
+
+  elemento.innerHTML = `<svg class="financial-chart" viewBox="0 0 ${largura} ${altura}" role="img" aria-label="Gráfico mensal comparando receitas e despesas">${conteudo}</svg>`
+}
+
+function renderizarGraficoCategorias(lancamentos, id) {
+  const elemento = document.getElementById(id)
+  if (!elemento) return
+
+  const categorias = new Map()
+  lancamentos.forEach((lancamento) => {
+    if (lancamento.tipo === 'ganho') return
+    const nome = String(lancamento.categoria || 'Outros')
+    const valor = Number(lancamento.valor)
+    if (!Number.isFinite(valor)) return
+    categorias.set(nome, (categorias.get(nome) || 0) + valor)
+  })
+
+  const ordenadas = [...categorias.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7)
+  if (ordenadas.length === 0) {
+    elemento.innerHTML = estadoVazioGrafico(
+      'Sem despesas registradas neste mês.',
+    )
+    return
+  }
+
+  const maximo = Math.max(...ordenadas.map(([, valor]) => valor), 1)
+  const total = ordenadas.reduce((soma, [, valor]) => soma + valor, 0)
+  elemento.innerHTML = `<div class="category-bars">${ordenadas
+    .map(([nome, valor]) => {
+      const percentual = total > 0 ? (valor / total) * 100 : 0
+      const largura = (valor / maximo) * 100
+      return `<div class="category-bar-item"><div class="category-bar-heading"><span title="${escaparHtml(nome)}">${escaparHtml(nome)}</span><strong>${moedaBRL.format(valor)}</strong></div><div class="category-bar-track" role="img" aria-label="${escaparHtml(nome)}: ${moedaBRL.format(valor)}, ${percentual.toFixed(0)} por cento"><span style="width:${largura}%"></span></div></div>`
+    })
+    .join('')}</div>`
+}
+
+function renderizarGraficoResultado(meses, resumoPorMes, id) {
+  const elemento = document.getElementById(id)
+  if (!elemento) return
+  if (
+    !meses.some((mes) => (resumoPorMes.get(mes.chave)?.quantidade || 0) > 0)
+  ) {
+    elemento.innerHTML = estadoVazioGrafico(
+      'Os dados aparecerão quando houver lançamentos.',
+    )
+    return
+  }
+
+  let acumulado = 0
+  const pontos = meses.map((mes, indice) => {
+    const resumo = resumoPorMes.get(mes.chave) || { receitas: 0, despesas: 0 }
+    acumulado += resumo.receitas - resumo.despesas
+    return { ...mes, valor: acumulado, indice }
+  })
+  const largura = 720
+  const altura = 230
+  const margem = { topo: 18, direita: 18, baixo: 34, esquerda: 70 }
+  const valores = pontos.map((ponto) => ponto.valor)
+  const minimo = Math.min(0, ...valores)
+  const maximo = Math.max(0, ...valores)
+  const intervalo = maximo - minimo || 1
+  const areaAltura = altura - margem.topo - margem.baixo
+  const areaLargura = largura - margem.esquerda - margem.direita
+  const coordenadas = pontos.map((ponto) => ({
+    ...ponto,
+    x:
+      margem.esquerda +
+      (pontos.length === 1
+        ? areaLargura / 2
+        : (areaLargura * ponto.indice) / (pontos.length - 1)),
+    y: margem.topo + ((maximo - ponto.valor) / intervalo) * areaAltura,
+  }))
+  const linhaZero = margem.topo + (maximo / intervalo) * areaAltura
+  const path = coordenadas
+    .map((ponto, indice) => `${indice === 0 ? 'M' : 'L'} ${ponto.x} ${ponto.y}`)
+    .join(' ')
+  const marcadores = coordenadas
+    .map(
+      (ponto) =>
+        `<circle class="chart-point" cx="${ponto.x}" cy="${ponto.y}" r="4"><title>${escaparHtml(`${ponto.label}: ${moedaBRL.format(ponto.valor)}`)}</title></circle><text class="chart-month-label" x="${ponto.x}" y="${altura - 9}" text-anchor="middle">${escaparHtml(ponto.label)}</text>`,
+    )
+    .join('')
+  const eixo = `<line class="chart-grid-line" x1="${margem.esquerda}" y1="${linhaZero}" x2="${largura - margem.direita}" y2="${linhaZero}"/><text class="chart-axis-label" x="${margem.esquerda - 10}" y="${linhaZero + 4}" text-anchor="end">R$ 0</text>`
+
+  elemento.innerHTML = `<svg class="financial-chart" viewBox="0 0 ${largura} ${altura}" role="img" aria-label="Evolução acumulada do resultado líquido do período"><path class="chart-line" d="${path}"/>${eixo}${marcadores}</svg>`
+}
+
+function renderizarAnalises() {
+  const referenciaInput = document.getElementById('analysis-month')
+  const filtroPeriodo = document.getElementById('analysis-range')
+  const mesReferencia =
+    normalizarMes(referenciaInput?.value) || normalizarMes(appData.mesAtivo)
+  if (!mesReferencia) return
+
+  if (referenciaInput && !referenciaInput.value) {
+    referenciaInput.value = mesReferencia
+  }
+
+  if (estadoCarregamentoLancamentos !== 'loaded') {
+    const textoEstado =
+      estadoCarregamentoLancamentos === 'error'
+        ? 'Não foi possível carregar estes dados. Tente novamente.'
+        : 'Carregando seus lançamentos...'
+    ;[
+      'dashboard-trend-chart',
+      'analysis-flow-chart',
+      'analysis-category-chart',
+      'analysis-balance-chart',
+    ].forEach((id) => {
+      const grafico = document.getElementById(id)
+      if (grafico) grafico.innerHTML = estadoVazioGrafico(textoEstado)
+    })
+    ;[
+      'month-income',
+      'analysis-income',
+      'analysis-expenses',
+      'analysis-net',
+      'analysis-expense-change',
+      'dashboard-income-change',
+      'dashboard-expense-change',
+    ].forEach((id) => {
+      const elemento = document.getElementById(id)
+      if (elemento) elemento.textContent = '—'
+    })
+    return
+  }
+
+  const resumoAtual = obterResumoDoMes(mesReferencia)
+  const dataReferencia = new Date(`${mesReferencia}-01T00:00:00`)
+  const dataAnterior = new Date(
+    dataReferencia.getFullYear(),
+    dataReferencia.getMonth() - 1,
+    1,
+  )
+  const mesAnterior = `${dataAnterior.getFullYear()}-${String(dataAnterior.getMonth() + 1).padStart(2, '0')}`
+  const resumoAnterior = obterResumoDoMes(mesAnterior)
+  const variacaoVisor = document.getElementById('analysis-expense-change')
+
+  const definirTexto = (id, texto) => {
+    const elemento = document.getElementById(id)
+    if (elemento) elemento.textContent = texto
+  }
+
+  const mesDashboard = normalizarMes(appData.mesAtivo) || mesReferencia
+  const resumoDashboardAtual = obterResumoDoMes(mesDashboard)
+  const [anoDashboard, mesDashboardNum] = mesDashboard.split('-').map(Number)
+  const dataDashboardAnterior = new Date(
+    anoDashboard,
+    mesDashboardNum - 2,
+    1,
+  )
+  const mesDashboardAnterior = `${dataDashboardAnterior.getFullYear()}-${String(dataDashboardAnterior.getMonth() + 1).padStart(2, '0')}`
+  const resumoDashboardAnterior = obterResumoDoMes(mesDashboardAnterior)
+  definirTexto('month-income', moedaBRL.format(resumoDashboardAtual.receitas))
+  definirTexto(
+    'dashboard-income-change',
+    formatarVariacaoMensal(
+      resumoDashboardAtual,
+      resumoDashboardAnterior,
+      'receitas',
+    ),
+  )
+  definirTexto(
+    'dashboard-expense-change',
+    formatarVariacaoMensal(
+      resumoDashboardAtual,
+      resumoDashboardAnterior,
+      'despesas',
+    ),
+  )
+  definirTexto('analysis-income', moedaBRL.format(resumoAtual.receitas))
+  definirTexto('analysis-expenses', moedaBRL.format(resumoAtual.despesas))
+  definirTexto(
+    'analysis-net',
+    moedaBRL.format(resumoAtual.receitas - resumoAtual.despesas),
+  )
+
+  if (variacaoVisor) {
+    variacaoVisor.textContent = formatarVariacaoMensal(
+      resumoAtual,
+      resumoAnterior,
+      'despesas',
+    )
+  }
+
+  const quantidadeMeses = Number(filtroPeriodo?.value) || 6
+  const meses = gerarMesesHistoricos(mesReferencia, quantidadeMeses)
+  const resumoPorMes = new Map(
+    meses.map((mes) => [mes.chave, obterResumoDoMes(mes.chave)]),
+  )
+  renderizarGraficoBarras(meses, resumoPorMes, 'analysis-flow-chart')
+  renderizarGraficoResultado(meses, resumoPorMes, 'analysis-balance-chart')
+  renderizarGraficoCategorias(
+    obterLancamentosDoMes(mesReferencia),
+    'analysis-category-chart',
+  )
+
+  const mesesDashboard = gerarMesesHistoricos(
+    mesDashboard,
+    6,
+  )
+  const resumoDashboard = new Map(
+    mesesDashboard.map((mes) => [mes.chave, obterResumoDoMes(mes.chave)]),
+  )
+  renderizarGraficoBarras(
+    mesesDashboard,
+    resumoDashboard,
+    'dashboard-trend-chart',
+    true,
+  )
+}
+
+document
+  .getElementById('analysis-month')
+  ?.addEventListener('change', renderizarAnalises)
+document
+  .getElementById('analysis-range')
+  ?.addEventListener('change', renderizarAnalises)
 
 // ============ função pra pegar os itens do MySql =====//
 
+let estadoCarregamentoLancamentos = 'loading'
+
+function atualizarEstadoDadosFinanceiros(mensagem, erro = false) {
+  estadoCarregamentoLancamentos = erro
+    ? 'error'
+    : mensagem
+      ? 'loading'
+      : 'loaded'
+
+  const estado = document.getElementById('financial-data-status')
+  if (!estado) return
+
+  const mensagemGrafico = erro
+    ? 'Não foi possível carregar estes dados. Tente novamente.'
+    : 'Carregando seus lançamentos...'
+  ;[
+    'dashboard-trend-chart',
+    'analysis-flow-chart',
+    'analysis-category-chart',
+    'analysis-balance-chart',
+  ].forEach((id) => {
+    const grafico = document.getElementById(id)
+    if (grafico && mensagem) {
+      grafico.innerHTML = estadoVazioGrafico(mensagemGrafico)
+    }
+  })
+
+  estado.replaceChildren()
+  estado.hidden = !mensagem
+  if (!mensagem) return
+
+  const texto = document.createElement('span')
+  texto.textContent = mensagem
+  estado.appendChild(texto)
+
+  if (erro) {
+    const botaoTentarNovamente = document.createElement('button')
+    botaoTentarNovamente.type = 'button'
+    botaoTentarNovamente.className = 'data-retry'
+    botaoTentarNovamente.textContent = 'Tentar novamente'
+    botaoTentarNovamente.addEventListener('click', carregarLancamento)
+    estado.appendChild(botaoTentarNovamente)
+  }
+}
+
 async function carregarLancamento() {
+  atualizarEstadoDadosFinanceiros('Carregando seus lançamentos...')
+
   try {
     const resposta = await fetch('/lancamentos')
 
@@ -610,6 +1077,10 @@ async function carregarLancamento() {
 
     if (!resposta.ok) {
       console.error('Erro ao carregar lançamentos:', resposta.status)
+      atualizarEstadoDadosFinanceiros(
+        'Não foi possível carregar os lançamentos. Verifique a conexão e tente novamente.',
+        true,
+      )
       return
     }
 
@@ -617,16 +1088,25 @@ async function carregarLancamento() {
 
     if (!Array.isArray(lancamentos)) {
       console.error('Resposta inválida de /lancamentos:', lancamentos)
+      atualizarEstadoDadosFinanceiros(
+        'Os dados recebidos não puderam ser exibidos. Tente carregar novamente.',
+        true,
+      )
       return
     }
 
     appData.lancamentos = lancamentos
+    atualizarEstadoDadosFinanceiros('')
 
     console.log('Lançamentos do banco:', lancamentos)
 
     atualizarTudo()
   } catch (erro) {
     console.error('Erro ao carregar lançamentos:', erro)
+    atualizarEstadoDadosFinanceiros(
+      'Não foi possível carregar os lançamentos. Verifique a conexão e tente novamente.',
+      true,
+    )
   }
 }
 
@@ -659,6 +1139,11 @@ function renderizarAbasBancos() {
       </div>
     `
   })
+
+  if (appData.bancos.length === 0) {
+    listBancosAbas.innerHTML =
+      '<span class="banks-empty">Nenhuma conta cadastrada</span>'
+  }
 }
 
 function selecionarBanco(id) {
@@ -1032,6 +1517,11 @@ function renderizarGridReservas() {
     ;(totalReservadoVisor.textContent =
       'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
   })
+
+  if (appData.reservas.length === 0) {
+    gridReservas.innerHTML =
+      '<p class="grid-none-expenses data-empty-state">Suas reservas aparecerão aqui quando você criar a primeira.</p>'
+  }
 }
 
 //FUNÇÃO PARA EXCLUIR A RESERVA
@@ -1166,6 +1656,12 @@ function renderizarGridGastosFixos() {
     </div>
     `
   })
+
+  if (appData.pendencias.length === 0) {
+    const vazio = '<p class="data-empty-state">Nenhum gasto fixo cadastrado.</p>'
+    gridGastosFixos.innerHTML = vazio
+    gastosFixosMain.innerHTML = vazio
+  }
 }
 
 if (btnAddGastoFixo) {
@@ -1267,6 +1763,11 @@ function renderizarGridLancamentos() {
       }
     }
   })
+
+  if (gridLancamentos && gridLancamentos.children.length === 0) {
+    gridLancamentos.innerHTML =
+      '<p class="grid-none-expenses data-empty-state">Nenhum lançamento nesta conta e período.</p>'
+  }
 
   let totalParaGastarNum = totalTodosBancosNum - valorTotalReservado
   if (saldoAtual) {

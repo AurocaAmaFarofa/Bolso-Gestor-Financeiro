@@ -52,6 +52,13 @@ O sistema apresenta informações como:
 - **Saldo Total:** soma dos saldos das contas.
 - **Gasto no Mês:** total de despesas realizadas no período selecionado.
 
+### Análises financeiras
+
+A página **Análises** apresenta gráficos mensais de receitas e despesas,
+despesas por categoria, resultado líquido acumulado e comparação com o mês
+anterior. Os gráficos usam os lançamentos reais da conta autenticada e incluem
+filtros de mês e período.
+
 ### Perfil e conta
 
 - Consulta do nome, e-mail e tipo da conta autenticada.
