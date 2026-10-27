@@ -9,9 +9,11 @@ const connection = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: {
-    rejectUnauthorized: true,
-  },
+  ...(process.env.DB_SSL === 'true' && {
+    ssl: {
+      rejectUnauthorized: true,
+    },
+  }),
 })
 
 module.exports = connection

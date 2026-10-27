@@ -134,10 +134,13 @@ const conexao = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   charset: 'utf8mb4',
-  ssl: {
-    ca: fs.readFileSync('/etc/secrets/aiven-ca.pem'),
-    rejectUnauthorized: true,
-  },
+
+  ...(process.env.DB_SSL === 'true' && {
+    ssl: {
+      ca: fs.readFileSync(process.env.DB_SSL_CA || '/etc/secrets/aiven-ca.pem'),
+      rejectUnauthorized: true,
+    },
+  }),
 })
 
 conexao.connect((erro) => {
