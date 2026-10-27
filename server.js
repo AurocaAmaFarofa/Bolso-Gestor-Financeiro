@@ -1,6 +1,5 @@
 require('dotenv').config()
 
-const mysql = require('mysql2')
 const express = require('express')
 const path = require('path')
 const bcrypt = require('bcryptjs')
@@ -9,10 +8,10 @@ const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
 const cors = require('cors')
-const fs = require('fs')
 
 const app = express()
 const PORT = process.env.PORT || 3000
+const pool = require('./db/connections')
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -127,34 +126,9 @@ app.get('/convites.html', exigirAdmin, (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')))
 
-const conexao = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  charset: 'utf8mb4',
-
-  ...(process.env.DB_SSL === 'true' && {
-    ssl: {
-      ca: fs.readFileSync(process.env.DB_SSL_CA || '/etc/secrets/aiven-ca.pem'),
-      rejectUnauthorized: true,
-    },
-  }),
-})
-
-conexao.connect((erro) => {
-  if (erro) {
-    console.error('Erro ao conectar:', erro)
-    return
-  }
-
-  console.log('Conectado ao banco.')
-})
-
 const exigirLogin = authMiddleware
 
-app.get('/lancamentos', exigirLogin, (req, res) => {
+app.get('/lancamentos', exigirLogin, async (req, res) => {
   const sql = `
     SELECT l.id, l.tipo, l.valor, l.descricao, l.forma, l.data, l.mesAno, l.bancoId,
            l.categoria_id, c.nome AS categoria
@@ -163,18 +137,16 @@ app.get('/lancamentos', exigirLogin, (req, res) => {
     WHERE l.usuarioId = ?
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.error('Erro ao buscar lançamentos:', erro)
-      res.status(500).json({ erro: 'Erro ao buscar lançamentos' })
-      return
-    }
-
+  try {
+    const [resultados] = await pool.query(sql, [req.usuarioId])
     res.json(resultados)
-  })
+  } catch (erro) {
+    console.error('Erro ao buscar lançamentos:', erro)
+    res.status(500).json({ erro: 'Erro ao buscar lançamentos' })
+  }
 })
 
-app.post('/lancamentos', exigirLogin, (req, res) => {
+app.post('/lancamentos', exigirLogin, async (req, res) => {
   const { tipo, valor, categoriaId, descricao, forma, data, mesAno, bancoId } =
     req.body
 
@@ -182,80 +154,80 @@ app.post('/lancamentos', exigirLogin, (req, res) => {
     SELECT nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?
   `
 
-  conexao.query(
-    sqlCategoria,
-    [categoriaId, req.usuarioId],
-    (erro, categorias) => {
-      if (erro) {
-        console.log('erro ao validar categoria', erro)
-        return res.status(500).json({ erro: 'erro ao validar categoria' })
-      }
+  let categorias
+  try {
+    categorias = (
+      await pool.query(sqlCategoria, [
+        categoriaId,
+        req.usuarioId,
+      ])
+    )[0]
+  } catch (erro) {
+    console.log('erro ao validar categoria', erro)
+    return res.status(500).json({ erro: 'erro ao validar categoria' })
+  }
 
-      if (categorias.length === 0) {
-        return res.status(400).json({ erro: 'Categoria inválida.' })
-      }
+  if (categorias.length === 0) {
+    return res.status(400).json({ erro: 'Categoria inválida.' })
+  }
 
-      const sql = `
+  const sql = `
       INSERT INTO lancamentos
       (tipo, valor, categoria_id, descricao, forma, data, mesAno, bancoId, usuarioId)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
 
-      const valores = [
+  const valores = [
+    tipo,
+    valor,
+    categoriaId,
+    descricao,
+    forma,
+    data,
+    mesAno,
+    bancoId,
+    req.usuarioId,
+  ]
+
+  try {
+    const [resultado] = await pool.query(sql, valores)
+    res.status(201).json({
+      mensagem: 'Lançamento criado',
+      lancamento: {
+        id: resultado.insertId,
         tipo,
         valor,
         categoriaId,
+        categoria: categorias[0].nome,
         descricao,
         forma,
         data,
         mesAno,
         bancoId,
-        req.usuarioId,
-      ]
-
-      conexao.query(sql, valores, (erro, resultado) => {
-        if (erro) {
-          console.log('erro no lançamento', erro)
-          return res.status(500).json({ erro: 'erro ao inserir lançamento' })
-        }
-
-        res.status(201).json({
-          mensagem: 'Lançamento criado',
-          lancamento: {
-            id: resultado.insertId,
-            tipo,
-            valor,
-            categoriaId,
-            categoria: categorias[0].nome,
-            descricao,
-            forma,
-            data,
-            mesAno,
-            bancoId,
-          },
-        })
-      })
-    },
-  )
+      },
+    })
+  } catch (erro) {
+    console.log('erro no lançamento', erro)
+    return res.status(500).json({ erro: 'erro ao inserir lançamento' })
+  }
 })
 
-app.delete('/lancamentos/:id', exigirLogin, (req, res) => {
+app.delete('/lancamentos/:id', exigirLogin, async (req, res) => {
   const id = req.params.id
 
   const sql = `DELETE FROM lancamentos WHERE id = ? AND usuarioId = ?`
 
-  conexao.query(sql, [id, req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao excluir: ', erro)
-      return res.status(500).json({ erro: 'Erro ao exlcuir' })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [id, req.usuarioId])
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ erro: 'Lançamento não encontrado.' })
     }
 
     res.json({ mensagem: 'Excluido com sucesso', id: id })
-  })
+  } catch (erro) {
+    console.log('Erro ao excluir: ', erro)
+    res.status(500).json({ erro: 'Erro ao exlcuir' })
+  }
 })
 
 app.use((err, req, res, next) => {
@@ -277,20 +249,19 @@ app.listen(PORT, () => {
 
 // Categorias de gasto //
 
-app.get('/categorias', exigirLogin, (req, res) => {
+app.get('/categorias', exigirLogin, async (req, res) => {
   const sql = `SELECT id, nome FROM categorias_gasto WHERE usuario_id = ? ORDER BY nome`
 
-  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.log('Erro ao buscar categorias:', erro)
-      return res.status(500).json({ erro: 'Erro ao buscar categorias.' })
-    }
-
+  try {
+    const [resultados] = await pool.query(sql, [req.usuarioId])
     res.json(resultados)
-  })
+  } catch (erro) {
+    console.log('Erro ao buscar categorias:', erro)
+    res.status(500).json({ erro: 'Erro ao buscar categorias.' })
+  }
 })
 
-app.post('/categorias', exigirLogin, (req, res) => {
+app.post('/categorias', exigirLogin, async (req, res) => {
   const nome =
     typeof req.body.nome === 'string' ? req.body.nome.trim().toLowerCase() : ''
 
@@ -300,35 +271,30 @@ app.post('/categorias', exigirLogin, (req, res) => {
 
   const sql = `INSERT INTO categorias_gasto (usuario_id, nome) VALUES (?, ?)`
 
-  conexao.query(sql, [req.usuarioId, nome], (erro, resultado) => {
-    if (erro) {
-      if (erro.code === 'ER_DUP_ENTRY') {
-        return res
-          .status(409)
-          .json({ erro: 'Você já tem uma categoria com esse nome.' })
-      }
-      console.log('Erro ao criar categoria:', erro)
-      return res.status(500).json({ erro: 'Erro ao criar categoria.' })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.usuarioId, nome])
     res.status(201).json({
       mensagem: 'Categoria criada',
       categoria: { id: resultado.insertId, nome },
     })
-  })
+  } catch (erro) {
+    if (erro.code === 'ER_DUP_ENTRY') {
+      return res
+        .status(409)
+        .json({ erro: 'Você já tem uma categoria com esse nome.' })
+    }
+    console.log('Erro ao criar categoria:', erro)
+    res.status(500).json({ erro: 'Erro ao criar categoria.' })
+  }
 })
 
-app.delete('/categorias/:id', exigirLogin, (req, res) => {
+app.delete('/categorias/:id', exigirLogin, async (req, res) => {
   const id = req.params.id
 
   const sqlFallback = `SELECT id FROM categorias_gasto WHERE usuario_id = ? AND nome = 'outros'`
 
-  conexao.query(sqlFallback, [req.usuarioId], (erro, fallback) => {
-    if (erro) {
-      console.log('Erro ao localizar categoria "outros":', erro)
-      return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
-    }
-
+  try {
+    const [fallback] = await pool.query(sqlFallback, [req.usuarioId])
     if (fallback.length === 0 || Number(fallback[0].id) === Number(id)) {
       return res.status(400).json({
         erro: 'Não é possível excluir a categoria "outros", ela recebe os lançamentos das categorias excluídas.',
@@ -343,42 +309,28 @@ app.delete('/categorias/:id', exigirLogin, (req, res) => {
       WHERE categoria_id = ? AND usuarioId = ?
     `
 
-    conexao.query(sqlReatribuir, [idFallback, id, req.usuarioId], (erro) => {
-      if (erro) {
-        console.log('Erro ao reatribuir lançamentos:', erro)
-        return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
-      }
+    await pool.query(sqlReatribuir, [idFallback, id, req.usuarioId])
 
-      const sqlDeletarMetas = `DELETE FROM metas WHERE categoria_id = ? AND usuario_id = ?`
+    const sqlDeletarMetas = `DELETE FROM metas WHERE categoria_id = ? AND usuario_id = ?`
+    await pool.query(sqlDeletarMetas, [id, req.usuarioId])
 
-      conexao.query(sqlDeletarMetas, [id, req.usuarioId], (erro) => {
-        if (erro) {
-          console.log('Erro ao excluir metas da categoria:', erro)
-          return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
-        }
+    const sqlDeletar = `DELETE FROM categorias_gasto WHERE id = ? AND usuario_id = ?`
+    const [resultado] = await pool.query(sqlDeletar, [id, req.usuarioId])
 
-        const sqlDeletar = `DELETE FROM categorias_gasto WHERE id = ? AND usuario_id = ?`
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ erro: 'Categoria não encontrada.' })
+    }
 
-        conexao.query(sqlDeletar, [id, req.usuarioId], (erro, resultado) => {
-          if (erro) {
-            console.log('Erro ao excluir categoria:', erro)
-            return res.status(500).json({ erro: 'Erro ao excluir categoria.' })
-          }
-
-          if (resultado.affectedRows === 0) {
-            return res.status(404).json({ erro: 'Categoria não encontrada.' })
-          }
-
-          res.json({ mensagem: 'Categoria excluída', id })
-        })
-      })
-    })
-  })
+    res.json({ mensagem: 'Categoria excluída', id })
+  } catch (erro) {
+    console.log('Erro ao excluir categoria:', erro)
+    res.status(500).json({ erro: 'Erro ao excluir categoria.' })
+  }
 })
 
 // Metas //
 
-app.get('/metas', exigirLogin, (req, res) => {
+app.get('/metas', exigirLogin, async (req, res) => {
   const sql = `
     SELECT m.id, m.categoria_id, c.nome AS categoria, m.valor_max, m.mes_ano
     FROM metas m
@@ -386,17 +338,16 @@ app.get('/metas', exigirLogin, (req, res) => {
     WHERE m.usuario_id = ?
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.log('Erro ao buscar metas:', erro)
-      return res.status(500).json({ erro: 'Erro ao buscar metas.' })
-    }
-
+  try {
+    const [resultados] = await pool.query(sql, [req.usuarioId])
     res.json(resultados)
-  })
+  } catch (erro) {
+    console.log('Erro ao buscar metas:', erro)
+    res.status(500).json({ erro: 'Erro ao buscar metas.' })
+  }
 })
 
-app.post('/metas', exigirLogin, (req, res) => {
+app.post('/metas', exigirLogin, async (req, res) => {
   const categoriaId = Number(req.body.categoriaId)
   const valorMax = Number(req.body.valorMax)
   const mesAno = req.body.mesAno
@@ -418,70 +369,66 @@ app.post('/metas', exigirLogin, (req, res) => {
     VALUES (?, ?, ?, ?)
   `
 
-  conexao.query(
-    sql,
-    [req.usuarioId, categoriaId, valorMax, mesAno],
-    (erro, resultado) => {
-      if (erro) {
-        if (erro.code === 'ER_DUP_ENTRY') {
-          return res.status(409).json({
-            erro: 'Você já tem uma meta para essa categoria neste mês.',
-          })
-        }
-        if (erro.code === 'ER_NO_REFERENCED_ROW_2') {
-          return res.status(400).json({ erro: 'Categoria inválida.' })
-        }
-        console.log('Erro ao criar meta:', erro)
-        return res.status(500).json({ erro: 'Erro ao criar meta.' })
-      }
+  try {
+    const [resultado] = await pool.query(sql, [
+      req.usuarioId,
+      categoriaId,
+      valorMax,
+      mesAno,
+    ])
 
-      res.status(201).json({
-        mensagem: 'Meta criada',
-        meta: { id: resultado.insertId, categoriaId, valorMax, mesAno },
+    res.status(201).json({
+      mensagem: 'Meta criada',
+      meta: { id: resultado.insertId, categoriaId, valorMax, mesAno },
+    })
+  } catch (erro) {
+    if (erro.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        erro: 'Você já tem uma meta para essa categoria neste mês.',
       })
-    },
-  )
+    }
+    if (erro.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ erro: 'Categoria inválida.' })
+    }
+    console.log('Erro ao criar meta:', erro)
+    res.status(500).json({ erro: 'Erro ao criar meta.' })
+  }
 })
 
-app.delete('/metas/:id', exigirLogin, (req, res) => {
+app.delete('/metas/:id', exigirLogin, async (req, res) => {
   const sql = `DELETE FROM metas WHERE id = ? AND usuario_id = ?`
 
-  conexao.query(sql, [req.params.id, req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao excluir meta:', erro)
-      return res.status(500).json({ erro: 'Erro ao excluir meta.' })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.params.id, req.usuarioId])
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ erro: 'Meta não encontrada.' })
     }
 
     res.json({ mensagem: 'Meta excluída', id: req.params.id })
-  })
+  } catch (erro) {
+    console.log('Erro ao excluir meta:', erro)
+    res.status(500).json({ erro: 'Erro ao excluir meta.' })
+  }
 })
 
 // Bancos //
 
-app.get('/bancos', exigirLogin, (req, res) => {
+app.get('/bancos', exigirLogin, async (req, res) => {
   const sql = `
     SELECT * FROM bancos
     WHERE usuarioId = ?
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao buscar bancos: ', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao buscar bancos.',
-      })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.usuarioId])
     res.json(resultado)
-  })
+  } catch (erro) {
+    console.log('Erro ao buscar bancos: ', erro)
+    res.status(500).json({ erro: 'Erro ao buscar bancos.' })
+  }
 })
 
-app.post('/bancos', exigirLogin, (req, res) => {
+app.post('/bancos', exigirLogin, async (req, res) => {
   const { nome, saldoInicial, mesCriado } = req.body
 
   const sql = `
@@ -492,17 +439,8 @@ app.post('/bancos', exigirLogin, (req, res) => {
 
   const valores = [nome, saldoInicial, mesCriado, req.usuarioId]
 
-  conexao.query(sql, valores, (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao criar banco:', erro)
-
-      res.status(500).json({
-        erro: 'Erro ao criar banco.',
-      })
-
-      return
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, valores)
     const novoBanco = {
       id: resultado.insertId,
       nome,
@@ -514,10 +452,13 @@ app.post('/bancos', exigirLogin, (req, res) => {
       mensagem: 'Banco criado com sucesso!',
       banco: novoBanco,
     })
-  })
+  } catch (erro) {
+    console.log('Erro ao criar banco:', erro)
+    res.status(500).json({ erro: 'Erro ao criar banco.' })
+  }
 })
 
-app.delete('/bancos/:id', exigirLogin, (req, res) => {
+app.delete('/bancos/:id', exigirLogin, async (req, res) => {
   const id = req.params.id
 
   const sqlLancamentos = `
@@ -525,63 +466,50 @@ app.delete('/bancos/:id', exigirLogin, (req, res) => {
     WHERE bancoId = ? AND usuarioId = ?
   `
 
-  conexao.query(sqlLancamentos, [id, req.usuarioId], (erro) => {
-    if (erro) {
-      console.log('Erro ao excluir lançamentos do banco:', erro)
+  try {
+    await pool.query(sqlLancamentos, [id, req.usuarioId])
+  } catch (erro) {
+    console.log('Erro ao excluir lançamentos do banco:', erro)
+    return res.status(500).json({
+      erro: 'Erro ao excluir lançamentos do banco',
+    })
+  }
 
-      res.status(500).json({
-        erro: 'Erro ao excluir lançamentos do banco',
-      })
-
-      return
-    }
-
-    const sqlBanco = `
+  const sqlBanco = `
       DELETE FROM bancos
       WHERE id = ? AND usuarioId = ?
     `
 
-    conexao.query(sqlBanco, [id, req.usuarioId], (erro, resultado) => {
-      if (erro) {
-        console.log('Erro ao excluir banco:', erro)
-
-        res.status(500).json({
-          erro: 'Erro ao excluir banco',
-        })
-
-        return
-      }
-
-      res.json({
-        mensagem: 'Banco excluído com sucesso',
-        id: id,
-      })
+  try {
+    await pool.query(sqlBanco, [id, req.usuarioId])
+    res.json({
+      mensagem: 'Banco excluído com sucesso',
+      id: id,
     })
-  })
+  } catch (erro) {
+    console.log('Erro ao excluir banco:', erro)
+    res.status(500).json({ erro: 'Erro ao excluir banco' })
+  }
 })
 
-app.get('/reservas', exigirLogin, (req, res) => {
+app.get('/reservas', exigirLogin, async (req, res) => {
   const sql = `
     SELECT * FROM reservas
     WHERE usuarioId = ?
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao buscar reservas')
-
-      return res.status(500).json({
-        erro: 'Erro ao buscar reservas',
-      })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.usuarioId])
     res.json(resultado)
-  })
+  } catch (erro) {
+    console.log('Erro ao buscar reservas', erro)
+    res.status(500).json({ erro: 'Erro ao buscar reservas' })
+  }
 })
 
 // Criar coisa pra aumentar e diminuir valor da reserva
 
-app.post('/reservas', exigirLogin, (req, res) => {
+app.post('/reservas', exigirLogin, async (req, res) => {
   const { nome, valor } = req.body
 
   const sql = `
@@ -592,15 +520,8 @@ app.post('/reservas', exigirLogin, (req, res) => {
 
   const valores = [nome, valor, req.usuarioId]
 
-  conexao.query(sql, valores, (erro, resultado) => {
-    if (erro) {
-      console.log('erro na reserva', erro)
-
-      res.status(500).json({ erro: 'erro ao inserir reserva' })
-
-      return
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, valores)
     const novaReserva = {
       id: resultado.insertId,
       nome,
@@ -611,10 +532,13 @@ app.post('/reservas', exigirLogin, (req, res) => {
       mensagem: 'Reserva criada',
       reserva: novaReserva,
     })
-  })
+  } catch (erro) {
+    console.log('erro na reserva', erro)
+    res.status(500).json({ erro: 'erro ao inserir reserva' })
+  }
 })
 
-app.delete('/reservas/:id', exigirLogin, (req, res) => {
+app.delete('/reservas/:id', exigirLogin, async (req, res) => {
   const id = req.params.id
 
   const sql = `
@@ -622,15 +546,8 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
     WHERE id = ? AND usuarioId = ?
   `
 
-  conexao.query(sql, [id, req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao excluir reserva:', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao excluir reserva',
-      })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [id, req.usuarioId])
     if (resultado.affectedRows === 0) {
       return res.status(404).json({
         erro: 'Reserva não encontrada.',
@@ -641,10 +558,13 @@ app.delete('/reservas/:id', exigirLogin, (req, res) => {
       mensagem: 'Reserva excluída com sucesso',
       id: id,
     })
-  })
+  } catch (erro) {
+    console.log('Erro ao excluir reserva:', erro)
+    res.status(500).json({ erro: 'Erro ao excluir reserva' })
+  }
 })
 
-app.patch('/reservas/:id', exigirLogin, (req, res) => {
+app.patch('/reservas/:id', exigirLogin, async (req, res) => {
   const id = Number(req.params.id)
   const { tipo, valor } = req.body
   const valorNum = Number(valor)
@@ -661,48 +581,42 @@ app.patch('/reservas/:id', exigirLogin, (req, res) => {
     return res.status(400).json({ erro: 'Valor inválido.' })
   }
 
-  if (tipo === 'adicionar') {
-    const sql = `
-      UPDATE reservas SET valor = valor + ?
-      WHERE id = ? AND usuarioId = ?
-    `
-    conexao.query(sql, [valorNum, id, req.usuarioId], (erro, resultado) => {
-      if (erro) {
-        console.log('Erro ao atualizar reserva:', erro)
-        return res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
+  const sql =
+    tipo === 'adicionar'
+      ? `
+        UPDATE reservas SET valor = valor + ?
+        WHERE id = ? AND usuarioId = ?
+      `
+      : `
+        UPDATE reservas SET valor = valor - ?
+        WHERE id = ? AND usuarioId = ? AND valor >= ?
+      `
+  const valores =
+    tipo === 'adicionar'
+      ? [valorNum, id, req.usuarioId]
+      : [valorNum, id, req.usuarioId, valorNum]
+
+  try {
+    const [resultado] = await pool.query(sql, valores)
+    if (resultado.affectedRows === 0) {
+      if (tipo === 'retirar') {
+        return res
+          .status(422)
+          .json({ erro: 'Saldo insuficiente ou reserva não encontrada.' })
       }
-      if (resultado.affectedRows === 0) {
-        return res.status(404).json({ erro: 'Reserva não encontrada.' })
-      }
-      res.json({ mensagem: 'Reserva atualizada', id })
-    })
-  } else {
-    const sql = `
-      UPDATE reservas SET valor = valor - ?
-      WHERE id = ? AND usuarioId = ? AND valor >= ?
-    `
-    conexao.query(
-      sql,
-      [valorNum, id, req.usuarioId, valorNum],
-      (erro, resultado) => {
-        if (erro) {
-          console.log('Erro ao atualizar reserva:', erro)
-          return res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
-        }
-        if (resultado.affectedRows === 0) {
-          return res
-            .status(422)
-            .json({ erro: 'Saldo insuficiente ou reserva não encontrada.' })
-        }
-        res.json({ mensagem: 'Reserva atualizada', id })
-      },
-    )
+      return res.status(404).json({ erro: 'Reserva não encontrada.' })
+    }
+
+    res.json({ mensagem: 'Reserva atualizada', id })
+  } catch (erro) {
+    console.log('Erro ao atualizar reserva:', erro)
+    res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
   }
 })
 
 //              CADASTRO
 
-app.post('/cadastro', (req, res) => {
+app.post('/cadastro', async (req, res) => {
   const { nome, email, senha, confirmarSenha, convite } = req.body
 
   const nomeLimpo = nome?.trim()
@@ -748,15 +662,16 @@ app.post('/cadastro', (req, res) => {
 
   const tokenHash = crypto.createHash('sha256').update(convite).digest('hex')
 
-  conexao.beginTransaction((erro) => {
-    if (erro) {
-      console.error('Erro ao iniciar transação:', erro)
+  let connection
+  let transacaoIniciada = false
+  let etapa = 'iniciar transação'
 
-      return res.status(500).json({
-        erro: 'Erro interno do servidor.',
-      })
-    }
+  try {
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transacaoIniciada = true
 
+    etapa = 'verificar convite'
     const sqlConvite = `
       SELECT *
       FROM convites
@@ -766,189 +681,145 @@ app.post('/cadastro', (req, res) => {
       LIMIT 1
       FOR UPDATE
     `
+    const [convites] = await connection.query(sqlConvite, [tokenHash])
 
-    conexao.query(sqlConvite, [tokenHash], (erro, convites) => {
-      if (erro) {
-        return conexao.rollback(() => {
-          console.error('Erro ao verificar convite:', erro)
-
-          return res.status(500).json({
-            erro: 'Erro interno do servidor.',
-          })
-        })
-      }
-
-      if (convites.length === 0) {
-        return conexao.rollback(() => {
-          return res.status(403).json({
-            erro: 'Convite inválido, expirado ou já utilizado.',
-          })
-        })
-      }
-
-      const conviteValido = convites[0]
-
-      if (
-        conviteValido.email &&
-        conviteValido.email.toLowerCase() !== emailLimpo
-      ) {
-        return conexao.rollback(() => {
-          return res.status(403).json({
-            erro: 'Este convite está vinculado a outro e-mail.',
-          })
-        })
-      }
-
-      bcrypt.hash(senha, 12, (erro, senhaHash) => {
-        if (erro) {
-          return conexao.rollback(() => {
-            console.error('Erro ao gerar hash da senha:', erro)
-
-            return res.status(500).json({
-              erro: 'Erro interno do servidor.',
-            })
-          })
-        }
-
-        const sqlUsuario = `
-          INSERT INTO usuarios
-            (nome, email, senha_hash)
-          VALUES (?, ?, ?)
-        `
-
-        conexao.query(
-          sqlUsuario,
-          [nomeLimpo, emailLimpo, senhaHash],
-          (erro, resultadoUsuario) => {
-            if (erro) {
-              return conexao.rollback(() => {
-                if (erro.code === 'ER_DUP_ENTRY') {
-                  return res.status(409).json({
-                    erro: 'Este e-mail já está cadastrado.',
-                  })
-                }
-
-                console.error('Erro ao cadastrar usuário:', erro)
-
-                return res.status(500).json({
-                  erro: 'Erro ao cadastrar usuário.',
-                })
-              })
-            }
-
-            const usuarioId = resultadoUsuario.insertId
-
-            const sqlUsarConvite = `
-              UPDATE convites
-              SET usado = TRUE
-              WHERE id = ?
-                AND usado = FALSE
-            `
-
-            conexao.query(
-              sqlUsarConvite,
-              [conviteValido.id],
-              (erro, resultadoUpdate) => {
-                if (erro || resultadoUpdate.affectedRows === 0) {
-                  return conexao.rollback(() => {
-                    console.error('Erro ao utilizar convite:', erro)
-
-                    return res.status(500).json({
-                      erro: 'Erro ao finalizar o cadastro.',
-                    })
-                  })
-                }
-
-                const sqlCategoria = `
-                  INSERT INTO categorias_gasto
-                    (usuario_id, nome)
-                  VALUES (?, ?)
-                `
-
-                const CATEGORIAS_PADRAO = [
-                  'alimentação',
-                  'lazer',
-                  'transporte',
-                  'moradia',
-                  'saúde',
-                  'contas',
-                  'outros',
-                ]
-
-                function inserirCategoria(indice) {
-                  if (indice === CATEGORIAS_PADRAO.length) {
-                    return finalizarCadastro()
-                  }
-
-                  const categoria = CATEGORIAS_PADRAO[indice]
-
-                  conexao.query(
-                    sqlCategoria,
-                    [usuarioId, categoria],
-                    (erro) => {
-                      if (erro) {
-                        return conexao.rollback(() => {
-                          console.error(
-                            'Erro ao inserir categoria padrão:',
-                            erro,
-                          )
-
-                          return res.status(500).json({
-                            erro: 'Erro ao finalizar cadastro.',
-                          })
-                        })
-                      }
-
-                      inserirCategoria(indice + 1)
-                    },
-                  )
-                }
-
-                function finalizarCadastro() {
-                  conexao.commit((erro) => {
-                    if (erro) {
-                      return conexao.rollback(() => {
-                        console.error('Erro ao finalizar transação:', erro)
-
-                        return res.status(500).json({
-                          erro: 'Erro ao finalizar o cadastro.',
-                        })
-                      })
-                    }
-
-                    const token = jwt.sign(
-                      { sub: usuarioId },
-                      process.env.JWT_SECRET,
-                      {
-                        expiresIn: '1d',
-                      },
-                    )
-
-                    res.cookie('token', token, {
-                      httpOnly: true,
-                      sameSite: 'lax',
-                      secure: process.env.NODE_ENV === 'production',
-                      maxAge: 1000 * 60 * 60 * 24,
-                    })
-
-                    return res.status(201).json({
-                      mensagem: 'Usuário criado com sucesso!',
-                      id: usuarioId,
-                    })
-                  })
-                }
-
-                inserirCategoria(0)
-              },
-            )
-          },
-        )
+    if (convites.length === 0) {
+      await connection.rollback()
+      transacaoIniciada = false
+      return res.status(403).json({
+        erro: 'Convite inválido, expirado ou já utilizado.',
       })
+    }
+
+    const conviteValido = convites[0]
+    if (
+      conviteValido.email &&
+      conviteValido.email.toLowerCase() !== emailLimpo
+    ) {
+      await connection.rollback()
+      transacaoIniciada = false
+      return res.status(403).json({
+        erro: 'Este convite está vinculado a outro e-mail.',
+      })
+    }
+
+    etapa = 'gerar hash da senha'
+    const senhaHash = await bcrypt.hash(senha, 12)
+
+    etapa = 'cadastrar usuário'
+    const sqlUsuario = `
+      INSERT INTO usuarios
+        (nome, email, senha_hash)
+      VALUES (?, ?, ?)
+    `
+    const [resultadoUsuario] = await connection.query(sqlUsuario, [
+      nomeLimpo,
+      emailLimpo,
+      senhaHash,
+    ])
+    const usuarioId = resultadoUsuario.insertId
+
+    etapa = 'utilizar convite'
+    const sqlUsarConvite = `
+      UPDATE convites
+      SET usado = TRUE
+      WHERE id = ?
+        AND usado = FALSE
+    `
+    const [resultadoUpdate] = await connection.query(sqlUsarConvite, [
+      conviteValido.id,
+    ])
+    if (resultadoUpdate.affectedRows === 0) {
+      throw new Error('Convite não pôde ser marcado como utilizado.')
+    }
+
+    etapa = 'inserir categoria padrão'
+    const sqlCategoria = `
+      INSERT INTO categorias_gasto
+        (usuario_id, nome)
+      VALUES (?, ?)
+    `
+    const CATEGORIAS_PADRAO = [
+      'alimentação',
+      'lazer',
+      'transporte',
+      'moradia',
+      'saúde',
+      'contas',
+      'outros',
+    ]
+    for (const categoria of CATEGORIAS_PADRAO) {
+      await connection.query(sqlCategoria, [usuarioId, categoria])
+    }
+
+    etapa = 'finalizar transação'
+    await connection.commit()
+    transacaoIniciada = false
+
+    const token = jwt.sign({ sub: usuarioId }, process.env.JWT_SECRET, {
+      expiresIn: '1d',
     })
-  })
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24,
+    })
+
+    return res.status(201).json({
+      mensagem: 'Usuário criado com sucesso!',
+      id: usuarioId,
+    })
+  } catch (erro) {
+    if (transacaoIniciada) {
+      try {
+        await connection.rollback()
+      } catch (erroRollback) {
+        console.error('Erro ao reverter transação:', erroRollback)
+      }
+    }
+
+    if (etapa === 'iniciar transação') {
+      console.error('Erro ao iniciar transação:', erro)
+      return res.status(500).json({ erro: 'Erro interno do servidor.' })
+    }
+    if (etapa === 'verificar convite') {
+      console.error('Erro ao verificar convite:', erro)
+      return res.status(500).json({ erro: 'Erro interno do servidor.' })
+    }
+    if (etapa === 'gerar hash da senha') {
+      console.error('Erro ao gerar hash da senha:', erro)
+      return res.status(500).json({ erro: 'Erro interno do servidor.' })
+    }
+    if (etapa === 'cadastrar usuário') {
+      if (erro.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({
+          erro: 'Este e-mail já está cadastrado.',
+        })
+      }
+      console.error('Erro ao cadastrar usuário:', erro)
+      return res.status(500).json({ erro: 'Erro ao cadastrar usuário.' })
+    }
+    if (etapa === 'utilizar convite') {
+      console.error('Erro ao utilizar convite:', erro)
+      return res.status(500).json({ erro: 'Erro ao finalizar o cadastro.' })
+    }
+    if (etapa === 'inserir categoria padrão') {
+      console.error('Erro ao inserir categoria padrão:', erro)
+      return res.status(500).json({ erro: 'Erro ao finalizar cadastro.' })
+    }
+
+    console.error('Erro ao finalizar transação:', erro)
+    return res.status(500).json({ erro: 'Erro ao finalizar o cadastro.' })
+  } finally {
+    if (connection) {
+      connection.release()
+    }
+  }
 })
 
-app.post('/login', loginLimiter, (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
   const { email, senha } = req.body
 
   if (
@@ -974,56 +845,54 @@ app.post('/login', loginLimiter, (req, res) => {
 
   const sql = 'SELECT * FROM usuarios WHERE email = ?'
 
-  conexao.query(sql, [emailN], async (erro, resultados) => {
-    if (erro) {
-      console.error('Erro ao buscar usuário:', erro)
+  let resultados
+  try {
+    resultados = (await pool.query(sql, [emailN]))[0]
+  } catch (erro) {
+    console.error('Erro ao buscar usuário:', erro)
+    return res.status(500).json({ erro: 'Erro interno do servidor' })
+  }
 
-      return res.status(500).json({
-        erro: 'Erro interno do servidor',
-      })
-    }
+  if (resultados.length === 0) {
+    registrarFalhaLogin(emailN)
 
-    if (resultados.length === 0) {
-      registrarFalhaLogin(emailN)
-
-      return res.status(401).json({
-        erro: 'Email ou senha incorretos',
-      })
-    }
-
-    const usuario = resultados[0]
-
-    const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash)
-
-    if (!senhaCorreta) {
-      registrarFalhaLogin(emailN)
-
-      return res.status(401).json({
-        erro: 'Email ou senha incorretos',
-      })
-    }
-
-    tentativasLogin.delete(emailN)
-
-    const token = jwt.sign({ sub: usuario.id }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
+    return res.status(401).json({
+      erro: 'Email ou senha incorretos',
     })
+  }
 
-    res.cookie('token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24,
-    })
+  const usuario = resultados[0]
 
-    res.json({
-      mensagem: 'Login realizado com sucesso!',
-      usuario: {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-      },
+  const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash)
+
+  if (!senhaCorreta) {
+    registrarFalhaLogin(emailN)
+
+    return res.status(401).json({
+      erro: 'Email ou senha incorretos',
     })
+  }
+
+  tentativasLogin.delete(emailN)
+
+  const token = jwt.sign({ sub: usuario.id }, process.env.JWT_SECRET, {
+    expiresIn: '1d',
+  })
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 1000 * 60 * 60 * 24,
+  })
+
+  res.json({
+    mensagem: 'Login realizado com sucesso!',
+    usuario: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+    },
   })
 })
 
@@ -1047,7 +916,7 @@ app.get('/me', (req, res) => {
 
 //convites
 
-app.get('/convites/verificar', (req, res) => {
+app.get('/convites/verificar', async (req, res) => {
   const { token } = req.query
 
   if (!token) {
@@ -1065,76 +934,77 @@ app.get('/convites/verificar', (req, res) => {
     WHERE token_hash = ?
   `
 
-  conexao.query(sql, [tokenHash], (erro, resultados) => {
-    if (erro) {
-      console.log('Erro ao verificar convite:', erro)
-
-      return res.status(500).json({
-        valido: false,
-        erro: 'Erro interno do servidor.',
-      })
-    }
-
-    if (resultados.length === 0) {
-      return res.status(400).json({
-        valido: false,
-        erro: 'Convite inválido.',
-      })
-    }
-
-    const convite = resultados[0]
-
-    if (convite.usado) {
-      return res.status(400).json({
-        valido: false,
-        erro: 'Este convite já foi utilizado.',
-      })
-    }
-
-    if (new Date(convite.expira_em) <= new Date()) {
-      return res.status(400).json({
-        valido: false,
-        erro: 'Este convite expirou.',
-      })
-    }
-
-    res.json({
-      valido: true,
-      email: convite.email,
+  let resultados
+  try {
+    resultados = (await pool.query(sql, [tokenHash]))[0]
+  } catch (erro) {
+    console.log('Erro ao verificar convite:', erro)
+    return res.status(500).json({
+      valido: false,
+      erro: 'Erro interno do servidor.',
     })
+  }
+
+  if (resultados.length === 0) {
+    return res.status(400).json({
+      valido: false,
+      erro: 'Convite inválido.',
+    })
+  }
+
+  const convite = resultados[0]
+
+  if (convite.usado) {
+    return res.status(400).json({
+      valido: false,
+      erro: 'Este convite já foi utilizado.',
+    })
+  }
+
+  if (new Date(convite.expira_em) <= new Date()) {
+    return res.status(400).json({
+      valido: false,
+      erro: 'Este convite expirou.',
+    })
+  }
+
+  res.json({
+    valido: true,
+    email: convite.email,
   })
 })
 
 function exigirAdmin(req, res, next) {
-  exigirLogin(req, res, () => {
+  exigirLogin(req, res, async () => {
     if (!req.usuarioId) {
       return res.status(401).json({ erro: 'Não autenticado' })
     }
 
     const sql = `SELECT role FROM usuarios WHERE id = ?`
 
-    conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-      if (erro) {
-        console.error('Erro ao verificar administrador:', erro)
-        return res.status(500).json({ erro: 'Erro interno do servidor.' })
-      }
+    let resultados
+    try {
+      resultados = (await pool.query(sql, [req.usuarioId]))[0]
+    } catch (erro) {
+      console.error('Erro ao verificar administrador:', erro)
+      return res.status(500).json({ erro: 'Erro interno do servidor.' })
+    }
 
-      if (resultados.length === 0) {
-        return res.status(401).json({ erro: 'Usuário não encontrado.' })
-      }
+    if (resultados.length === 0) {
+      return res.status(401).json({ erro: 'Usuário não encontrado.' })
+    }
 
-      if (resultados[0].role !== 'admin') {
-        return res
-          .status(403)
-          .json({ erro: 'Acesso permitido apenas para administradores.' })
-      }
+    if (resultados[0].role !== 'admin') {
+      return res
+        .status(403)
+        .json({ erro: 'Acesso permitido apenas para administradores.' })
+    }
 
-      next()
-    })
+    next()
   })
 }
 
-app.get('/usuario-atual', exigirLogin, (req, res) => {
+app.get('/usuario-atual', exigirLogin, async (req, res) => {
   const sql = `
     SELECT id, nome, email, role
     FROM usuarios
@@ -1142,31 +1012,29 @@ app.get('/usuario-atual', exigirLogin, (req, res) => {
     LIMIT 1
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.error('Erro ao buscar usuário atual:', erro)
+  let resultados
+  try {
+    resultados = (await pool.query(sql, [req.usuarioId]))[0]
+  } catch (erro) {
+    console.error('Erro ao buscar usuário atual:', erro)
+    return res.status(500).json({ erro: 'Erro interno do servidor.' })
+  }
 
-      return res.status(500).json({
-        erro: 'Erro interno do servidor.',
-      })
-    }
-
-    if (resultados.length === 0) {
-      return res.status(404).json({
-        erro: 'Usuário não encontrado.',
-      })
-    }
-
-    return res.json({
-      id: resultados[0].id,
-      nome: resultados[0].nome,
-      email: resultados[0].email,
-      admin: resultados[0].role,
+  if (resultados.length === 0) {
+    return res.status(404).json({
+      erro: 'Usuário não encontrado.',
     })
+  }
+
+  return res.json({
+    id: resultados[0].id,
+    nome: resultados[0].nome,
+    email: resultados[0].email,
+    admin: resultados[0].role,
   })
 })
 
-app.post('/convites', exigirAdmin, (req, res) => {
+app.post('/convites', exigirAdmin, async (req, res) => {
   console.log('POST /convites recebido')
   console.log('Dados recebidos:', req.body)
 
@@ -1213,30 +1081,30 @@ app.post('/convites', exigirAdmin, (req, res) => {
     VALUES (?, ?, ?)
   `
 
-  conexao.query(sql, [emailLimpo, tokenHash, expiraEm], (erro, resultado) => {
-    if (erro) {
-      console.error('Erro ao criar convite:', erro)
+  let resultado
+  try {
+    resultado = (
+      await pool.query(sql, [emailLimpo, tokenHash, expiraEm])
+    )[0]
+  } catch (erro) {
+    console.error('Erro ao criar convite:', erro)
+    return res.status(500).json({ erro: 'Erro ao gerar convite.' })
+  }
 
-      return res.status(500).json({
-        erro: 'Erro ao gerar convite.',
-      })
-    }
+  console.log(`Convite criado com sucesso! ID: ${resultado.insertId}`)
 
-    console.log(`Convite criado com sucesso! ID: ${resultado.insertId}`)
+  const link =
+    `${req.protocol}://${req.get('host')}` + `/cadastro.html?convite=${token}`
 
-    const link =
-      `${req.protocol}://${req.get('host')}` + `/cadastro.html?convite=${token}`
-
-    return res.status(201).json({
-      mensagem: 'Convite gerado com sucesso!',
-      id: resultado.insertId,
-      link,
-      expiraEm,
-    })
+  return res.status(201).json({
+    mensagem: 'Convite gerado com sucesso!',
+    id: resultado.insertId,
+    link,
+    expiraEm,
   })
 })
 
-app.get('/convites', exigirAdmin, (req, res) => {
+app.get('/convites', exigirAdmin, async (req, res) => {
   const sql = `
     SELECT
       id,
@@ -1248,42 +1116,34 @@ app.get('/convites', exigirAdmin, (req, res) => {
     ORDER BY criado_em DESC
   `
 
-  conexao.query(sql, (erro, resultados) => {
-    if (erro) {
-      console.error('Erro ao buscar convites:', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao buscar convites.',
-      })
-    }
-
+  try {
+    const [resultados] = await pool.query(sql)
     return res.json(resultados)
-  })
+  } catch (erro) {
+    console.error('Erro ao buscar convites:', erro)
+    res.status(500).json({ erro: 'Erro ao buscar convites.' })
+  }
 })
 
 //Gastos Fixos
 
-app.get('/gastos-fixos', exigirLogin, (req, res) => {
+app.get('/gastos-fixos', exigirLogin, async (req, res) => {
   const sql = `
     SELECT id, nome, valor, status
     FROM gastos_fixos
     WHERE usuario_id = ?
   `
 
-  conexao.query(sql, [req.usuarioId], (erro, resultados) => {
-    if (erro) {
-      console.log('Erro ao buscar gastos fixos:', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao buscar gastos fixos.',
-      })
-    }
-
+  try {
+    const [resultados] = await pool.query(sql, [req.usuarioId])
     res.json(resultados)
-  })
+  } catch (erro) {
+    console.log('Erro ao buscar gastos fixos:', erro)
+    res.status(500).json({ erro: 'Erro ao buscar gastos fixos.' })
+  }
 })
 
-app.post('/gastos-fixos', exigirLogin, (req, res) => {
+app.post('/gastos-fixos', exigirLogin, async (req, res) => {
   const nome = typeof req.body.nome === 'string' ? req.body.nome.trim() : ''
   const valor = Number(req.body.valor)
 
@@ -1301,15 +1161,8 @@ app.post('/gastos-fixos', exigirLogin, (req, res) => {
     VALUES (?, ?, ?)
   `
 
-  conexao.query(sql, [req.usuarioId, nome, valor], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao criar gasto fixo:', erro)
-
-      return res.status(500).json({
-        erro: 'Erro ao criar gasto fixo.',
-      })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.usuarioId, nome, valor])
     res.status(201).json({
       mensagem: 'Gasto fixo criado',
       gastoFixo: {
@@ -1319,10 +1172,13 @@ app.post('/gastos-fixos', exigirLogin, (req, res) => {
         status: 'pendente',
       },
     })
-  })
+  } catch (erro) {
+    console.log('Erro ao criar gasto fixo:', erro)
+    res.status(500).json({ erro: 'Erro ao criar gasto fixo.' })
+  }
 })
 
-app.patch('/gastos-fixos/:id', exigirLogin, (req, res) => {
+app.patch('/gastos-fixos/:id', exigirLogin, async (req, res) => {
   const { status } = req.body
 
   if (!['pendente', 'pago'].includes(status)) {
@@ -1335,42 +1191,37 @@ app.patch('/gastos-fixos/:id', exigirLogin, (req, res) => {
     WHERE id = ? AND usuario_id = ?
   `
 
-  conexao.query(
-    sql,
-    [status, req.params.id, req.usuarioId],
-    (erro, resultado) => {
-      if (erro) {
-        console.log('Erro ao atualizar gasto fixo:', erro)
-
-        return res.status(500).json({ erro: 'Erro ao atualizar gasto fixo.' })
-      }
-
-      if (resultado.affectedRows === 0) {
-        return res.status(404).json({ erro: 'Gasto fixo não encontrado.' })
-      }
-
-      res.json({ mensagem: 'Status atualizado', status })
-    },
-  )
+  try {
+    const [resultado] = await pool.query(sql, [
+      status,
+      req.params.id,
+      req.usuarioId,
+    ])
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ erro: 'Gasto fixo não encontrado.' })
+    }
+    res.json({ mensagem: 'Status atualizado', status })
+  } catch (erro) {
+    console.log('Erro ao atualizar gasto fixo:', erro)
+    res.status(500).json({ erro: 'Erro ao atualizar gasto fixo.' })
+  }
 })
 
-app.delete('/gastos-fixos/:id', exigirLogin, (req, res) => {
+app.delete('/gastos-fixos/:id', exigirLogin, async (req, res) => {
   const sql = `
     DELETE FROM gastos_fixos
     WHERE id = ? AND usuario_id = ?
   `
 
-  conexao.query(sql, [req.params.id, req.usuarioId], (erro, resultado) => {
-    if (erro) {
-      console.log('Erro ao excluir gasto fixo:', erro)
-
-      return res.status(500).json({ erro: 'Erro ao excluir gasto fixo.' })
-    }
-
+  try {
+    const [resultado] = await pool.query(sql, [req.params.id, req.usuarioId])
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ erro: 'Gasto fixo não encontrado.' })
     }
 
     res.json({ mensagem: 'Gasto fixo excluído', id: req.params.id })
-  })
+  } catch (erro) {
+    console.log('Erro ao excluir gasto fixo:', erro)
+    res.status(500).json({ erro: 'Erro ao excluir gasto fixo.' })
+  }
 })

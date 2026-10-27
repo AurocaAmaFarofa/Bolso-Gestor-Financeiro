@@ -305,9 +305,6 @@
           </button>
         </div>
       </div>
-      <!--popup novo tipo de gasto-->
-      <div class="popup-modal modal-popup display-none" id="popup-modal"></div>
-
       <div
         class="popup-modal modal-popup display-none"
         id="popup-nova-categoria"
@@ -341,290 +338,541 @@
         </form>
         <div class="lista-categorias" id="lista-categorias"></div>
       </div>
-      <header class="app-header">
-        <h1 class="app-title">Bolso</h1>
-        <nav>
-          <button
-            onclick="mostrarPagina('dashboard')"
-            class="btn-header btn-header-active"
-            id="btn-dashboard"
-          >
-            Inicio
-          </button>
-          <button
-            onclick="mostrarPagina('expenses')"
-            class="btn-header"
-            id="btn-expenses"
-          >
-            Lançamentos
-          </button>
-          <button
-            onclick="mostrarPagina('fixedExpenses')"
-            class="btn-header"
-            id="btn-fixedExpenses"
-          >
-            Fixos
-          </button>
-          <button
-            onclick="mostrarPagina('reserved')"
-            class="btn-header"
-            id="btn-reserved"
-          >
-            Reservas
-          </button>
-          <button
-            onclick="mostrarPagina('profile')"
-            class="btn-header"
-            id="btn-profile"
-            aria-controls="profile"
-          >
-            Perfil
-          </button>
-          <a href="convites.html"
-            ><button
+      <div class="app-shell">
+        <header class="app-header">
+          <a class="app-brand" href="index.html" aria-label="Bolso, início">
+            <span class="brand-mark" aria-hidden="true">B</span>
+            <span class="app-title">Bolso</span>
+          </a>
+          <span class="nav-caption">Seu espaço</span>
+          <nav aria-label="Navegação principal">
+            <button
+              onclick="mostrarPagina('dashboard')"
+              class="btn-header btn-header-active"
+              id="btn-dashboard"
+              aria-label="Visão geral"
+            >
+              <i class="fa-solid fa-house" aria-hidden="true"></i
+              ><span>Visão geral</span>
+            </button>
+            <button
+              onclick="mostrarPagina('expenses')"
+              class="btn-header"
+              id="btn-expenses"
+              aria-label="Lançamentos"
+            >
+              <i
+                class="fa-solid fa-arrow-right-arrow-left"
+                aria-hidden="true"
+              ></i
+              ><span>Lançamentos</span>
+            </button>
+            <button
+              onclick="mostrarPagina('statistics')"
+              class="btn-header"
+              id="btn-statistics"
+              aria-label="Análises"
+            >
+              <i class="fa-solid fa-chart-line" aria-hidden="true"></i
+              ><span>Análises</span>
+            </button>
+            <button
+              onclick="mostrarPagina('fixedExpenses')"
+              class="btn-header"
+              id="btn-fixedExpenses"
+              aria-label="Gastos fixos"
+            >
+              <i class="fa-solid fa-calendar-check" aria-hidden="true"></i
+              ><span>Gastos fixos</span>
+            </button>
+            <button
+              onclick="mostrarPagina('reserved')"
+              class="btn-header"
+              id="btn-reserved"
+              aria-label="Reservas"
+            >
+              <i class="fa-solid fa-piggy-bank" aria-hidden="true"></i
+              ><span>Reservas</span>
+            </button>
+            <button
+              onclick="mostrarPagina('profile')"
+              class="btn-header"
+              id="btn-profile"
+              aria-controls="profile"
+              aria-label="Perfil"
+            >
+              <i class="fa-solid fa-user" aria-hidden="true"></i
+              ><span>Perfil</span>
+            </button>
+            <a
+              href="convites.html"
               class="btn-header button-off"
               id="btn-convites-abrir"
-              onclick="abrirConvites()"
+              aria-label="Convites"
             >
-              Convites
-            </button></a
+              <i class="fa-solid fa-ticket" aria-hidden="true"></i
+              ><span>Convites</span>
+            </a>
+          </nav>
+          <button
+            type="button"
+            class="btn-logout"
+            onclick="
+              confirmarLogout(() => {
+                window.location.href = 'login.html'
+              })
+            "
           >
-        </nav>
-        <button
-          type="button"
-          class="btn-logout"
-          onclick="
-            confirmarLogout(() => {
-              window.location.href = 'login.html'
-            })
-          "
-        >
-          Sair
-        </button>
-      </header>
-      <main>
-        <!-- Seção do Dashboard -->
-        <section id="dashboard" class="page">
-          <div class="banks-wrapper">
-            <span>Suas Contas / Bancos:</span>
-            <div class="banks-container">
-              <div id="list-bancos-abas"></div>
-              <button
-                onclick="abrirOuFecharPopup('popup-novo-banco', 'abrir')"
-                class="btn-add-bank"
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <header class="page-header">
-            <h1 class="dashboard-title" id="nome-usuario">Olá, Usuario</h1>
-            <section class="select-month-container">
-              <button
-                class="btn-select-month"
-                onclick="diminuirOuAumentarMes('Diminuir')"
-              >
-                <
-              </button>
-              <h3 id="month-visor">Month</h3>
-              <button
-                class="btn-select-month"
-                onclick="diminuirOuAumentarMes('Aumentar')"
-              >
-                >
-              </button>
-            </section>
-          </header>
-          <!------Gastos Fixos------>
-          <div class="current-balance">
-            <span>Gastos fixos</span>
-            <div id="fixed-expenses-main"></div>
-          </div>
-
-          <!-- Metas Main -->
-          <div class="current-balance">
-            <span>Metas</span>
-            <div id="main-goals-visor"></div>
-          </div>
-
-          <!--Total de dinheiro-->
-
-          <div class="current-balance">
-            <span>Pode Gastar (Geral)</span>
-            <p id="current-balance-id">00,00</p>
-
-            <span>Saldo do Banco Selecionado</span>
-            <p id="banco-id-visor">00,00</p>
-            <span>Saldo total (Todos os Bancos)</span>
-            <p id="total-money">00,00</p>
-          </div>
-
-          <div class="stats-grid">
-            <!--Gastos totais-->
-            <div class="stats-card stats-card--expenses">
-              <span>Gasto no mês</span>
-              <p id="total-expenses">00,00</p>
-            </div>
-            <!--Total reservados-->
-            <div class="stats-card stats-card--reserve">
-              <span>Guardados</span>
-              <p id="total-reserved">00,00</p>
-            </div>
-          </div>
-
-          <!--Ultimos 3 lançamentos-->
-          <div class="current-balance">
-            <div class="header-last-expenses">
-              <span>Ultimos lançamento</span>
-              <i class="fa-solid fa-chevron-down" id="btn-open-last"></i>
-            </div>
-            <div id="grid-last">
-              <span>Nenhum lançamento ainda</span>
-            </div>
-          </div>
-        </section>
-        <!-- Seção de Lançamentos -->
-        <section id="expenses" class="page">
-          <header class="page-header">
-            <h1>Lançamentos</h1>
-          </header>
-          <div class="current-balance">
-            <span>Metas</span>
-            <div id="expense-goals-visor">
-              <div class="current-balance">
-                <h1>Nome da meta</h1>
-                <div class="progress-goal-container">
-                  <div class="progress-goal progress-safe"></div>
-                </div>
+            <i
+              class="fa-solid fa-arrow-right-from-bracket"
+              aria-hidden="true"
+            ></i
+            ><span>Sair</span>
+          </button>
+        </header>
+        <main>
+          <div
+            id="financial-data-status"
+            class="data-status"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+          <!-- Seção do Dashboard -->
+          <section id="dashboard" class="page">
+            <header class="page-header">
+              <div>
+                <span class="page-eyebrow">SEU DINHEIRO, EM EQUILÍBRIO</span>
+                <h1 class="dashboard-title">
+                  Olá, <span id="nome-usuario">Usuario</span>
+                </h1>
+                <p class="page-subtitle">
+                  Acompanhe sua vida financeira em um só lugar.
+                </p>
               </div>
-            </div>
-          </div>
-          <!--id="new-expense"-->
-          <div class="container-btn-new-expenses">
-            <button
-              class="btn-new-expenses"
-              onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
-            >
-              Novo Lançamento
-            </button>
-            <button
-              class="btn-new-expenses"
-              onclick="abrirOuFecharPopup('new-goals-popup', 'abrir')"
-            >
-              Nova Meta
-            </button>
-          </div>
-
-          <search class="search-bar">
-            <form method="GET" role="search">
-              <label for="search-text" class="popup-container search-title"
-                >Buscar Lançamento:</label
-              >
-              <div class="search-bar-itens">
-                <input
-                  type="text"
-                  class="search-bar-container"
-                  id="search-text"
-                  placeholder="Buscar por categoria.."
-                />
+              <section class="select-month-container">
+                <button
+                  class="btn-select-month"
+                  type="button"
+                  aria-label="Ver mês anterior"
+                  onclick="diminuirOuAumentarMes('Diminuir')"
+                >
+                  <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                </button>
+                <h3 id="month-visor">Month</h3>
+                <button
+                  class="btn-select-month"
+                  type="button"
+                  aria-label="Ver próximo mês"
+                  onclick="diminuirOuAumentarMes('Aumentar')"
+                >
+                  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
+              </section>
+            </header>
+            <section class="banks-wrapper account-switcher" aria-label="Contas">
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">CONTAS</span>
+                  <h2>Suas contas</h2>
+                </div>
                 <button
                   type="button"
-                  class="btn-search"
-                  onclick="buscarLancamentos()"
+                  onclick="abrirOuFecharPopup('popup-novo-banco', 'abrir')"
+                  class="btn-add-bank"
+                  aria-label="Adicionar conta"
+                  title="Adicionar conta"
                 >
-                  Buscar
+                  +
                 </button>
               </div>
-            </form>
-          </search>
+              <div class="banks-container">
+                <div id="list-bancos-abas"></div>
+              </div>
+            </section>
 
-          <div class="grid-expenses" id="grid-expenses">
-            <p class="grid-none-expenses">Nenhum lançamento ainda</p>
-          </div>
-        </section>
-        <!-- Seção de Fixos -->
-        <section id="fixedExpenses" class="page">
-          <header class="page-header">
-            <h1>Gastos Fixos</h1>
-          </header>
-          <div class="container-btn-new-expenses">
-            <button
-              class="btn-new-expenses"
-              onclick="abrirOuFecharPopup('popup-fixed-expense', 'abrir')"
-            >
-              Novo Gasto Fixo
-            </button>
-          </div>
-          <div class="grid-expenses" id="grid-fixed-expenses"></div>
-        </section>
-        <!-- Seção de Reservas -->
-        <section id="reserved" class="page">
-          <header class="page-header">
-            <h1>Reserva</h1>
-          </header>
-          <div class="container-btn-new-expenses">
-            <button
-              class="btn-new-expenses"
-              onclick="abrirOuFecharPopup('popup-reserved', 'abrir')"
-            >
-              Nova Reserva
-            </button>
-          </div>
-          <div class="grid-expenses" id="grid-reserveds">
-            <div class="card-expenses">
-              <div class="especifications">
-                <h2>NootBook</h2>
-                <p>1.750,00</p>
-              </div>
-              <div class="btns-delete-plus-minus">
-                <div class="change-btns half">
-                  <button class="btn-plus-minus" id="plus-btn">+</button>
-                  <button class="btn-plus-minus" id="minus-btn">-</button>
+            <div class="dashboard-overview">
+              <section class="current-balance balance-hero">
+                <div class="balance-hero-top">
+                  <div>
+                    <span class="hero-label"
+                      >SALDO LIVRE · TODAS AS CONTAS</span
+                    >
+                    <p id="current-balance-id">R$ 00,00</p>
+                  </div>
+                  <span class="balance-icon" aria-hidden="true">
+                    <i class="fa-solid fa-wallet"></i>
+                  </span>
                 </div>
-                <button class="btn-delete half">Excluir</button>
+                <div class="balance-breakdown">
+                  <div>
+                    <span>Conta selecionada</span>
+                    <strong id="banco-id-visor">R$ 00,00</strong>
+                  </div>
+                  <div>
+                    <span>Saldo total</span>
+                    <strong id="total-money">R$ 00,00</strong>
+                  </div>
+                </div>
+              </section>
+              <section
+                class="stats-grid dashboard-stat-grid"
+                aria-label="Resumo do mês"
+              >
+                <article class="stats-card stats-card--income">
+                  <span
+                    ><i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                    Receitas no mês</span
+                  >
+                  <p id="month-income">R$ 0,00</p>
+                  <small class="stat-comparison" id="dashboard-income-change">Sem comparação</small>
+                </article>
+                <article class="stats-card stats-card--expenses">
+                  <span
+                    ><i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                    Despesas no mês</span
+                  >
+                  <p id="total-expenses">R$ 0,00</p>
+                  <small class="stat-comparison" id="dashboard-expense-change">Sem comparação</small>
+                </article>
+                <article class="stats-card stats-card--reserve">
+                  <span
+                    ><i class="fa-solid fa-piggy-bank" aria-hidden="true"></i>
+                    Guardado em reservas</span
+                  >
+                  <p id="total-reserved">R$ 0,00</p>
+                </article>
+              </section>
+            </div>
+
+            <div class="dashboard-lower-grid">
+              <section class="current-balance dashboard-panel trend-panel">
+                <div class="section-heading">
+                  <div>
+                    <span class="section-kicker">MOVIMENTAÇÃO</span>
+                    <h2>Receitas e despesas</h2>
+                  </div>
+                  <button
+                    type="button"
+                    class="text-link"
+                    onclick="mostrarPagina('statistics')"
+                  >
+                    Ver análises
+                    <i
+                      class="fa-solid fa-arrow-up-right-from-square"
+                      aria-hidden="true"
+                    ></i>
+                  </button>
+                </div>
+                <div
+                  id="dashboard-trend-chart"
+                  class="chart-container"
+                  aria-live="polite"
+                ></div>
+              </section>
+              <section class="current-balance dashboard-panel">
+                <div class="section-heading">
+                  <div>
+                    <span class="section-kicker">ACOMPANHAMENTO</span>
+                    <h2>Gastos fixos</h2>
+                  </div>
+                  <button
+                    type="button"
+                    class="icon-action"
+                    onclick="mostrarPagina('fixedExpenses')"
+                    aria-label="Ver gastos fixos"
+                  >
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="fixed-expenses-main"></div>
+              </section>
+            </div>
+
+            <section class="current-balance dashboard-panel goals-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">SEUS PLANOS</span>
+                  <h2>Metas financeiras</h2>
+                </div>
+                <button
+                  type="button"
+                  class="text-link"
+                  onclick="mostrarPagina('expenses')"
+                >
+                  Gerenciar metas
+                  <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="main-goals-visor"></div>
+            </section>
+
+            <section class="current-balance dashboard-panel recent-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">ATIVIDADE</span>
+                  <h2>Últimos lançamentos</h2>
+                </div>
+                <button
+                  type="button"
+                  class="text-link"
+                  onclick="mostrarPagina('expenses')"
+                >
+                  Ver todos
+                  <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="header-last-expenses">
+                <span class="visually-hidden">Últimos lançamentos</span>
+                <button
+                  type="button"
+                  id="btn-open-last"
+                  aria-label="Expandir lançamentos recentes"
+                  aria-expanded="false"
+                >
+                  <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="grid-last">
+                <span>Nenhum lançamento ainda</span>
+              </div>
+            </section>
+          </section>
+          <section
+            id="statistics"
+            class="page"
+            aria-labelledby="statistics-title"
+          >
+            <header class="page-header analysis-header">
+              <div>
+                <span class="page-eyebrow">SEUS DADOS, NOVAS PERSPECTIVAS</span>
+                <h1 id="statistics-title">Análises financeiras</h1>
+                <p class="page-subtitle">
+                  Entenda como suas receitas e despesas evoluem.
+                </p>
+              </div>
+              <div class="analysis-filters">
+                <label for="analysis-month"
+                  >Mês de referência
+                  <input type="month" id="analysis-month" />
+                </label>
+                <label for="analysis-range"
+                  >Histórico
+                  <select id="analysis-range">
+                    <option value="3">3 meses</option>
+                    <option value="6" selected>6 meses</option>
+                    <option value="12">12 meses</option>
+                  </select>
+                </label>
+              </div>
+            </header>
+            <div class="analysis-summary" aria-label="Resumo do período">
+              <article class="stats-card stats-card--income">
+                <span>Receitas no mês</span>
+                <p id="analysis-income">R$ 0,00</p>
+              </article>
+              <article class="stats-card stats-card--expenses">
+                <span>Despesas no mês</span>
+                <p id="analysis-expenses">R$ 0,00</p>
+              </article>
+              <article class="stats-card">
+                <span>Resultado do mês</span>
+                <p id="analysis-net">R$ 0,00</p>
+              </article>
+              <article class="stats-card">
+                <span>Variação das despesas</span>
+                <p id="analysis-expense-change">Sem comparação</p>
+              </article>
+            </div>
+            <div class="analysis-charts-grid">
+              <section
+                class="current-balance dashboard-panel analysis-panel analysis-wide"
+              >
+                <div class="section-heading">
+                  <div>
+                    <span class="section-kicker">HISTÓRICO MENSAL</span>
+                    <h2>Receitas x despesas</h2>
+                  </div>
+                  <div class="chart-legend" aria-label="Legenda">
+                    <span
+                      ><i class="legend-dot legend-income"></i>Receitas</span
+                    >
+                    <span
+                      ><i class="legend-dot legend-expense"></i>Despesas</span
+                    >
+                  </div>
+                </div>
+                <div
+                  id="analysis-flow-chart"
+                  class="chart-container"
+                  aria-live="polite"
+                ></div>
+              </section>
+              <section class="current-balance dashboard-panel analysis-panel">
+                <div class="section-heading">
+                  <div>
+                    <span class="section-kicker">POR CATEGORIA</span>
+                    <h2>Despesas do mês</h2>
+                  </div>
+                </div>
+                <div
+                  id="analysis-category-chart"
+                  class="chart-container category-chart"
+                  aria-live="polite"
+                ></div>
+              </section>
+              <section class="current-balance dashboard-panel analysis-panel">
+                <div class="section-heading">
+                  <div>
+                    <span class="section-kicker">TENDÊNCIA</span>
+                    <h2>Resultado acumulado</h2>
+                  </div>
+                </div>
+                <p class="chart-description">
+                  Variação líquida acumulada no período selecionado, com base
+                  nos lançamentos registrados.
+                </p>
+                <div
+                  id="analysis-balance-chart"
+                  class="chart-container"
+                  aria-live="polite"
+                ></div>
+              </section>
+            </div>
+          </section>
+          <!-- Seção de Lançamentos -->
+          <section id="expenses" class="page">
+            <header class="page-header">
+              <h1>Lançamentos</h1>
+            </header>
+            <div class="current-balance">
+              <span>Metas</span>
+              <div id="expense-goals-visor">
+                <div class="current-balance">
+                  <h1>Nome da meta</h1>
+                  <div class="progress-goal-container">
+                    <div class="progress-goal progress-safe"></div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-        <section id="profile" class="page" aria-labelledby="profile-title">
-          <header class="page-header">
-            <h1 id="profile-title">Seu perfil</h1>
-          </header>
-          <div class="current-balance profile-card">
-            <div class="profile-avatar" aria-hidden="true">
-              <i class="fa-solid fa-user"></i>
+            <!--id="new-expense"-->
+            <div class="container-btn-new-expenses">
+              <button
+                class="btn-new-expenses"
+                onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
+              >
+                Novo Lançamento
+              </button>
+              <button
+                class="btn-new-expenses"
+                onclick="abrirOuFecharPopup('new-goals-popup', 'abrir')"
+              >
+                Nova Meta
+              </button>
             </div>
-            <div class="profile-information" aria-live="polite">
-              <h2 id="profile-name">Carregando perfil...</h2>
-              <p>
-                <span class="profile-label">E-mail</span>
-                <span id="profile-email">—</span>
-              </p>
-              <p>
-                <span class="profile-label">Tipo de conta</span>
-                <span id="profile-role">—</span>
-              </p>
-              <p id="profile-load-status" role="status"></p>
+
+            <search class="search-bar">
+              <form method="GET" role="search">
+                <label for="search-text" class="popup-container search-title"
+                  >Buscar Lançamento:</label
+                >
+                <div class="search-bar-itens">
+                  <input
+                    type="text"
+                    class="search-bar-container"
+                    id="search-text"
+                    placeholder="Buscar por categoria.."
+                  />
+                  <button
+                    type="button"
+                    class="btn-search"
+                    onclick="buscarLancamentos()"
+                  >
+                    Buscar
+                  </button>
+                </div>
+              </form>
+            </search>
+
+            <div class="grid-expenses" id="grid-expenses">
+              <p class="grid-none-expenses">Nenhum lançamento ainda</p>
             </div>
-          </div>
-          <div class="current-balance account-danger-zone">
-            <h2>Excluir conta</h2>
-            <p>
-              Essa ação é permanente e remove seu perfil e os dados associados.
-              Você não poderá desfazê-la.
-            </p>
-            <button
-              type="button"
-              id="btn-excluir-conta"
-              class="account-delete-button"
-              aria-haspopup="dialog"
-            >
-              <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-              Excluir conta
-            </button>
-          </div>
-        </section>
-      </main>
+          </section>
+          <!-- Seção de Fixos -->
+          <section id="fixedExpenses" class="page">
+            <header class="page-header">
+              <h1>Gastos Fixos</h1>
+            </header>
+            <div class="container-btn-new-expenses">
+              <button
+                class="btn-new-expenses"
+                onclick="abrirOuFecharPopup('popup-fixed-expense', 'abrir')"
+              >
+                Novo Gasto Fixo
+              </button>
+            </div>
+            <div class="grid-expenses" id="grid-fixed-expenses"></div>
+          </section>
+          <!-- Seção de Reservas -->
+          <section id="reserved" class="page">
+            <header class="page-header">
+              <h1>Reserva</h1>
+            </header>
+            <div class="container-btn-new-expenses">
+              <button
+                class="btn-new-expenses"
+                onclick="abrirOuFecharPopup('popup-reserved', 'abrir')"
+              >
+                Nova Reserva
+              </button>
+            </div>
+            <div class="grid-expenses" id="grid-reserveds">
+              <p class="grid-none-expenses data-empty-state">
+                Suas reservas aparecerão aqui quando você criar a primeira.
+              </p>
+            </div>
+          </section>
+          <section id="profile" class="page" aria-labelledby="profile-title">
+            <header class="page-header">
+              <h1 id="profile-title">Seu perfil</h1>
+            </header>
+            <div class="current-balance profile-card">
+              <div class="profile-avatar" aria-hidden="true">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div class="profile-information" aria-live="polite">
+                <h2 id="profile-name">Carregando perfil...</h2>
+                <p>
+                  <span class="profile-label">E-mail</span>
+                  <span id="profile-email">—</span>
+                </p>
+                <p>
+                  <span class="profile-label">Tipo de conta</span>
+                  <span id="profile-role">—</span>
+                </p>
+                <p id="profile-load-status" role="status"></p>
+              </div>
+            </div>
+            <div class="current-balance account-danger-zone">
+              <h2>Excluir conta</h2>
+              <p>
+                Essa ação é permanente e remove seu perfil e os dados
+                associados. Você não poderá desfazê-la.
+              </p>
+              <button
+                type="button"
+                id="btn-excluir-conta"
+                class="account-delete-button"
+                aria-haspopup="dialog"
+              >
+                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                Excluir conta
+              </button>
+            </div>
+          </section>
+        </main>
+      </div>
       <dialog
         id="delete-account-dialog"
         class="account-dialog"
