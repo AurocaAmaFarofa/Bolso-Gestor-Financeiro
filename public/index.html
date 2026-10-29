@@ -525,7 +525,9 @@
                     Receitas no mês</span
                   >
                   <p id="month-income">R$ 0,00</p>
-                  <small class="stat-comparison" id="dashboard-income-change">Sem comparação</small>
+                  <small class="stat-comparison" id="dashboard-income-change"
+                    >Sem comparação</small
+                  >
                 </article>
                 <article class="stats-card stats-card--expenses">
                   <span
@@ -533,7 +535,9 @@
                     Despesas no mês</span
                   >
                   <p id="total-expenses">R$ 0,00</p>
-                  <small class="stat-comparison" id="dashboard-expense-change">Sem comparação</small>
+                  <small class="stat-comparison" id="dashboard-expense-change"
+                    >Sem comparação</small
+                  >
                 </article>
                 <article class="stats-card stats-card--reserve">
                   <span
@@ -885,8 +889,8 @@
           </div>
           <h2 id="delete-account-title">Tem certeza?</h2>
           <p id="delete-account-description">
-            Ao confirmar, sua conta e os dados associados serão excluídos
-            permanentemente. Essa ação não pode ser desfeita.
+            Confirme sua identidade para receber um código de confirmação por
+            e-mail.
           </p>
           <label
             id="delete-account-password-field"
@@ -899,22 +903,63 @@
               name="senha"
               type="password"
               autocomplete="current-password"
-              form="delete-account-form"
-              required
             />
           </label>
-          <form
-            id="delete-account-form"
-            method="dialog"
-            class="account-dialog-actions"
+          <div
+            id="delete-account-google-field"
+            class="account-google-field"
+            hidden
           >
-            <button type="submit" value="cancel" formnovalidate>
+            <span>Confirme sua identidade com o Google</span>
+            <div
+              id="delete-account-google-button"
+              data-client-id="878733578437-8kgjjrua5amcaurlk83j44l6g9av827p.apps.googleusercontent.com"
+            ></div>
+          </div>
+          <label
+            id="delete-account-code-field"
+            class="account-password-field account-code-field"
+            for="delete-account-code"
+            hidden
+          >
+            Código enviado para seu e-mail
+            <input
+              id="delete-account-code"
+              name="codigo"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="4"
+              pattern="[0-9]{4}"
+            />
+          </label>
+          <p
+            id="delete-account-status"
+            class="account-dialog-status"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></p>
+          <div class="account-dialog-actions">
+            <button type="button" id="delete-account-cancel">
               Manter minha conta
             </button>
-            <button type="submit" value="confirm" class="account-delete-button">
-              Sim, excluir conta
+            <button
+              type="button"
+              id="delete-account-request-code"
+              class="account-delete-button"
+            >
+              Enviar código
             </button>
-          </form>
+            <button
+              type="button"
+              id="delete-account-confirm"
+              class="account-delete-button"
+              hidden
+            >
+              Confirmar exclusão
+            </button>
+          </div>
         </div>
       </dialog>
       <p class="app-copyright">© 2026 Bolso</p>

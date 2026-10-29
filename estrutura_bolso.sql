@@ -216,6 +216,26 @@ CROSS JOIN (
 ) c;
 
 --
+-- Table structure for table `confirmacoes_exclusao`
+--
+
+DROP TABLE IF EXISTS `confirmacoes_exclusao`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `confirmacoes_exclusao` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int NOT NULL,
+  `codigo_hash` char(64) NOT NULL,
+  `expira_em` datetime NOT NULL,
+  `tentativas` int NOT NULL DEFAULT '0',
+  `usado` tinyint(1) NOT NULL DEFAULT '0',
+  `criado_em` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `usuario_id` (`usuario_id`),
+  CONSTRAINT `confirmacoes_exclusao_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
 -- Dump completed
 --
 

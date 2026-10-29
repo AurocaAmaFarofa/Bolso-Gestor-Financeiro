@@ -7,6 +7,31 @@ const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
 const app = express.Router()
 
+/* 
+Tabela de exlcusão de contas
+
+CREATE TABLE confirmacoes_exclusao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    usuario_id INT NOT NULL,
+
+    codigo_hash CHAR(64) NOT NULL,
+
+    expira_em DATETIME NOT NULL,
+
+    tentativas INT NOT NULL DEFAULT 0,
+
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+);
+
+*/
+
 function queryCallback(sql, values, callback) {
   conexao
     .query(sql, values)

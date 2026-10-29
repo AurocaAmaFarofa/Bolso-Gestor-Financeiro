@@ -282,10 +282,7 @@ function atualizarGridUltimos() {
     if (btnUltimosGastos) {
       btnUltimosGastos.disabled = true
       btnUltimosGastos.setAttribute('aria-expanded', 'false')
-      btnUltimosGastos.setAttribute(
-        'aria-label',
-        'Sem lançamentos recentes',
-      )
+      btnUltimosGastos.setAttribute('aria-label', 'Sem lançamentos recentes')
     }
     return
   }
@@ -944,11 +941,7 @@ function renderizarAnalises() {
   const mesDashboard = normalizarMes(appData.mesAtivo) || mesReferencia
   const resumoDashboardAtual = obterResumoDoMes(mesDashboard)
   const [anoDashboard, mesDashboardNum] = mesDashboard.split('-').map(Number)
-  const dataDashboardAnterior = new Date(
-    anoDashboard,
-    mesDashboardNum - 2,
-    1,
-  )
+  const dataDashboardAnterior = new Date(anoDashboard, mesDashboardNum - 2, 1)
   const mesDashboardAnterior = `${dataDashboardAnterior.getFullYear()}-${String(dataDashboardAnterior.getMonth() + 1).padStart(2, '0')}`
   const resumoDashboardAnterior = obterResumoDoMes(mesDashboardAnterior)
   definirTexto('month-income', moedaBRL.format(resumoDashboardAtual.receitas))
@@ -995,10 +988,7 @@ function renderizarAnalises() {
     'analysis-category-chart',
   )
 
-  const mesesDashboard = gerarMesesHistoricos(
-    mesDashboard,
-    6,
-  )
+  const mesesDashboard = gerarMesesHistoricos(mesDashboard, 6)
   const resumoDashboard = new Map(
     mesesDashboard.map((mes) => [mes.chave, obterResumoDoMes(mes.chave)]),
   )
@@ -1658,7 +1648,8 @@ function renderizarGridGastosFixos() {
   })
 
   if (appData.pendencias.length === 0) {
-    const vazio = '<p class="data-empty-state">Nenhum gasto fixo cadastrado.</p>'
+    const vazio =
+      '<p class="data-empty-state">Nenhum gasto fixo cadastrado.</p>'
     gridGastosFixos.innerHTML = vazio
     gastosFixosMain.innerHTML = vazio
   }
@@ -2272,74 +2263,261 @@ colocarNomeUser()
 
 const botaoExcluirConta = document.querySelector('#btn-excluir-conta')
 const dialogExcluirConta = document.querySelector('#delete-account-dialog')
+const tituloExcluirConta = document.querySelector('#delete-account-title')
+const descricaoExcluirConta = document.querySelector(
+  '#delete-account-description',
+)
 const senhaExcluirConta = document.querySelector('#delete-account-password')
 const campoSenhaExcluirConta = document.querySelector(
   '#delete-account-password-field',
 )
+const campoGoogleExcluirConta = document.querySelector(
+  '#delete-account-google-field',
+)
+const botaoGoogleExcluirConta = document.querySelector(
+  '#delete-account-google-button',
+)
+const campoCodigoExcluirConta = document.querySelector(
+  '#delete-account-code-field',
+)
+const codigoExcluirConta = document.querySelector('#delete-account-code')
+const statusExcluirConta = document.querySelector('#delete-account-status')
+const botaoSolicitarCodigoExclusao = document.querySelector(
+  '#delete-account-request-code',
+)
+const botaoConfirmarExclusao = document.querySelector('#delete-account-confirm')
+const botaoCancelarExclusao = document.querySelector('#delete-account-cancel')
+let metodoAutenticacaoExclusao = 'senha'
+let googleExclusaoConfigurado = false
+let requisicaoExclusaoEmAndamento = false
 
-function confirmarExclusaoConta(callback) {
-  if (!dialogExcluirConta || typeof callback !== 'function') {
+function atualizarStatusExclusao(mensagem = '') {
+  if (!statusExcluirConta) {
     return
   }
 
-  const metodoAutenticacao =
-    localStorage.getItem('metodoAutenticacao') === 'google' ? 'google' : 'senha'
-  const requerSenha = metodoAutenticacao === 'senha'
-
-  if (campoSenhaExcluirConta && senhaExcluirConta) {
-    campoSenhaExcluirConta.hidden = !requerSenha
-    senhaExcluirConta.required = requerSenha
-    senhaExcluirConta.value = ''
-  }
-
-  dialogExcluirConta.addEventListener(
-    'close',
-    async () => {
-      if (dialogExcluirConta.returnValue === 'confirm') {
-        await callback()
-      }
-    },
-    { once: true },
-  )
-
-  dialogExcluirConta.showModal()
+  statusExcluirConta.textContent = mensagem
+  statusExcluirConta.hidden = !mensagem
 }
 
-function handleGoogleDeleteConfirmation(response) {
-  if (!response || typeof response.credential !== 'string') {
-    alert('Não foi possível confirmar sua identidade com o Google.')
+function atualizarBotoesExclusao(bloqueados) {
+  if (botaoSolicitarCodigoExclusao) {
+    botaoSolicitarCodigoExclusao.disabled = bloqueados
+  }
+  if (botaoConfirmarExclusao) {
+    botaoConfirmarExclusao.disabled = bloqueados
+  }
+}
+
+async function aguardarGoogleIdentity() {
+  return new Promise((resolve, reject) => {
+    let tentativas = 0
+    const intervalo = window.setInterval(() => {
+      const googleIdentity = window.google?.accounts?.id
+
+      if (googleIdentity) {
+        window.clearInterval(intervalo)
+        resolve(googleIdentity)
+        return
+      }
+
+      tentativas += 1
+      if (tentativas >= 100) {
+        window.clearInterval(intervalo)
+        reject(new Error('Não foi possível carregar a confirmação do Google.'))
+      }
+    }, 100)
+  })
+}
+
+async function prepararConfirmacaoGoogle() {
+  if (!botaoGoogleExcluirConta || googleExclusaoConfigurado) {
     return
   }
 
-  const credential = response.credential
+  const googleIdentity = await aguardarGoogleIdentity()
+  googleIdentity.initialize({
+    client_id: botaoGoogleExcluirConta.dataset.clientId,
+    callback: handleGoogleDeleteConfirmation,
+    auto_select: false,
+  })
+  googleIdentity.renderButton(botaoGoogleExcluirConta, {
+    type: 'standard',
+    theme: 'outline',
+    size: 'large',
+    text: 'signin_with',
+    shape: 'rectangular',
+  })
+  googleExclusaoConfigurado = true
+}
 
-  return credential
+function confirmarExclusaoConta() {
+  if (!dialogExcluirConta) {
+    return
+  }
+
+  metodoAutenticacaoExclusao =
+    localStorage.getItem('metodoAutenticacao') === 'google' ? 'google' : 'senha'
+
+  const requerSenha = metodoAutenticacaoExclusao === 'senha'
+  if (campoSenhaExcluirConta && senhaExcluirConta) {
+    campoSenhaExcluirConta.hidden = !requerSenha
+    senhaExcluirConta.value = ''
+  }
+  if (campoGoogleExcluirConta) {
+    campoGoogleExcluirConta.hidden = requerSenha
+  }
+  if (campoCodigoExcluirConta) {
+    campoCodigoExcluirConta.hidden = true
+  }
+  if (botaoSolicitarCodigoExclusao) {
+    botaoSolicitarCodigoExclusao.hidden =
+      metodoAutenticacaoExclusao === 'google'
+  }
+  if (botaoConfirmarExclusao) {
+    botaoConfirmarExclusao.hidden = true
+  }
+  if (codigoExcluirConta) {
+    codigoExcluirConta.value = ''
+  }
+  if (tituloExcluirConta) {
+    tituloExcluirConta.textContent = 'Tem certeza?'
+  }
+  if (descricaoExcluirConta) {
+    descricaoExcluirConta.textContent =
+      'Confirme sua identidade para receber um código de confirmação por e-mail.'
+  }
+  atualizarStatusExclusao()
+
+  dialogExcluirConta.showModal()
+
+  if (metodoAutenticacaoExclusao === 'google') {
+    prepararConfirmacaoGoogle().catch((erro) => {
+      console.error('Erro ao preparar confirmação do Google:', erro)
+      atualizarStatusExclusao(erro.message)
+    })
+  }
+}
+
+async function handleGoogleDeleteConfirmation(response) {
+  if (
+    !response ||
+    typeof response.credential !== 'string' ||
+    !response.credential
+  ) {
+    atualizarStatusExclusao(
+      'Não foi possível confirmar sua identidade com o Google. Tente novamente.',
+    )
+    return
+  }
+
+  if (!dialogExcluirConta?.open || metodoAutenticacaoExclusao !== 'google') {
+    return
+  }
+
+  await solicitarCodigoExclusao({ credential: response.credential })
+}
+
+async function solicitarCodigoExclusao(credenciais = {}) {
+  if (requisicaoExclusaoEmAndamento) {
+    return
+  }
+
+  const senha = senhaExcluirConta?.value || ''
+  if (metodoAutenticacaoExclusao === 'senha' && !senha) {
+    atualizarStatusExclusao('Digite sua senha para confirmar sua identidade.')
+    senhaExcluirConta?.focus()
+    return
+  }
+
+  requisicaoExclusaoEmAndamento = true
+  atualizarBotoesExclusao(true)
+  atualizarStatusExclusao('Confirmando sua identidade e enviando o código...')
+
+  try {
+    const dadosIdentidade =
+      metodoAutenticacaoExclusao === 'google'
+        ? { credential: credenciais.credential }
+        : { senha }
+    const resposta = await fetch('/usuarios/excluir-conta/solicitar', {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'same-origin',
+      body: JSON.stringify(dadosIdentidade),
+    })
+    const resultado = await resposta.json()
+
+    if (!resposta.ok) {
+      throw new Error(
+        resultado.erro || 'Não foi possível enviar o código de confirmação.',
+      )
+    }
+
+    if (campoSenhaExcluirConta) {
+      campoSenhaExcluirConta.hidden = true
+    }
+    if (campoGoogleExcluirConta) {
+      campoGoogleExcluirConta.hidden = true
+    }
+    if (senhaExcluirConta) {
+      senhaExcluirConta.value = ''
+    }
+    if (campoCodigoExcluirConta) {
+      campoCodigoExcluirConta.hidden = false
+    }
+    if (botaoSolicitarCodigoExclusao) {
+      botaoSolicitarCodigoExclusao.hidden = true
+    }
+    if (botaoConfirmarExclusao) {
+      botaoConfirmarExclusao.hidden = false
+    }
+    if (tituloExcluirConta) {
+      tituloExcluirConta.textContent = 'Verifique seu e-mail'
+    }
+    if (descricaoExcluirConta) {
+      descricaoExcluirConta.textContent =
+        'Digite o código de quatro dígitos enviado para o e-mail cadastrado. Ele expira em 10 minutos.'
+    }
+
+    atualizarStatusExclusao(
+      resultado.mensagem || 'Código enviado. Ele expira em 10 minutos.',
+    )
+    codigoExcluirConta?.focus()
+  } catch (erro) {
+    console.error('Erro ao solicitar código de exclusão:', erro)
+    atualizarStatusExclusao(
+      erro.message || 'Não foi possível enviar o código de confirmação.',
+    )
+  } finally {
+    requisicaoExclusaoEmAndamento = false
+    atualizarBotoesExclusao(false)
+  }
 }
 
 async function excluirConta() {
-  if (botaoExcluirConta) {
-    botaoExcluirConta.disabled = true
+  if (requisicaoExclusaoEmAndamento) {
+    return
   }
 
+  const codigo = codigoExcluirConta?.value.trim() || ''
+  if (!/^\d{4}$/.test(codigo)) {
+    atualizarStatusExclusao(
+      'Informe o código de quatro dígitos recebido por e-mail.',
+    )
+    codigoExcluirConta?.focus()
+    return
+  }
+
+  requisicaoExclusaoEmAndamento = true
+  atualizarBotoesExclusao(true)
+  atualizarStatusExclusao('Confirmando o código e excluindo sua conta...')
+
   try {
-    const metodoAutenticacao =
-      localStorage.getItem('metodoAutenticacao') === 'google'
-        ? 'google'
-        : 'senha'
-    const requerSenha = metodoAutenticacao === 'senha'
-    const dadosExclusao = {
-      origemAutenticacao: metodoAutenticacao,
-      exigirSenha: requerSenha,
-      ...(requerSenha ? { senha: senhaExcluirConta.value } : {}),
-    }
-
-    const credencialGoogle = await handleGoogleDeleteConfirmation()
-
-    const resposta = await fetch('/usuarios', {
-      method: 'DELETE',
+    const resposta = await fetch('/usuarios/excluir-conta/confirmar', {
+      method: 'POST',
       headers: authHeaders(),
       credentials: 'same-origin',
-      body: JSON.stringify({ dadosExclusao, credential: credencialGoogle }),
+      body: JSON.stringify({ codigo }),
     })
     const resultado = await resposta.json()
 
@@ -2360,36 +2538,68 @@ async function excluirConta() {
     ]) {
       localStorage.removeItem(chave)
     }
+    sessionStorage.clear()
 
     window.location.href = '/login.html'
   } catch (erro) {
-    console.error('Erro ao excluir conta:', erro)
-    showPopup(erro.message || 'Não foi possível excluir a conta.', 4000)
-    if (botaoExcluirConta) {
-      botaoExcluirConta.disabled = false
-    }
+    console.error('Erro ao confirmar exclusão da conta:', erro)
+    atualizarStatusExclusao(erro.message || 'Não foi possível excluir a conta.')
   } finally {
-    if (senhaExcluirConta) {
-      senhaExcluirConta.value = ''
-    }
+    requisicaoExclusaoEmAndamento = false
+    atualizarBotoesExclusao(false)
   }
 }
 
 if (botaoExcluirConta) {
-  botaoExcluirConta.addEventListener('click', () =>
-    confirmarExclusaoConta(excluirConta),
-  )
+  botaoExcluirConta.addEventListener('click', confirmarExclusaoConta)
 }
 
 if (dialogExcluirConta) {
   dialogExcluirConta.addEventListener('close', () => {
-    if (dialogExcluirConta.returnValue !== 'confirm' && senhaExcluirConta) {
+    if (senhaExcluirConta) {
       senhaExcluirConta.value = ''
+    }
+    if (codigoExcluirConta) {
+      codigoExcluirConta.value = ''
     }
     if (botaoExcluirConta) {
       botaoExcluirConta.focus()
     }
   })
+}
+
+if (botaoSolicitarCodigoExclusao) {
+  botaoSolicitarCodigoExclusao.addEventListener('click', () =>
+    solicitarCodigoExclusao(),
+  )
+}
+
+if (senhaExcluirConta) {
+  senhaExcluirConta.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') {
+      evento.preventDefault()
+      solicitarCodigoExclusao()
+    }
+  })
+}
+
+if (botaoConfirmarExclusao) {
+  botaoConfirmarExclusao.addEventListener('click', excluirConta)
+}
+
+if (codigoExcluirConta) {
+  codigoExcluirConta.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') {
+      evento.preventDefault()
+      excluirConta()
+    }
+  })
+}
+
+if (botaoCancelarExclusao && dialogExcluirConta) {
+  botaoCancelarExclusao.addEventListener('click', () =>
+    dialogExcluirConta.close('cancel'),
+  )
 }
 
 //-----------------------------------------------------------------

@@ -382,6 +382,28 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.account-google-field {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.account-google-field[hidden],
+.account-code-field[hidden],
+.account-dialog-status[hidden] {
+  display: none;
+}
+
+.account-dialog-status {
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .account-dialog-actions {
   display: flex;
   flex-wrap: wrap;
@@ -389,6 +411,10 @@ button:focus-visible {
   gap: 10px;
   width: 100%;
   margin-top: 4px;
+}
+
+.account-dialog-actions button[hidden] {
+  display: none;
 }
 
 /* ============================================================

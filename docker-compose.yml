@@ -49,6 +49,8 @@ services:
       DB_SSL: 'false'
       JWT_SECRET: ${JWT_SECRET}
       SENHA_EMAIL_BOLSO: ${SENHA_EMAIL_BOLSO}
+      NODE_MAILER: ${NODE_MAILER}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
 
     depends_on:
       bolso-db:

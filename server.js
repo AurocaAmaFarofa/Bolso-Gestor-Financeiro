@@ -157,10 +157,7 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
   let categorias
   try {
     categorias = (
-      await pool.query(sqlCategoria, [
-        categoriaId,
-        req.usuarioId,
-      ])
+      await pool.query(sqlCategoria, [categoriaId, req.usuarioId])
     )[0]
   } catch (erro) {
     console.log('erro ao validar categoria', erro)
@@ -1083,9 +1080,7 @@ app.post('/convites', exigirAdmin, async (req, res) => {
 
   let resultado
   try {
-    resultado = (
-      await pool.query(sql, [emailLimpo, tokenHash, expiraEm])
-    )[0]
+    resultado = (await pool.query(sql, [emailLimpo, tokenHash, expiraEm]))[0]
   } catch (erro) {
     console.error('Erro ao criar convite:', erro)
     return res.status(500).json({ erro: 'Erro ao gerar convite.' })
