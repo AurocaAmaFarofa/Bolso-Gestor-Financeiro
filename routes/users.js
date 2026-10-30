@@ -1,3 +1,6 @@
+const dns = require('dns')
+dns.setDefaultResultOrder('ipv4first')
+
 require('dotenv').config()
 
 const express = require('express')
@@ -13,7 +16,9 @@ const router = express.Router()
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   family: 4,
   auth: {
     user: process.env.EMAIL_USER || 'BolsoConnect@gmail.com',
@@ -137,7 +142,7 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
       `SELECT id, nome, email, senha_hash, google_id
        FROM usuarios
        WHERE id = ?`,
-      [usuarioId]
+      [usuarioId],
     )
 
     if (usuarios.length === 0) {
@@ -172,14 +177,14 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
       `UPDATE confirmacoes_exclusao
        SET usado = TRUE
        WHERE usuario_id = ? AND usado = FALSE`,
-      [usuarioId]
+      [usuarioId],
     )
 
     await db.query(
       `INSERT INTO confirmacoes_exclusao
        (usuario_id, codigo_hash, expira_em)
        VALUES (?, ?, ?)`,
-      [usuarioId, codigoHash, expiraEm]
+      [usuarioId, codigoHash, expiraEm],
     )
 
     try {
@@ -218,7 +223,7 @@ Se você não solicitou essa operação, ignore este e-mail.`,
         `UPDATE confirmacoes_exclusao
          SET usado = TRUE
          WHERE usuario_id = ? AND codigo_hash = ?`,
-        [usuarioId, codigoHash]
+        [usuarioId, codigoHash],
       )
 
       return res.status(502).json({
@@ -264,7 +269,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
        ORDER BY id DESC
        LIMIT 1
        FOR UPDATE`,
-      [usuarioId]
+      [usuarioId],
     )
 
     if (confirmacoes.length === 0) {
@@ -282,7 +287,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
         `UPDATE confirmacoes_exclusao
          SET usado = TRUE
          WHERE id = ?`,
-        [confirmacao.id]
+        [confirmacao.id],
       )
 
       await conn.commit()
@@ -297,7 +302,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
         `UPDATE confirmacoes_exclusao
          SET usado = TRUE
          WHERE id = ?`,
-        [confirmacao.id]
+        [confirmacao.id],
       )
 
       await conn.commit()
@@ -315,7 +320,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
         `UPDATE confirmacoes_exclusao
          SET tentativas = ?, usado = ?
          WHERE id = ?`,
-        [novasTentativas, bloquear, confirmacao.id]
+        [novasTentativas, bloquear, confirmacao.id],
       )
 
       await conn.commit()
@@ -334,7 +339,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
        FROM lancamentos l
        LEFT JOIN categorias_gasto c ON c.id = l.categoria_id
        WHERE l.usuarioId = ? OR c.usuario_id = ?`,
-      [usuarioId, usuarioId]
+      [usuarioId, usuarioId],
     )
 
     await conn.query('DELETE FROM metas WHERE usuario_id = ?', [usuarioId])
