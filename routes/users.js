@@ -1,6 +1,3 @@
-const dns = require('dns')
-dns.setDefaultResultOrder('ipv4first')
-
 require('dotenv').config()
 
 const express = require('express')
@@ -8,23 +5,13 @@ const db = require('../db/connections')
 const authMiddleware = require('../middleware/auth')
 const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
-const nodemailer = require('nodemailer')
 const { OAuth2Client } = require('google-auth-library')
+const { Resend } = require('resend')
 
 const router = express.Router()
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  family: 4,
-  auth: {
-    user: process.env.EMAIL_USER || 'BolsoConnect@gmail.com',
-    pass: process.env.NODE_MAILER,
-  },
-})
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const MAX_TENTATIVAS = 5
 const TEMPO_EXPIRACAO_MS = 10 * 60 * 1000
@@ -123,10 +110,7 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
   const usuarioId = req.usuarioId
 
   try {
-    if (
-      !process.env.NODE_MAILER ||
-      !(process.env.EMAIL_USER || 'BolsoConnect@gmail.com')
-    ) {
+    if (!process.env.RESEND_API_KEY) {
       return res.status(503).json({
         erro: 'O serviço de envio de e-mail não está configurado.',
       })
@@ -188,11 +172,8 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
     )
 
     try {
-      await transporter.sendMail({
-        from:
-          '"Bolso" <' +
-          (process.env.EMAIL_USER || 'BolsoConnect@gmail.com') +
-          '>',
+      const { error } = await resend.emails.send({
+        from: 'Bolso <onboarding@resend.dev>',
         to: user.email,
         subject: 'Confirmação de exclusão da conta - Bolso',
         text: `Você solicitou a exclusão da sua conta Bolso.
@@ -215,6 +196,10 @@ Se você não solicitou essa operação, ignore este e-mail.`,
           </div>
         `,
       })
+
+      if (error) {
+        throw new Error(error.message)
+      }
     } catch (erroEmail) {
       console.error('Erro ao enviar código de exclusão:', erroEmail)
 
@@ -333,7 +318,7 @@ router.post('/excluir-conta/confirmar', authMiddleware, async (req, res) => {
       })
     }
 
-    // A confirmação é válida. Exclui os dados financeiros na mesma transação.=
+    // A confirmação é válida. Exclui os dados financeiros na mesma transação.
     await conn.query(
       `DELETE l
        FROM lancamentos l
