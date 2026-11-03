@@ -51,6 +51,8 @@ services:
       SENHA_EMAIL_BOLSO: ${SENHA_EMAIL_BOLSO}
       NODE_MAILER: ${NODE_MAILER}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      EMAIL_FROM: ${EMAIL_FROM}
+      BREVO_API_KEY: ${BREVO_API_KEY}
 
     depends_on:
       bolso-db:

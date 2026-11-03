@@ -22,6 +22,9 @@ const gastosFixosMain = document.querySelector('#fixed-expenses-main')
 const btnFecharReservas = document.querySelector('#close-popup-reserved')
 const btnPopupNovaReserva = document.querySelector('#btn-new-reserve')
 const btnAddReserva = document.querySelector('#btn-submit-reserve')
+const checkboxMetaReserva = document.querySelector('#reserve-has-goal')
+const campoMetaReserva = document.querySelector('#reserve-goal-field')
+const inputMetaReserva = document.querySelector('#reserve-goal-value')
 const totalReservadoVisor = document.querySelector('#total-reserved')
 const totalDinheiroVisor = document.querySelector('#total-money')
 const popupAddReserva = document.querySelector('#modal-add')
@@ -35,6 +38,7 @@ const btnOpenPopupBanco = document.querySelector('#btn-open-popup-banco')
 const btnClosePopupBanco = document.querySelector('#close-popup-banco')
 const btnSubmitBanco = document.querySelector('#btn-submit-banco')
 const listBancosAbas = document.querySelector('#list-bancos-abas')
+const listBancosTransacoes = document.querySelector('#list-bancos-transacoes')
 const saldoBancoVisor = document.querySelector('#banco-id-visor')
 const visorMes = document.querySelector('#month-visor')
 const btnCriarMeta = document.querySelector('#btn-submit-goal')
@@ -340,31 +344,7 @@ function formatarTexto(texto) {
 }
 
 function mostrarBuscaLancamentos(busca) {
-  if (!gridLancamentos) {
-    return
-  }
-
-  if (busca.length === 0) {
-    renderizarGridLancamentos()
-    return
-  } else {
-    gridLancamentos.innerHTML = ''
-    busca.forEach((item) => {
-      if (gridLancamentos) {
-        gridLancamentos.innerHTML += `
-        <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
-          <h2>${item.descricao}</h2>
-          <p>R$ ${item.valor.toFixed(2).replace('.', ',')}</p>
-          <p>${item.categoria}</p>
-          <div class="division-card">
-            <p>${item.forma}</p>
-            <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
-          </div>
-        </div>
-      `
-      }
-    })
-  }
+  renderizarHistoricoTransacoes(busca)
 }
 
 function buscarLancamentos() {
@@ -376,11 +356,133 @@ function buscarLancamentos() {
 
   const textoDigitado = inputBusca.value
   const textoFormatado = formatarTexto(textoDigitado)
-  const filtroApp = appData.lancamentos.filter((L) => {
-    return formatarTexto(L.categoria) === textoFormatado
-  })
-  console.log(filtroApp)
+  const filtroApp = obterHistoricoDaConta().filter((lancamento) =>
+    [lancamento.descricao, lancamento.categoria, lancamento.forma]
+      .filter(Boolean)
+      .some((texto) => formatarTexto(String(texto)).includes(textoFormatado)),
+  )
   mostrarBuscaLancamentos(filtroApp)
+}
+
+function obterHistoricoDaConta() {
+  return appData.lancamentos
+    .filter(
+      (lancamento) => Number(lancamento.bancoId) === Number(appData.bancoAtual),
+    )
+    .slice()
+    .sort((a, b) => {
+      const diferenca =
+        obterDataLancamento(b.data).getTime() -
+        obterDataLancamento(a.data).getTime()
+      return diferenca || Number(b.id) - Number(a.id)
+    })
+}
+
+function obterDataLancamento(valor) {
+  if (typeof valor === 'number' || /^\d+$/.test(String(valor))) {
+    return new Date(Number(valor))
+  }
+
+  const dataSemHorario = String(valor || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dataSemHorario) {
+    return new Date(
+      Number(dataSemHorario[1]),
+      Number(dataSemHorario[2]) - 1,
+      Number(dataSemHorario[3]),
+    )
+  }
+
+  return new Date(valor)
+}
+
+function renderizarHistoricoTransacoes(lancamentos = obterHistoricoDaConta()) {
+  const corpoTabela = gridLancamentos?.querySelector('tbody')
+  if (!corpoTabela) return
+
+  if (lancamentos.length === 0) {
+    corpoTabela.innerHTML = `
+      <tr>
+        <td class="transaction-empty-state" colspan="7">
+          Nenhuma transação encontrada nesta conta.
+        </td>
+      </tr>
+    `
+    return
+  }
+
+  corpoTabela.innerHTML = lancamentos
+    .map((lancamento) => {
+      const data = obterDataLancamento(lancamento.data)
+      const dataFormatada = Number.isNaN(data.getTime())
+        ? '—'
+        : data.toLocaleDateString('pt-BR')
+      const ehReceita = lancamento.tipo === 'ganho'
+
+      return `
+        <tr>
+          <td>${dataFormatada}</td>
+          <td>${escaparHtml(lancamento.descricao || 'Sem descrição')}</td>
+          <td>${escaparHtml(lancamento.categoria || 'Sem categoria')}</td>
+          <td>${escaparHtml(lancamento.forma || '—')}</td>
+          <td>${ehReceita ? 'Receita' : 'Despesa'}</td>
+          <td class="${ehReceita ? 'transaction-income' : 'transaction-expense'}">
+            ${ehReceita ? '+' : '−'} ${moedaBRL.format(Number(lancamento.valor) || 0)}
+          </td>
+          <td class="transaction-actions">
+            <button
+              type="button"
+              class="btn-delete"
+              aria-label="Excluir transação"
+              onclick="deletarLancamento(${Number(lancamento.id)})"
+            >Excluir</button>
+          </td>
+        </tr>
+      `
+    })
+    .join('')
+}
+
+const btnBaixarRelatorioDespesas = document.querySelector(
+  '#btn-download-expense-report',
+)
+
+if (btnBaixarRelatorioDespesas) {
+  btnBaixarRelatorioDespesas.addEventListener('click', async () => {
+    btnBaixarRelatorioDespesas.disabled = true
+
+    try {
+      const resposta = await fetch('/lancamentos/relatorio-despesas', {
+        headers: authHeaders(),
+      })
+
+      if (resposta.status === 401) {
+        window.location.href = 'login.html'
+        return
+      }
+
+      if (!resposta.ok) {
+        const resultado = await resposta.json().catch(() => ({}))
+        throw new Error(
+          resultado.erro || 'Não foi possível gerar o relatório de despesas.',
+        )
+      }
+
+      const arquivo = await resposta.blob()
+      const url = URL.createObjectURL(arquivo)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'relatorio-de-despesas.pdf'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (erro) {
+      console.error('Erro ao baixar relatório de despesas:', erro)
+      showPopup(erro.message || 'Erro ao gerar o relatório de despesas.', 3000)
+    } finally {
+      btnBaixarRelatorioDespesas.disabled = false
+    }
+  })
 }
 
 // ===================== Funções de metas =====================
@@ -1103,37 +1205,46 @@ async function carregarLancamento() {
 //============== BANCOS PARA SELECIOAR ===============//
 
 function renderizarAbasBancos() {
-  if (!listBancosAbas) return
+  ;[
+    { elemento: listBancosAbas, permitirExclusao: true },
+    { elemento: listBancosTransacoes, permitirExclusao: false },
+  ].forEach(({ elemento, permitirExclusao }) => {
+    if (!elemento) return
 
-  listBancosAbas.innerHTML = ''
+    elemento.innerHTML = ''
+    appData.bancos.forEach((banco) => {
+      const classeAtiva =
+        Number(banco.id) === Number(appData.bancoAtual) ? 'banco-active' : ''
 
-  appData.bancos.forEach((banco) => {
-    const classeAtiva =
-      Number(banco.id) === Number(appData.bancoAtual) ? 'banco-active' : ''
+      elemento.innerHTML += `
+        <div class="btns-aba-bancos">
+          <button
+            type="button"
+            class="btn-aba-banco ${classeAtiva}"
+            aria-pressed="${Number(banco.id) === Number(appData.bancoAtual)}"
+            onclick="selecionarBanco(${Number(banco.id)})"
+          >
+            ${escaparHtml(banco.nome)}
+          </button>
+          ${
+            permitirExclusao
+              ? `<button
+                  type="button"
+                  class="btn-aba-banco color-red-btn"
+                  aria-label="Excluir conta ${escaparHtml(banco.nome)}"
+                  onclick="excluirBanco(${Number(banco.id)})"
+                >-</button>`
+              : ''
+          }
+        </div>
+      `
+    })
 
-    listBancosAbas.innerHTML += `
-      <div class="btns-aba-bancos">
-        <button
-          class="btn-aba-banco ${classeAtiva}"
-          onclick="selecionarBanco(${banco.id})"
-        >
-          ${banco.nome}
-        </button>
-
-        <button
-          class="btn-aba-banco color-red-btn"
-          onclick="excluirBanco(${banco.id})"
-        >
-          -
-        </button>
-      </div>
-    `
+    if (appData.bancos.length === 0) {
+      elemento.innerHTML =
+        '<span class="banks-empty">Nenhuma conta cadastrada</span>'
+    }
   })
-
-  if (appData.bancos.length === 0) {
-    listBancosAbas.innerHTML =
-      '<span class="banks-empty">Nenhuma conta cadastrada</span>'
-  }
 }
 
 function selecionarBanco(id) {
@@ -1181,11 +1292,6 @@ if (btnSubmitBanco) {
     modalPopupBanco.classList.add('display-none')
 
     carregarBancos()
-
-    if (existeBanco === 'nao') {
-      existeBanco = 'sim'
-      console.log(existeBanco)
-    }
   })
 }
 
@@ -1232,8 +1338,6 @@ async function carregarBancos() {
     console.error('Erro ao carregar bancos:', erro)
   }
 }
-
-let existeBanco = appData.bancos.length > 0 ? 'sim' : 'nao'
 
 async function criarBancoInicial() {
   const novoBanco = {
@@ -1332,11 +1436,42 @@ async function carregarReservas() {
 }
 
 //BOTAO PRA ADICIONAR NOVA RESERVA
+if (checkboxMetaReserva && campoMetaReserva && inputMetaReserva) {
+  checkboxMetaReserva.addEventListener('change', () => {
+    campoMetaReserva.hidden = !checkboxMetaReserva.checked
+    inputMetaReserva.disabled = !checkboxMetaReserva.checked
+    inputMetaReserva.required = checkboxMetaReserva.checked
+    if (!checkboxMetaReserva.checked) inputMetaReserva.value = ''
+  })
+}
+
 if (btnAddReserva) {
   btnAddReserva.addEventListener('click', async () => {
+    const nome = document.querySelector('#reserve-name').value.trim()
+    const valor = Number(document.querySelector('#reserve-value').value)
+    const temMeta = checkboxMetaReserva?.checked === true
+    const valorMeta = temMeta ? Number(inputMetaReserva.value) : null
+
+    if (!nome) {
+      showPopup('Por favor, insira um nome para a reserva.', 2200)
+      return
+    }
+
+    if (!Number.isFinite(valor) || valor < 0) {
+      showPopup('Insira um valor inicial válido.', 2200)
+      return
+    }
+
+    if (temMeta && (!Number.isFinite(valorMeta) || valorMeta <= 0)) {
+      showPopup('Insira um valor desejado válido para a meta.', 2200)
+      return
+    }
+
     const novaReserva = {
-      nome: document.querySelector('#reserve-name').value,
-      valor: Number(document.querySelector('#reserve-value').value),
+      nome,
+      valor,
+      tem_meta: temMeta,
+      valor_meta: valorMeta,
     }
 
     const totalBancos = appData.bancos.reduce((soma, b) => {
@@ -1367,27 +1502,38 @@ if (btnAddReserva) {
       showPopup('Valor inválido para a reserva.', 2400)
       return
     }
-    if (!novaReserva.nome) {
-      showPopup('Por favor, insira um nome para a reserva.', 2200)
-      return
+    try {
+      const resposta = await fetch('/reservas', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(novaReserva),
+      })
+
+      const resultado = await resposta.json()
+      if (!resposta.ok) {
+        showPopup(resultado.erro || 'Erro ao criar reserva.', 2400)
+        return
+      }
+
+      appData.reservas.push(resultado.reserva)
+
+      document.querySelector('#reserve-name').value = ''
+      document.querySelector('#reserve-value').value = ''
+      if (checkboxMetaReserva) checkboxMetaReserva.checked = false
+      if (campoMetaReserva) campoMetaReserva.hidden = true
+      if (inputMetaReserva) {
+        inputMetaReserva.value = ''
+        inputMetaReserva.disabled = true
+        inputMetaReserva.required = false
+      }
+
+      atualizarTudo()
+
+      abrirOuFecharPopup('popup-reserved', 'fechar')
+    } catch (erro) {
+      console.error('Erro ao criar reserva:', erro)
+      showPopup('Erro de conexão ao criar reserva.', 2400)
     }
-
-    const resposta = await fetch('/reservas', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(novaReserva),
-    })
-
-    const resultado = await resposta.json()
-
-    appData.reservas.push(resultado.reserva)
-
-    document.querySelector('#reserve-name').value = ''
-    document.querySelector('#reserve-value').value = ''
-
-    atualizarTudo()
-
-    abrirOuFecharPopup('popup-reserve', 'fechar')
   })
 }
 
@@ -1416,7 +1562,7 @@ if (btnAdicionarValorReserva) {
       }
 
       const reserva = appData.reservas.find(
-        (r) => r.id === indiceReservaSelecionada,
+        (r) => Number(r.id) === Number(indiceReservaSelecionada),
       )
       if (reserva) reserva.valor = Number(reserva.valor) + valor
 
@@ -1443,7 +1589,7 @@ if (btnTirarValor) {
     }
 
     const reserva = appData.reservas.find(
-      (r) => r.id === indiceReservaSelecionada,
+      (r) => Number(r.id) === Number(indiceReservaSelecionada),
     )
 
     if (reserva && valor > Number(reserva.valor)) {
@@ -1486,13 +1632,42 @@ function renderizarGridReservas() {
   gridReservas.innerHTML = ''
   totalReservadoVisor.innerHTML = 'R$ 0,00'
 
-  appData.reservas.forEach((item, indice) => {
+  appData.reservas.forEach((item) => {
+    const valorReserva = Number(item.valor) || 0
+    const valorMeta = Number(item.valor_meta)
+    const temMeta =
+      item.tem_meta === true && Number.isFinite(valorMeta) && valorMeta > 0
+    const progresso = temMeta
+      ? Math.min(100, Math.round((valorReserva / valorMeta) * 100))
+      : 0
+
     gridReservas.innerHTML += `
       <div class="card-expenses">
         <div class="especifications">
-          <h2>${item.nome}</h2>
-          <p>R$ ${Number(item.valor).toFixed(2).replace('.', ',')}</p>
+          <h2>${escaparHtml(item.nome)}</h2>
+          <p>${moedaBRL.format(valorReserva)}</p>
         </div>
+        ${
+          temMeta
+            ? `<div class="reserve-goal">
+                <div class="reserve-goal-summary">
+                  <span>Meta</span>
+                  <strong>${moedaBRL.format(valorReserva)} / ${moedaBRL.format(valorMeta)}</strong>
+                  <span>${progresso}%</span>
+                </div>
+                <div
+                  class="reserve-goal-progress"
+                  role="progressbar"
+                  aria-label="Progresso da meta de ${escaparHtml(item.nome)}"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="${progresso}"
+                >
+                  <span style="width: ${progresso}%"></span>
+                </div>
+              </div>`
+            : ''
+        }
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
             <button class="btn-plus-minus" id="plus-btn" onclick="abrirOuFecharPopup('modal-add', 'abrir', ${item.id})">+</button>
@@ -1695,7 +1870,6 @@ if (btnAddGastoFixo) {
 //-----------------------------------------------------------------
 
 function renderizarGridLancamentos() {
-  if (gridLancamentos) gridLancamentos.innerHTML = ''
   const idProcurado = appData.bancoAtual
   const bancoObjeto = appData.bancos.find(
     (b) => b && Number(b.id) === Number(idProcurado),
@@ -1717,7 +1891,7 @@ function renderizarGridLancamentos() {
   }, 0)
   let totalGastoNum = 0
 
-  appData.lancamentos.forEach((item, indice) => {
+  appData.lancamentos.forEach((item) => {
     const valorItem = Number(item.valor)
 
     if (item.mesAno !== appData.mesAtivo) {
@@ -1737,27 +1911,14 @@ function renderizarGridLancamentos() {
       } else {
         saldoBancoSelecionadoNum -= valorItem
       }
-
-      if (gridLancamentos) {
-        gridLancamentos.innerHTML += `
-        <div class="card-expenses ${item.tipo === 'ganho' ? 'income-color' : 'expense-color'}">
-          <h2>${item.descricao}</h2>
-          <p>R$ ${valorItem.toFixed(2).replace('.', ',')}</p>
-          <p>${item.categoria}</p>
-          <div class="division-card">
-            <p>${item.forma}</p>
-            <p>${new Date(item.data).toLocaleDateString('pt-BR')}</p>
-          </div>
-          <button class="btn-delete" id="delete-btn-card" onclick="deletarLancamento(${item.id})">Excluir</button>
-        </div>
-      `
-      }
     }
   })
 
-  if (gridLancamentos && gridLancamentos.children.length === 0) {
-    gridLancamentos.innerHTML =
-      '<p class="grid-none-expenses data-empty-state">Nenhum lançamento nesta conta e período.</p>'
+  const campoBusca = document.getElementById('search-text')
+  if (campoBusca?.value.trim()) {
+    buscarLancamentos()
+  } else {
+    renderizarHistoricoTransacoes()
   }
 
   let totalParaGastarNum = totalTodosBancosNum - valorTotalReservado
@@ -1827,7 +1988,15 @@ if (btnRecebimento) {
 
 if (btnAddLancamento) {
   btnAddLancamento.addEventListener('click', async () => {
-    if (existeBanco === 'sim') {
+    if (appData.bancos.length > 0) {
+      const bancoAtualExiste = appData.bancos.some(
+        (banco) => Number(banco.id) === Number(appData.bancoAtual),
+      )
+
+      if (!bancoAtualExiste) {
+        selecionarBanco(appData.bancos[0].id)
+      }
+
       const inputData = document.getElementById('dateInput').value
       const mesAnoDoLancamento = appData.mesAtivo
       const dataLancamento = inputData
@@ -2449,7 +2618,8 @@ async function solicitarCodigoExclusao(credenciais = {}) {
 
     if (!resposta.ok) {
       throw new Error(
-        resultado.erro || 'Não foi possível enviar o código de confirmação.',
+        resultado.erro ||
+          'O envio do código está incompleto ou indisponível. Tente novamente mais tarde.',
       )
     }
 

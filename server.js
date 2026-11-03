@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
 const cors = require('cors')
+const PDFDocument = require('pdfkit')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -40,6 +41,7 @@ const authMiddleware = require('./middleware/auth')
 const authRoutes = require('./routes/auth')
 const senhas = require('./routes/senha')
 const users = require('./routes/users')
+const reservas = require('./routes/reservas')
 
 app.use(cors(corsOptions))
 
@@ -55,6 +57,7 @@ app.use(cookieParser())
 app.use('/api/auth', authRoutes)
 app.use('/senhas', senhas)
 app.use('/usuarios', users)
+app.use('/reservas', reservas)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -143,6 +146,343 @@ app.get('/lancamentos', exigirLogin, async (req, res) => {
   } catch (erro) {
     console.error('Erro ao buscar lançamentos:', erro)
     res.status(500).json({ erro: 'Erro ao buscar lançamentos' })
+  }
+})
+
+app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
+  const sql = `
+    SELECT l.id, l.valor, l.descricao, l.forma, l.data,
+           l.bancoId, b.nome AS banco, c.nome AS categoria
+    FROM lancamentos l
+    LEFT JOIN bancos b
+      ON b.id = l.bancoId AND b.usuarioId = l.usuarioId
+    LEFT JOIN categorias_gasto c ON c.id = l.categoria_id
+    WHERE l.usuarioId = ? AND l.tipo = 'despesa'
+    ORDER BY COALESCE(b.nome, 'Conta não identificada'), l.data DESC, l.id DESC
+  `
+
+  try {
+    const [despesas] = await pool.query(sql, [req.usuarioId])
+    const gruposPorBanco = new Map()
+
+    despesas.forEach((despesa) => {
+      const idBanco = String(despesa.bancoId ?? 'sem-conta')
+      if (!gruposPorBanco.has(idBanco)) {
+        gruposPorBanco.set(idBanco, {
+          nome: despesa.banco || 'Conta não identificada',
+          despesas: [],
+          total: 0,
+        })
+      }
+
+      const grupo = gruposPorBanco.get(idBanco)
+      const valor = Number(despesa.valor) || 0
+      grupo.despesas.push(despesa)
+      grupo.total += valor
+    })
+
+    const grupos = Array.from(gruposPorBanco.values())
+    const totalGeral = grupos.reduce((total, grupo) => total + grupo.total, 0)
+    const quantidadeTotal = despesas.length
+    const moeda = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    })
+    const dataFormatada = (valor) => {
+      const data = new Date(Number(valor))
+      return Number.isNaN(data.getTime())
+        ? 'Data indisponível'
+        : data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    }
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="relatorio-de-despesas.pdf"',
+    )
+    res.setHeader('Cache-Control', 'no-store')
+
+    const pdf = new PDFDocument({
+      size: 'A4',
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      bufferPages: true,
+    })
+    pdf.on('error', (erro) => {
+      console.error('Erro ao gerar PDF de despesas:', erro)
+      if (res.headersSent) {
+        res.destroy(erro)
+      } else {
+        res.status(500).json({ erro: 'Erro ao gerar o relatório de despesas.' })
+      }
+    })
+    pdf.pipe(res)
+
+    const margem = 42
+    const largura = pdf.page.width - margem * 2
+    const limiteInferior = pdf.page.height - 56
+    const colunas = [
+      { titulo: 'Data', largura: 58 },
+      { titulo: 'Descrição', largura: 168 },
+      { titulo: 'Categoria', largura: 112 },
+      { titulo: 'Forma', largura: 90 },
+      { titulo: 'Valor', largura: largura - 428, alinhar: 'right' },
+    ]
+    let y = 0
+
+    function desenharCabecalhoPagina() {
+      pdf.rect(0, 0, pdf.page.width, 8).fill('#244a78')
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .fillColor('#55708f')
+        .text('BOLSO  /  RELATÓRIO FINANCEIRO', margem, 30)
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(21)
+        .fillColor('#172b45')
+        .text('Despesas por conta', margem, 49)
+      pdf
+        .font('Helvetica')
+        .fontSize(9)
+        .fillColor('#66758a')
+        .text(
+          `Gerado em ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}  |  Todas as contas`,
+          margem,
+          81,
+        )
+      pdf
+        .moveTo(margem, 103)
+        .lineTo(pdf.page.width - margem, 103)
+        .lineWidth(1)
+        .strokeColor('#dce3eb')
+        .stroke()
+    }
+
+    function desenharCabecalhoTabela() {
+      pdf.roundedRect(margem, y, largura, 24, 4).fill('#edf2f7')
+      let x = margem + 8
+      pdf.font('Helvetica-Bold').fontSize(7).fillColor('#52637a')
+      colunas.forEach((coluna) => {
+        pdf.text(coluna.titulo.toUpperCase(), x, y + 8, {
+          width: coluna.largura - 12,
+          align: coluna.alinhar || 'left',
+          lineBreak: false,
+        })
+        x += coluna.largura
+      })
+      y += 30
+    }
+
+    function iniciarPagina(nomeBanco) {
+      pdf.addPage()
+      desenharCabecalhoPagina()
+      y = 118
+      if (nomeBanco) {
+        pdf
+          .font('Helvetica-Bold')
+          .fontSize(10)
+          .fillColor('#244a78')
+          .text(`${nomeBanco} - continuação`, margem, y)
+        y += 20
+        desenharCabecalhoTabela()
+      }
+    }
+
+    function garantirEspaco(altura, nomeBanco) {
+      if (y + altura > limiteInferior) {
+        iniciarPagina(nomeBanco)
+      }
+    }
+
+    function ajustarTexto(texto, larguraMaxima, tamanhoFonte) {
+      let resultado = String(texto || '—')
+        .replace(/\s+/g, ' ')
+        .trim()
+      pdf.font('Helvetica').fontSize(tamanhoFonte)
+      while (
+        resultado.length > 1 &&
+        pdf.widthOfString(resultado) > larguraMaxima
+      ) {
+        resultado = `${resultado.slice(0, -2)}...`
+      }
+      return resultado
+    }
+
+    desenharCabecalhoPagina()
+    y = 119
+    pdf.roundedRect(margem, y, largura, 54, 7).fill('#f5f8fc')
+    pdf
+      .font('Helvetica')
+      .fontSize(8)
+      .fillColor('#65758a')
+      .text('TOTAL DE DESPESAS', margem + 14, y + 11)
+    pdf
+      .font('Helvetica-Bold')
+      .fontSize(15)
+      .fillColor('#172b45')
+      .text(moeda.format(totalGeral), margem + 14, y + 26)
+    pdf
+      .font('Helvetica')
+      .fontSize(8)
+      .fillColor('#65758a')
+      .text(
+        `${quantidadeTotal} lançamentos  |  ${grupos.length} contas`,
+        margem + largura - 175,
+        y + 29,
+        {
+          width: 160,
+          align: 'right',
+        },
+      )
+    y += 70
+
+    if (grupos.length === 0) {
+      pdf
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#65758a')
+        .text('Nenhuma despesa cadastrada nas suas contas.', margem, y + 12, {
+          width: largura,
+          align: 'center',
+        })
+    }
+
+    grupos.forEach((grupo) => {
+      garantirEspaco(58)
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(11)
+        .fillColor('#172b45')
+        .text(grupo.nome, margem, y)
+      pdf
+        .font('Helvetica')
+        .fontSize(8)
+        .fillColor('#65758a')
+        .text(`${grupo.despesas.length} despesas`, margem, y + 15)
+      y += 31
+      desenharCabecalhoTabela()
+
+      grupo.despesas.forEach((despesa, indice) => {
+        garantirEspaco(36, grupo.nome)
+        const alturaLinha = 30
+        if (indice % 2 === 0) {
+          pdf.rect(margem, y - 3, largura, alturaLinha).fill('#fafbfd')
+        }
+
+        const valores = [
+          dataFormatada(despesa.data),
+          ajustarTexto(
+            despesa.descricao || 'Sem descrição',
+            colunas[1].largura - 12,
+            8,
+          ),
+          ajustarTexto(
+            despesa.categoria || 'Sem categoria',
+            colunas[2].largura - 12,
+            8,
+          ),
+          ajustarTexto(
+            despesa.forma || 'Não informada',
+            colunas[3].largura - 12,
+            8,
+          ),
+          moeda.format(Number(despesa.valor) || 0),
+        ]
+        let x = margem + 8
+        pdf.font('Helvetica').fontSize(8).fillColor('#33445b')
+        valores.forEach((valor, colunaIndice) => {
+          const coluna = colunas[colunaIndice]
+          pdf.text(valor, x, y + 6, {
+            width: coluna.largura - 12,
+            align: coluna.alinhar || 'left',
+            lineBreak: false,
+          })
+          x += coluna.largura
+        })
+        y += alturaLinha
+      })
+
+      garantirEspaco(31)
+      pdf
+        .moveTo(margem, y)
+        .lineTo(pdf.page.width - margem, y)
+        .lineWidth(0.7)
+        .strokeColor('#dce3eb')
+        .stroke()
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .fillColor('#244a78')
+        .text(`Subtotal - ${grupo.nome}`, margem + 8, y + 8)
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text(moeda.format(grupo.total), margem, y + 7, {
+          width: largura - 8,
+          align: 'right',
+        })
+      y += 31
+    })
+
+    if (grupos.length > 0) {
+      garantirEspaco(48)
+      pdf.roundedRect(margem, y, largura, 38, 6).fill('#244a78')
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .fillColor('#ffffff')
+        .text('TOTAL GERAL DE DESPESAS', margem + 12, y + 13)
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(11)
+        .text(moeda.format(totalGeral), margem, y + 12, {
+          width: largura - 12,
+          align: 'right',
+        })
+    }
+
+    const paginas = pdf.bufferedPageRange()
+    for (
+      let indice = paginas.start;
+      indice < paginas.start + paginas.count;
+      indice += 1
+    ) {
+      pdf.switchToPage(indice)
+      pdf
+        .moveTo(margem, pdf.page.height - 39)
+        .lineTo(pdf.page.width - margem, pdf.page.height - 39)
+        .lineWidth(0.7)
+        .strokeColor('#dce3eb')
+        .stroke()
+      pdf
+        .font('Helvetica')
+        .fontSize(8)
+        .fillColor('#7a8798')
+        .text(
+          'Relatório privado das suas despesas',
+          margem,
+          pdf.page.height - 29,
+        )
+      pdf.text(
+        `Página ${indice + 1} de ${paginas.count}`,
+        margem,
+        pdf.page.height - 29,
+        {
+          width: largura,
+          align: 'right',
+        },
+      )
+    }
+
+    pdf.end()
+  } catch (erro) {
+    console.error('Erro ao gerar relatório de despesas:', erro)
+    if (res.headersSent) {
+      res.destroy(erro)
+      return
+    }
+
+    res.status(500).json({ erro: 'Erro ao gerar o relatório de despesas.' })
   }
 })
 
@@ -486,128 +826,6 @@ app.delete('/bancos/:id', exigirLogin, async (req, res) => {
   } catch (erro) {
     console.log('Erro ao excluir banco:', erro)
     res.status(500).json({ erro: 'Erro ao excluir banco' })
-  }
-})
-
-app.get('/reservas', exigirLogin, async (req, res) => {
-  const sql = `
-    SELECT * FROM reservas
-    WHERE usuarioId = ?
-  `
-
-  try {
-    const [resultado] = await pool.query(sql, [req.usuarioId])
-    res.json(resultado)
-  } catch (erro) {
-    console.log('Erro ao buscar reservas', erro)
-    res.status(500).json({ erro: 'Erro ao buscar reservas' })
-  }
-})
-
-// Criar coisa pra aumentar e diminuir valor da reserva
-
-app.post('/reservas', exigirLogin, async (req, res) => {
-  const { nome, valor } = req.body
-
-  const sql = `
-    INSERT INTO reservas
-    (nome, valor, usuarioId)
-    VALUES (?, ?, ?)
-  `
-
-  const valores = [nome, valor, req.usuarioId]
-
-  try {
-    const [resultado] = await pool.query(sql, valores)
-    const novaReserva = {
-      id: resultado.insertId,
-      nome,
-      valor,
-    }
-
-    res.status(201).json({
-      mensagem: 'Reserva criada',
-      reserva: novaReserva,
-    })
-  } catch (erro) {
-    console.log('erro na reserva', erro)
-    res.status(500).json({ erro: 'erro ao inserir reserva' })
-  }
-})
-
-app.delete('/reservas/:id', exigirLogin, async (req, res) => {
-  const id = req.params.id
-
-  const sql = `
-    DELETE FROM reservas
-    WHERE id = ? AND usuarioId = ?
-  `
-
-  try {
-    const [resultado] = await pool.query(sql, [id, req.usuarioId])
-    if (resultado.affectedRows === 0) {
-      return res.status(404).json({
-        erro: 'Reserva não encontrada.',
-      })
-    }
-
-    res.json({
-      mensagem: 'Reserva excluída com sucesso',
-      id: id,
-    })
-  } catch (erro) {
-    console.log('Erro ao excluir reserva:', erro)
-    res.status(500).json({ erro: 'Erro ao excluir reserva' })
-  }
-})
-
-app.patch('/reservas/:id', exigirLogin, async (req, res) => {
-  const id = Number(req.params.id)
-  const { tipo, valor } = req.body
-  const valorNum = Number(valor)
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ erro: 'ID inválido.' })
-  }
-
-  if (!['adicionar', 'retirar'].includes(tipo)) {
-    return res.status(400).json({ erro: 'Tipo inválido.' })
-  }
-
-  if (!Number.isFinite(valorNum) || valorNum <= 0) {
-    return res.status(400).json({ erro: 'Valor inválido.' })
-  }
-
-  const sql =
-    tipo === 'adicionar'
-      ? `
-        UPDATE reservas SET valor = valor + ?
-        WHERE id = ? AND usuarioId = ?
-      `
-      : `
-        UPDATE reservas SET valor = valor - ?
-        WHERE id = ? AND usuarioId = ? AND valor >= ?
-      `
-  const valores =
-    tipo === 'adicionar'
-      ? [valorNum, id, req.usuarioId]
-      : [valorNum, id, req.usuarioId, valorNum]
-
-  try {
-    const [resultado] = await pool.query(sql, valores)
-    if (resultado.affectedRows === 0) {
-      if (tipo === 'retirar') {
-        return res
-          .status(422)
-          .json({ erro: 'Saldo insuficiente ou reserva não encontrada.' })
-      }
-      return res.status(404).json({ erro: 'Reserva não encontrada.' })
-    }
-
-    res.json({ mensagem: 'Reserva atualizada', id })
-  } catch (erro) {
-    console.log('Erro ao atualizar reserva:', erro)
-    res.status(500).json({ erro: 'Erro ao atualizar reserva.' })
   }
 })
 

@@ -752,6 +752,25 @@ h2 {
   margin-bottom: 10px;
 }
 
+#reserve-goal-field[hidden] {
+  display: none;
+}
+
+.reserve-goal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  color: var(--color-ink);
+  font-size: 0.82rem;
+}
+
+.reserve-goal-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
 .span-popup {
   font-size: 0.92rem;
   font-weight: 900;
@@ -979,7 +998,8 @@ select:focus {
   gap: 10px;
 }
 
-#list-bancos-abas {
+#list-bancos-abas,
+#list-bancos-transacoes {
   display: flex;
   gap: 10px;
   overflow-x: auto;
@@ -996,7 +1016,8 @@ select:focus {
   font-size: 11px;
 }
 
-#list-bancos-abas::-webkit-scrollbar {
+#list-bancos-abas::-webkit-scrollbar,
+#list-bancos-transacoes::-webkit-scrollbar {
   display: none;
 }
 
@@ -1741,7 +1762,8 @@ main {
   min-width: 0;
 }
 
-#list-bancos-abas {
+#list-bancos-abas,
+#list-bancos-transacoes {
   min-width: 0;
   width: 100%;
   padding: 0;
@@ -2252,6 +2274,19 @@ main {
   margin-bottom: 22px;
 }
 
+.dashboard-quick-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 16px;
+}
+
+.dashboard-quick-actions .btn-new-expenses {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .container-btn-new-expenses {
   justify-content: flex-start;
   gap: 9px;
@@ -2296,6 +2331,60 @@ main {
   gap: 13px;
 }
 
+.transactions-account-switcher {
+  margin: 0 0 18px;
+}
+
+.transaction-history-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.transaction-history {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.transaction-history th,
+.transaction-history td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.transaction-history th {
+  color: var(--color-ink-soft);
+  background: var(--color-surface-soft);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.transaction-history tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.transaction-income {
+  color: var(--color-income, #16805d);
+  font-weight: 700;
+}
+
+.transaction-expense {
+  color: var(--color-expense);
+  font-weight: 700;
+}
+
+.transaction-empty-state {
+  padding: 28px !important;
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
 .card-expenses {
   gap: 11px;
   padding: 16px;
@@ -2335,6 +2424,41 @@ main {
 
 .especifications p {
   flex: 0 0 auto;
+}
+
+.reserve-goal {
+  display: grid;
+  gap: 8px;
+}
+
+.reserve-goal-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-ink-soft);
+  font-size: 10px;
+}
+
+.reserve-goal-summary strong {
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.reserve-goal-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg);
+}
+
+.reserve-goal-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-income);
+  transition: width 0.35s ease;
 }
 
 .expense-color .especifications p,
@@ -3055,6 +3179,12 @@ main {
     grid-template-columns: 1fr;
   }
 
+  .transaction-history th,
+  .transaction-history td {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+
   .container-btn-new-expenses {
     align-items: stretch;
   }
@@ -3089,7 +3219,9 @@ main {
   .btn-search {
     flex: 0 0 auto;
   }
+}
 
+@media (max-width: 560px) {
   .cards-last {
     grid-template-columns: minmax(0, 1fr) auto;
   }

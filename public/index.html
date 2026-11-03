@@ -157,7 +157,7 @@
 
         <div class="transaction-form-container">
           <label class="popup-container">
-            <span class="span-popup">Nome da reseva</span>
+            <span class="span-popup">Nome da reserva</span>
             <input
               type="text"
               id="reserve-name"
@@ -174,6 +174,23 @@
               placeholder="0,00"
               id="reserve-value"
               required
+            />
+          </label>
+
+          <label class="reserve-goal-toggle" for="reserve-has-goal">
+            <input type="checkbox" id="reserve-has-goal" />
+            <span>Definir uma meta para esta reserva</span>
+          </label>
+
+          <label class="popup-container" id="reserve-goal-field" hidden>
+            <span class="span-popup">Valor desejado</span>
+            <input
+              type="number"
+              id="reserve-goal-value"
+              min="0.01"
+              step="0.01"
+              placeholder="Ex: 2.000,00"
+              disabled
             />
           </label>
 
@@ -359,13 +376,13 @@
               onclick="mostrarPagina('expenses')"
               class="btn-header"
               id="btn-expenses"
-              aria-label="Lançamentos"
+              aria-label="Transações"
             >
               <i
                 class="fa-solid fa-arrow-right-arrow-left"
                 aria-hidden="true"
               ></i
-              ><span>Lançamentos</span>
+              ><span>Transações</span>
             </button>
             <button
               onclick="mostrarPagina('statistics')"
@@ -470,6 +487,17 @@
                 </button>
               </section>
             </header>
+            <div class="dashboard-quick-actions">
+              <button
+                type="button"
+                class="btn-new-expenses"
+                id="btn-dashboard-new-transaction"
+                onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
+              >
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                Novo lançamento
+              </button>
+            </div>
             <section class="banks-wrapper account-switcher" aria-label="Contas">
               <div class="section-heading">
                 <div>
@@ -747,7 +775,10 @@
           <!-- Seção de Lançamentos -->
           <section id="expenses" class="page">
             <header class="page-header">
-              <h1>Lançamentos</h1>
+              <div>
+                <span class="section-kicker">HISTÓRICO FINANCEIRO</span>
+                <h1>Transações</h1>
+              </div>
             </header>
             <div class="current-balance">
               <span>Metas</span>
@@ -774,7 +805,30 @@
               >
                 Nova Meta
               </button>
+              <button
+                type="button"
+                class="btn-new-expenses"
+                id="btn-download-expense-report"
+              >
+                <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                Baixar PDF de despesas
+              </button>
             </div>
+
+            <section
+              class="banks-wrapper account-switcher transactions-account-switcher"
+              aria-label="Filtrar transações por conta"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">CONTA</span>
+                  <h2>Selecione um banco</h2>
+                </div>
+              </div>
+              <div class="banks-container">
+                <div id="list-bancos-transacoes"></div>
+              </div>
+            </section>
 
             <search class="search-bar">
               <form method="GET" role="search">
@@ -799,8 +853,23 @@
               </form>
             </search>
 
-            <div class="grid-expenses" id="grid-expenses">
-              <p class="grid-none-expenses">Nenhum lançamento ainda</p>
+            <div class="transaction-history-wrapper">
+              <table class="transaction-history" id="grid-expenses">
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Descrição</th>
+                    <th scope="col">Categoria</th>
+                    <th scope="col">Forma</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Valor</th>
+                    <th scope="col" class="transaction-actions-heading">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
             </div>
           </section>
           <!-- Seção de Fixos -->

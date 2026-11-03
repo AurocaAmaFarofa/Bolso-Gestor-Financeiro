@@ -6,12 +6,40 @@ const authMiddleware = require('../middleware/auth')
 const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
 const { OAuth2Client } = require('google-auth-library')
-const { Resend } = require('resend')
 
 const router = express.Router()
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
-const resend = new Resend(process.env.RESEND_API_KEY)
+
+// No topo, no lugar de: const { Resend } = require('resend') e do resend = new Resend(...)
+// (remova também o npm do resend depois)
+
+async function enviarEmailBrevo({ para, assunto, texto, html }) {
+  if (!process.env.BREVO_API_KEY || !process.env.EMAIL_FROM) {
+    throw new Error('Brevo requer BREVO_API_KEY e EMAIL_FROM configurados.')
+  }
+
+  const resposta = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'Bolso', email: process.env.EMAIL_FROM },
+      to: [{ email: para }],
+      subject: assunto,
+      textContent: texto,
+      htmlContent: html,
+    }),
+  })
+
+  if (!resposta.ok) {
+    const detalhe = await resposta.text()
+    throw new Error(`Brevo ${resposta.status}: ${detalhe}`)
+  }
+}
 
 const MAX_TENTATIVAS = 5
 const TEMPO_EXPIRACAO_MS = 10 * 60 * 1000
@@ -110,9 +138,9 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
   const usuarioId = req.usuarioId
 
   try {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.BREVO_API_KEY || !process.env.EMAIL_FROM) {
       return res.status(503).json({
-        erro: 'O serviço de envio de e-mail não está configurado.',
+        erro: 'O envio do código está temporariamente indisponível porque a integração de e-mail não foi configurada completamente.',
       })
     }
 
@@ -172,11 +200,10 @@ router.post('/excluir-conta/solicitar', authMiddleware, async (req, res) => {
     )
 
     try {
-      const { error } = await resend.emails.send({
-        from: 'Bolso <onboarding@resend.dev>',
-        to: user.email,
-        subject: 'Confirmação de exclusão da conta - Bolso',
-        text: `Você solicitou a exclusão da sua conta Bolso.
+      await enviarEmailBrevo({
+        para: user.email,
+        assunto: 'Confirmação de exclusão da conta - Bolso',
+        texto: `Você solicitou a exclusão da sua conta Bolso.
 
 Seu código de confirmação é: ${codigo}
 
@@ -196,10 +223,6 @@ Se você não solicitou essa operação, ignore este e-mail.`,
           </div>
         `,
       })
-
-      if (error) {
-        throw new Error(error.message)
-      }
     } catch (erroEmail) {
       console.error('Erro ao enviar código de exclusão:', erroEmail)
 
