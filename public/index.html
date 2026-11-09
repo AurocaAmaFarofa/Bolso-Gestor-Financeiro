@@ -177,6 +177,47 @@
             />
           </label>
 
+          <label class="popup-container">
+            <span class="span-popup">Duração da reserva</span>
+
+            <input
+              type="number"
+              id="reserve-duration"
+              min="1"
+              step="1"
+              value="1"
+              placeholder="Quantidade de meses"
+              required
+            />
+          </label>
+
+          <label class="reserve-goal-toggle" for="reserve-permanent">
+            <input type="checkbox" id="reserve-permanent" />
+            <span>Por tempo indeterminado</span>
+          </label>
+
+          <div id="reserve-expiration-preview">
+            <div class="expiration-preview-icon">
+              <i class="fa-regular fa-calendar-check"></i>
+            </div>
+
+            <div class="expiration-preview-content">
+              <span class="expiration-preview-title">Validade da reserva</span>
+
+              <div class="expiration-preview-main">
+                <span>Último mês ativo</span>
+                <strong id="reserve-expiration-date">Novembro de 2026</strong>
+              </div>
+
+              <div class="expiration-preview-info">
+                <i class="fa-solid fa-circle-info"></i>
+                <small id="reserve-expiration-info">
+                  Será removida da visualização em Dezembro de 2026.
+                </small>
+              </div>
+            </div>
+          </div>
+
           <label class="reserve-goal-toggle" for="reserve-has-goal">
             <input type="checkbox" id="reserve-has-goal" />
             <span>Definir uma meta para esta reserva</span>
@@ -780,7 +821,7 @@
                 <h1>Transações</h1>
               </div>
             </header>
-            <div class="current-balance">
+            <div class="current-balance space-mid">
               <span>Metas</span>
               <div id="expense-goals-visor">
                 <div class="current-balance">
@@ -792,7 +833,29 @@
               </div>
             </div>
             <!--id="new-expense"-->
-            <div class="container-btn-new-expenses">
+            <div class="container-btn-new-expenses transactions-actions">
+              <section
+                class="select-month-container transactions-month-selector"
+                aria-label="Selecionar mês das transações"
+              >
+                <button
+                  class="btn-select-month"
+                  type="button"
+                  aria-label="Ver mês anterior"
+                  onclick="diminuirOuAumentarMes('Diminuir')"
+                >
+                  <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                </button>
+                <h3 id="transactions-month-visor">Month</h3>
+                <button
+                  class="btn-select-month"
+                  type="button"
+                  aria-label="Ver próximo mês"
+                  onclick="diminuirOuAumentarMes('Aumentar')"
+                >
+                  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
+              </section>
               <button
                 class="btn-new-expenses"
                 onclick="abrirOuFecharPopup('popup-modal', 'abrir')"

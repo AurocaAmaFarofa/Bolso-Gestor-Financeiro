@@ -13,7 +13,7 @@
   --color-income-soft: #dcf0e7;
   --color-expense: #bf433f;
   --color-expense-soft: #f6dfdc;
-  --color-reserve: #b8863a;
+  --color-reserve: #ffb231;
   --color-reserve-soft: #f3e7d2;
   --color-border: #dde2ea;
 
@@ -457,6 +457,10 @@ button:focus-visible {
   text-align: center;
   border-radius: var(--radius-lg);
   border-color: var(--color-border);
+}
+
+.current-balance.space-mid {
+  margin-bottom: var(--radius-md) !important;
 }
 
 .current-balance span,
@@ -1110,7 +1114,8 @@ select:focus {
   border-color: var(--color-accent);
 }
 
-#month-visor {
+#month-visor,
+#transactions-month-visor {
   font-size: 0.95rem;
 }
 
@@ -1178,6 +1183,10 @@ select:focus {
 
 .header-meta-card h1 {
   font-size: 1.3rem;
+}
+
+.separar-metas .current-balance {
+  margin-bottom: 15px;
 }
 
 /* ============================================================
@@ -1699,7 +1708,8 @@ main {
   background: var(--color-surface);
 }
 
-#month-visor {
+#month-visor,
+#transactions-month-visor {
   min-width: 118px;
   color: var(--color-ink);
   font-family: var(--font-body);
@@ -2335,6 +2345,14 @@ main {
   margin: 0 0 18px;
 }
 
+.transactions-actions {
+  flex-wrap: wrap;
+}
+
+.transactions-month-selector {
+  flex: 0 0 auto;
+}
+
 .transaction-history-wrapper {
   overflow-x: auto;
   border: 1px solid var(--color-border);
@@ -2459,6 +2477,104 @@ main {
   border-radius: inherit;
   background: var(--color-income);
   transition: width 0.35s ease;
+}
+
+.reserve-duration-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--font-body);
+  margin-top: 5px;
+}
+
+#reserve-expiration-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: var(--radius-sm);
+  padding: 15px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.06);
+  transition: opacity 0.2s ease;
+}
+
+.expiration-preview-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.expiration-preview-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.expiration-preview-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.expiration-preview-main span {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.expiration-preview-main strong {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.expiration-preview-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(100, 116, 139, 0.15);
+  color: var(--text-secondary, #64748b);
+}
+
+.expiration-preview-info i {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #3b82f6;
+}
+
+.expiration-preview-info small {
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.expiration-preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  font-size: 17px;
+}
+
+#reserve-expiration-preview[hidden] {
+  display: none;
+}
+
+#reserve-expiration-date {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+#reserve-expiration-info {
+  font-size: 0.78rem;
 }
 
 .expense-color .especifications p,

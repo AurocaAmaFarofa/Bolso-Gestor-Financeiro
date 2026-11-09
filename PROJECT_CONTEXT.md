@@ -135,7 +135,7 @@ O esquema definido em `estrutura_bolso.sql` inclui:
 | `lancamentos` | Entradas e despesas, vinculadas a uma categoria; guarda também banco, usuário, data e mês. |
 | `metas` | Limite por usuário, categoria e mês; valor precisa ser positivo e a combinação tem restrição de unicidade. |
 | `bancos` | Contas com saldo inicial, mês de criação e usuário associado. |
-| `reservas` | Nome, valor e usuário associado. |
+| `reservas` | Nome, valor, usuário, mês de criação e duração; reservas antigas sem mês de criação permanecem permanentes. |
 | `gastos_fixos` | Nome, valor, status e usuário associado. |
 | `recuperar_senha` | Hash do token de recuperação, usuário, expiração e indicador de uso. |
 

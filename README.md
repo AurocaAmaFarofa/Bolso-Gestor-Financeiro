@@ -30,7 +30,14 @@ O objetivo do projeto é evoluir gradualmente de uma aplicação inicialmente ba
 
 Permite separar parte do saldo disponível para objetivos específicos ou despesas futuras.
 
-O sistema considera o valor reservado ao calcular quanto dinheiro está efetivamente disponível para utilização.
+Cada reserva pode valer por 1, 3, 6 ou 12 meses a partir do mês selecionado,
+ou permanecer ativa por tempo indeterminado. O valor reservado só é considerado
+nos cards e cálculos financeiros durante esse período. Reservas antigas sem mês
+de criação continuam permanentes.
+
+Para atualizar um banco já existente, aplique `migracao_reservas_duracao.sql`.
+Novas instalações recebem as colunas pelo esquema `estrutura_bolso.sql`.
+O SQL de migração apenas adiciona colunas e preserva os registros existentes.
 
 ### Gastos Fixos
 

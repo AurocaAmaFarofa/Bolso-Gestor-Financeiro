@@ -25,6 +25,8 @@ const btnAddReserva = document.querySelector('#btn-submit-reserve')
 const checkboxMetaReserva = document.querySelector('#reserve-has-goal')
 const campoMetaReserva = document.querySelector('#reserve-goal-field')
 const inputMetaReserva = document.querySelector('#reserve-goal-value')
+const campoDuracaoReserva = document.querySelector('#reserve-duration')
+const checkboxReservaPermanente = document.querySelector('#reserve-permanent')
 const totalReservadoVisor = document.querySelector('#total-reserved')
 const totalDinheiroVisor = document.querySelector('#total-money')
 const popupAddReserva = document.querySelector('#modal-add')
@@ -41,6 +43,7 @@ const listBancosAbas = document.querySelector('#list-bancos-abas')
 const listBancosTransacoes = document.querySelector('#list-bancos-transacoes')
 const saldoBancoVisor = document.querySelector('#banco-id-visor')
 const visorMes = document.querySelector('#month-visor')
+const visorMesTransacoes = document.querySelector('#transactions-month-visor')
 const btnCriarMeta = document.querySelector('#btn-submit-goal')
 const visorMainMeta = document.querySelector('#main-goals-visor')
 const visorExMeta = document.querySelector('#expense-goals-visor')
@@ -365,9 +368,13 @@ function buscarLancamentos() {
 }
 
 function obterHistoricoDaConta() {
+  const mesAtivo = normalizarMes(appData.mesAtivo)
+
   return appData.lancamentos
     .filter(
-      (lancamento) => Number(lancamento.bancoId) === Number(appData.bancoAtual),
+      (lancamento) =>
+        Number(lancamento.bancoId) === Number(appData.bancoAtual) &&
+        obterMesLancamento(lancamento) === mesAtivo,
     )
     .slice()
     .sort((a, b) => {
@@ -380,7 +387,21 @@ function obterHistoricoDaConta() {
 
 function obterDataLancamento(valor) {
   if (typeof valor === 'number' || /^\d+$/.test(String(valor))) {
-    return new Date(Number(valor))
+    const data = new Date(Number(valor))
+    if (
+      data.getUTCHours() === 0 &&
+      data.getUTCMinutes() === 0 &&
+      data.getUTCSeconds() === 0 &&
+      data.getUTCMilliseconds() === 0
+    ) {
+      return new Date(
+        data.getUTCFullYear(),
+        data.getUTCMonth(),
+        data.getUTCDate(),
+      )
+    }
+
+    return data
   }
 
   const dataSemHorario = String(valor || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -403,7 +424,7 @@ function renderizarHistoricoTransacoes(lancamentos = obterHistoricoDaConta()) {
     corpoTabela.innerHTML = `
       <tr>
         <td class="transaction-empty-state" colspan="7">
-          Nenhuma transação encontrada nesta conta.
+          Nenhuma transação encontrada neste mês e nesta conta.
         </td>
       </tr>
     `
@@ -553,6 +574,17 @@ if (btnCriarMeta) {
   })
 }
 
+function verificarQuantidadeMetas() {
+  const quantidadeMetas = appData.metas.filter(
+    (item) => item.mes_ano === appData.mesAtivo,
+  ).length
+
+  const temMaisDeUmaMeta = quantidadeMetas > 1
+
+  visorExMeta.classList.toggle('separar-metas', temMaisDeUmaMeta)
+  visorMainMeta.classList.toggle('separar-metas', temMaisDeUmaMeta)
+}
+
 function renderizarDoisVisores() {
   if (!visorExMeta || !visorMainMeta) {
     return
@@ -570,7 +602,7 @@ function renderizarDoisVisores() {
 
     const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
       return (
-        lancamento.mesAno === appData.mesAtivo &&
+        obterMesLancamento(lancamento) === appData.mesAtivo &&
         lancamento.categoria_id === item.categoria_id &&
         lancamento.tipo === 'despesa'
       )
@@ -581,6 +613,15 @@ function renderizarDoisVisores() {
     }, 0)
 
     const valorMax = Number(item.valor_max)
+
+    const totalFormatado = totalGastoMeta.toLocaleString('pt-BR', {
+      maximumFractionDigits: 2,
+    })
+
+    const limiteFormatado = valorMax.toLocaleString('pt-BR', {
+      maximumFractionDigits: 2,
+    })
+
     const matematicaDaBarra = (totalGastoMeta / valorMax) * 100
     const stringPorcentagem = matematicaDaBarra + '%'
     const nomeFormatado = escaparHtml(primeiraLetraMaior(item.categoria))
@@ -588,7 +629,7 @@ function renderizarDoisVisores() {
     let cardMeta = `
       <div class="current-balance card-meta-${item.id}">
         <div class="header-meta-card">
-          <h1>Gasto com ${nomeFormatado}</h1>
+          <h1>Gasto com ${nomeFormatado} | R$ ${totalFormatado} / R$ ${limiteFormatado}</h1>
           <button class="btn-delete" onclick="deletarMeta(${item.id})">x</button>
         </div>
         <div class="progress-goal-container">
@@ -623,6 +664,8 @@ function renderizarDoisVisores() {
     })
   })
 
+  verificarQuantidadeMetas()
+
   if (!appData.metas.some((item) => item.mes_ano === appData.mesAtivo)) {
     const vazio =
       '<p class="data-empty-state">Nenhuma meta para este mês. Crie uma meta em Lançamentos.</p>'
@@ -652,19 +695,18 @@ renderizarDoisVisores()
 // =================== Funções do mês =====================
 
 function atualizarVisorMes(ano, mes) {
-  if (!visorMes) {
-    return
-  }
-
   const mesmes = new Date(ano, mes - 1)
   const textoMes = mesmes.toLocaleString('pt-BR', { month: 'long' })
   const mesMaiusculo = textoMes.charAt(0).toUpperCase() + textoMes.slice(1)
-  visorMes.textContent = `${mesMaiusculo} de ${ano}`
+  const textoVisor = `${mesMaiusculo} de ${ano}`
+
+  if (visorMes) visorMes.textContent = textoVisor
+  if (visorMesTransacoes) visorMesTransacoes.textContent = textoVisor
 }
 
 const mesAnoInicial = appData.mesAtivo
 const [anoInicial, mesInicial] = mesAnoInicial.split('-')
-if (visorMes) {
+if (visorMes || visorMesTransacoes) {
   atualizarVisorMes(Number(anoInicial), Number(mesInicial))
 }
 
@@ -702,6 +744,7 @@ function diminuirOuAumentarMes(AumOuDim) {
 
   salvarDados()
   atualizarTudo()
+  void carregarReservas()
   console.log(mesAnoResul)
 }
 
@@ -754,18 +797,44 @@ function normalizarMes(mes) {
   return `${correspondencia[1]}-${String(numeroMes).padStart(2, '0')}`
 }
 
+function obterReservasAtivasNoMes() {
+  const mesAtivo = normalizarMes(appData.mesAtivo)
+  if (!mesAtivo) return []
+
+  const numeroDoMes = (mes) => {
+    const [ano, numeroMes] = mes.split('-').map(Number)
+    return ano * 12 + numeroMes - 1
+  }
+
+  return appData.reservas.filter((reserva) => {
+    if (reserva.mes_criado === null || reserva.mes_criado === undefined) {
+      return true
+    }
+
+    const mesCriado = normalizarMes(reserva.mes_criado)
+    if (!mesCriado) return false
+
+    const mesesDesdeCriacao = numeroDoMes(mesAtivo) - numeroDoMes(mesCriado)
+    if (mesesDesdeCriacao < 0) return false
+
+    if (reserva.mes_duracao === null || reserva.mes_duracao === undefined) {
+      return true
+    }
+
+    const duracao = Number(reserva.mes_duracao)
+    return Number.isInteger(duracao) && mesesDesdeCriacao < duracao
+  })
+}
+
 function obterMesLancamento(lancamento) {
-  const mesLancamento = normalizarMes(lancamento.mesAno)
-  if (mesLancamento) return mesLancamento
+  if (lancamento.data !== null && lancamento.data !== undefined) {
+    const data = obterDataLancamento(lancamento.data)
+    if (!Number.isNaN(data.getTime())) {
+      return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+    }
+  }
 
-  if (lancamento.data === null || lancamento.data === undefined) return null
-  const data =
-    typeof lancamento.data === 'number' || /^\d+$/.test(String(lancamento.data))
-      ? new Date(Number(lancamento.data))
-      : new Date(lancamento.data)
-
-  if (Number.isNaN(data.getTime())) return null
-  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+  return normalizarMes(lancamento.mesAno)
 }
 
 function obterLancamentosDoMes(mes) {
@@ -1405,8 +1474,12 @@ renderizarAbasBancos()
 //----------------------Coisas Das Reservas----------------------
 
 async function carregarReservas() {
+  const mesSolicitado = appData.mesAtivo
+
   try {
-    const resposta = await fetch('/reservas')
+    const resposta = await fetch(
+      `/reservas?mes=${encodeURIComponent(mesSolicitado)}`,
+    )
 
     if (resposta.status === 401) {
       window.location.href = 'login.html'
@@ -1424,6 +1497,8 @@ async function carregarReservas() {
       console.error('Resposta inválida de /reservas:', reservas)
       return
     }
+
+    if (appData.mesAtivo !== mesSolicitado) return
 
     appData.reservas = reservas
 
@@ -1449,8 +1524,21 @@ if (btnAddReserva) {
   btnAddReserva.addEventListener('click', async () => {
     const nome = document.querySelector('#reserve-name').value.trim()
     const valor = Number(document.querySelector('#reserve-value').value)
+    const reservaPermanente = checkboxReservaPermanente.checked
+
+    const duracaoSelecionada = reservaPermanente
+      ? null
+      : Number(campoDuracaoReserva.value)
     const temMeta = checkboxMetaReserva?.checked === true
     const valorMeta = temMeta ? Number(inputMetaReserva.value) : null
+
+    if (
+      !reservaPermanente &&
+      (!Number.isInteger(duracaoSelecionada) || duracaoSelecionada < 1)
+    ) {
+      showPopup('Informe uma duração válida para a reserva.', 2400)
+      return
+    }
 
     if (!nome) {
       showPopup('Por favor, insira um nome para a reserva.', 2200)
@@ -1472,6 +1560,8 @@ if (btnAddReserva) {
       valor,
       tem_meta: temMeta,
       valor_meta: valorMeta,
+      mes_criado: appData.mesAtivo,
+      mes_duracao: duracaoSelecionada,
     }
 
     const totalBancos = appData.bancos.reduce((soma, b) => {
@@ -1483,7 +1573,7 @@ if (btnAddReserva) {
     let dinheiroLivre = totalBancos
 
     appData.lancamentos.forEach((item) => {
-      if (item.mesAno !== appData.mesAtivo) {
+      if (obterMesLancamento(item) !== appData.mesAtivo) {
         return
       }
 
@@ -1494,7 +1584,7 @@ if (btnAddReserva) {
         dinheiroLivre -= Number(item.valor)
       }
     })
-    appData.reservas.forEach((item) => {
+    obterReservasAtivasNoMes().forEach((item) => {
       dinheiroLivre -= Number(item.valor)
     })
 
@@ -1519,6 +1609,7 @@ if (btnAddReserva) {
 
       document.querySelector('#reserve-name').value = ''
       document.querySelector('#reserve-value').value = ''
+      if (campoDuracaoReserva) campoDuracaoReserva.value = '1'
       if (checkboxMetaReserva) checkboxMetaReserva.checked = false
       if (campoMetaReserva) campoMetaReserva.hidden = true
       if (inputMetaReserva) {
@@ -1526,6 +1617,18 @@ if (btnAddReserva) {
         inputMetaReserva.disabled = true
         inputMetaReserva.required = false
       }
+
+      if (checkboxReservaPermanente) {
+        checkboxReservaPermanente.checked = false
+      }
+
+      if (campoDuracaoReserva) {
+        campoDuracaoReserva.value = '1'
+        campoDuracaoReserva.disabled = false
+        campoDuracaoReserva.required = true
+      }
+
+      atualizarPrevisaoReserva()
 
       atualizarTudo()
 
@@ -1623,6 +1726,31 @@ if (btnTirarValor) {
 }
 
 //MOSTRA NA PAGINA AS RESERVAS
+
+function descricaoDuracaoReserva(reserva) {
+  if (reserva.mes_duracao == null || reserva.mes_criado == null) {
+    return 'Por tempo indeterminado'
+  }
+
+  const duracao = Number(reserva.mes_duracao)
+
+  if (!Number.isInteger(duracao) || duracao < 1) {
+    return 'Duração não informada'
+  }
+
+  const [ano, mes] = reserva.mes_criado.split('-').map(Number)
+
+  const dataFim = new Date(ano, mes - 1 + duracao - 1, 1)
+
+  const nomeMes = dataFim.toLocaleDateString('pt-BR', {
+    month: 'long',
+  })
+
+  const anoFim = dataFim.getFullYear()
+
+  return `Temporária · ${duracao} ${duracao === 1 ? 'mês' : 'meses'} · até ${nomeMes} de ${anoFim}`
+}
+
 function renderizarGridReservas() {
   if (!gridReservas || !totalReservadoVisor) {
     return
@@ -1632,14 +1760,20 @@ function renderizarGridReservas() {
   gridReservas.innerHTML = ''
   totalReservadoVisor.innerHTML = 'R$ 0,00'
 
-  appData.reservas.forEach((item) => {
+  const reservasAtivas = obterReservasAtivasNoMes()
+
+  reservasAtivas.forEach((item) => {
     const valorReserva = Number(item.valor) || 0
     const valorMeta = Number(item.valor_meta)
+
     const temMeta =
       item.tem_meta === true && Number.isFinite(valorMeta) && valorMeta > 0
+
     const progresso = temMeta
       ? Math.min(100, Math.round((valorReserva / valorMeta) * 100))
       : 0
+
+    const descricaoDuracao = descricaoDuracaoReserva(item)
 
     gridReservas.innerHTML += `
       <div class="card-expenses">
@@ -1647,6 +1781,11 @@ function renderizarGridReservas() {
           <h2>${escaparHtml(item.nome)}</h2>
           <p>${moedaBRL.format(valorReserva)}</p>
         </div>
+
+        <span class="reserve-duration-label">
+          ${escaparHtml(descricaoDuracao)}
+        </span>
+
         ${
           temMeta
             ? `<div class="reserve-goal">
@@ -1655,6 +1794,7 @@ function renderizarGridReservas() {
                   <strong>${moedaBRL.format(valorReserva)} / ${moedaBRL.format(valorMeta)}</strong>
                   <span>${progresso}%</span>
                 </div>
+
                 <div
                   class="reserve-goal-progress"
                   role="progressbar"
@@ -1668,25 +1808,92 @@ function renderizarGridReservas() {
               </div>`
             : ''
         }
+
         <div class="btns-delete-plus-minus">
           <div class="change-btns half">
             <button class="btn-plus-minus" id="plus-btn" onclick="abrirOuFecharPopup('modal-add', 'abrir', ${item.id})">+</button>
             <button class="btn-plus-minus" id="minus-btn" onclick="abrirOuFecharPopup('modal-minus', 'abrir', ${item.id})">-</button>
           </div>
+
           <button class="btn-delete half" onclick="excluirReservas(${item.id})">Excluir</button>
         </div>
       </div>
     `
 
-    valorTotalReservado += Number(item.valor)
-    ;(totalReservadoVisor.textContent =
-      'R$' + valorTotalReservado.toFixed(2)).replace('.', ',')
+    valorTotalReservado += valorReserva
+
+    totalReservadoVisor.textContent = (
+      'R$' + valorTotalReservado.toFixed(2)
+    ).replace('.', ',')
   })
 
-  if (appData.reservas.length === 0) {
+  if (reservasAtivas.length === 0) {
     gridReservas.innerHTML =
       '<p class="grid-none-expenses data-empty-state">Suas reservas aparecerão aqui quando você criar a primeira.</p>'
   }
+}
+
+function atualizarPrevisaoReserva() {
+  if (!campoDuracaoReserva || !checkboxReservaPermanente) return
+
+  const preview = document.querySelector('#reserve-expiration-preview')
+  const dataPreview = document.querySelector('#reserve-expiration-date')
+  const infoPreview = document.querySelector('#reserve-expiration-info')
+
+  if (!preview || !dataPreview || !infoPreview) return
+
+  const permanente = checkboxReservaPermanente.checked
+  const duracao = Number(campoDuracaoReserva.value)
+
+  campoDuracaoReserva.disabled = permanente
+  campoDuracaoReserva.required = !permanente
+
+  preview.hidden = permanente
+
+  if (permanente) return
+
+  if (!Number.isInteger(duracao) || duracao < 1) {
+    dataPreview.textContent = 'Informe uma duração válida'
+    infoPreview.textContent = ''
+    return
+  }
+
+  const [ano, mes] = appData.mesAtivo.split('-').map(Number)
+
+  const indiceFinal = ano * 12 + mes - 1 + duracao - 1
+
+  const anoFinal = Math.floor(indiceFinal / 12)
+  const mesFinal = (indiceFinal % 12) + 1
+
+  const nomeMes = [
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
+  ]
+
+  dataPreview.textContent = `${nomeMes[mesFinal - 1]} de ${anoFinal}`
+
+  const indiceExclusao = indiceFinal + 1
+  const anoExclusao = Math.floor(indiceExclusao / 12)
+  const mesExclusao = (indiceExclusao % 12) + 1
+
+  infoPreview.textContent = `Será removida da visualização em ${nomeMes[mesExclusao - 1]} de ${anoExclusao}.`
+}
+
+if (campoDuracaoReserva && checkboxReservaPermanente) {
+  campoDuracaoReserva.addEventListener('input', atualizarPrevisaoReserva)
+  checkboxReservaPermanente.addEventListener('change', atualizarPrevisaoReserva)
+
+  atualizarPrevisaoReserva()
 }
 
 //FUNÇÃO PARA EXCLUIR A RESERVA
@@ -1894,7 +2101,7 @@ function renderizarGridLancamentos() {
   appData.lancamentos.forEach((item) => {
     const valorItem = Number(item.valor)
 
-    if (item.mesAno !== appData.mesAtivo) {
+    if (obterMesLancamento(item) !== appData.mesAtivo) {
       return
     }
 
@@ -1998,10 +2205,13 @@ if (btnAddLancamento) {
       }
 
       const inputData = document.getElementById('dateInput').value
-      const mesAnoDoLancamento = appData.mesAtivo
-      const dataLancamento = inputData
-        ? new Date(inputData).getTime()
-        : Date.now()
+      const dataLancamentoObj = inputData
+        ? obterDataLancamento(inputData)
+        : new Date()
+      const dataLancamento = dataLancamentoObj.getTime()
+      const mesAnoDoLancamento = `${dataLancamentoObj.getFullYear()}-${String(
+        dataLancamentoObj.getMonth() + 1,
+      ).padStart(2, '0')}`
       const novoLancamento = {
         tipo: tipoSelecionado,
         valor: Number(document.getElementById('valueInput').value),
@@ -2017,13 +2227,13 @@ if (btnAddLancamento) {
         const metaEncontrada = appData.metas.find(
           (meta) =>
             meta.categoria_id === novoLancamento.categoriaId &&
-            meta.mes_ano === appData.mesAtivo,
+            meta.mes_ano === novoLancamento.mesAno,
         )
 
         if (metaEncontrada) {
           const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
             return (
-              lancamento.mesAno === appData.mesAtivo &&
+              obterMesLancamento(lancamento) === novoLancamento.mesAno &&
               lancamento.categoria_id === metaEncontrada.categoria_id &&
               lancamento.tipo === 'despesa'
             )
