@@ -775,8 +775,8 @@ function fecharPopups() {
 function atualizarTudo() {
   renderizarAbasBancos()
   renderizarGridGastosFixos()
-  renderizarGridLancamentos()
   renderizarGridReservas()
+  renderizarGridLancamentos()
   renderizarDoisVisores()
   atualizarGridUltimos()
   renderizarAnalises()
@@ -841,6 +841,46 @@ function obterLancamentosDoMes(mes) {
   return appData.lancamentos.filter(
     (lancamento) => obterMesLancamento(lancamento) === mes,
   )
+}
+
+function obterSaldoAcumulado(mes, bancoId) {
+  const mesLimite = normalizarMes(mes)
+  if (!mesLimite) return 0
+
+  let saldo = appData.bancos.reduce((total, banco) => {
+    if (!banco) return total
+
+    const mesCriacao = normalizarMes(banco.mesCriado)
+    if (
+      (bancoId !== undefined && Number(banco.id) !== Number(bancoId)) ||
+      !mesCriacao ||
+      mesCriacao > mesLimite
+    ) {
+      return total
+    }
+
+    const saldoInicial = Number(banco.saldoInicial)
+    return total + (Number.isFinite(saldoInicial) ? saldoInicial : 0)
+  }, 0)
+
+  appData.lancamentos.forEach((lancamento) => {
+    if (
+      bancoId !== undefined &&
+      Number(lancamento.bancoId) !== Number(bancoId)
+    ) {
+      return
+    }
+
+    const mesLancamento = obterMesLancamento(lancamento)
+    const valor = Number(lancamento.valor)
+    if (!mesLancamento || mesLancamento > mesLimite || !Number.isFinite(valor)) {
+      return
+    }
+
+    saldo += lancamento.tipo === 'ganho' ? valor : -valor
+  })
+
+  return saldo
 }
 
 function obterResumoDoMes(mes) {
@@ -1564,26 +1604,7 @@ if (btnAddReserva) {
       mes_duracao: duracaoSelecionada,
     }
 
-    const totalBancos = appData.bancos.reduce((soma, b) => {
-      if (b.mesCriado === appData.mesAtivo) {
-        return soma + Number(b.saldoInicial)
-      }
-      return soma
-    }, 0)
-    let dinheiroLivre = totalBancos
-
-    appData.lancamentos.forEach((item) => {
-      if (obterMesLancamento(item) !== appData.mesAtivo) {
-        return
-      }
-
-      if (item.tipo === 'ganho') {
-        dinheiroLivre += Number(item.valor)
-      }
-      if (item.tipo === 'despesa') {
-        dinheiroLivre -= Number(item.valor)
-      }
-    })
+    let dinheiroLivre = obterSaldoAcumulado(appData.mesAtivo)
     obterReservasAtivasNoMes().forEach((item) => {
       dinheiroLivre -= Number(item.valor)
     })
@@ -2078,48 +2099,12 @@ if (btnAddGastoFixo) {
 
 function renderizarGridLancamentos() {
   const idProcurado = appData.bancoAtual
-  const bancoObjeto = appData.bancos.find(
-    (b) => b && Number(b.id) === Number(idProcurado),
+  const totalTodosBancosNum = obterSaldoAcumulado(appData.mesAtivo)
+  const saldoBancoSelecionadoNum = obterSaldoAcumulado(
+    appData.mesAtivo,
+    idProcurado,
   )
-  let saldoBancoSelecionadoNum = 0
-  if (bancoObjeto) {
-    if (bancoObjeto.mesCriado === appData.mesAtivo) {
-      saldoBancoSelecionadoNum = Number(bancoObjeto.saldoInicial)
-    }
-  }
-  let totalTodosBancosNum = appData.bancos.reduce((soma, b) => {
-    if (!b) return soma
-
-    if (b.mesCriado === appData.mesAtivo) {
-      return soma + Number(b.saldoInicial)
-    }
-
-    return soma
-  }, 0)
-  let totalGastoNum = 0
-
-  appData.lancamentos.forEach((item) => {
-    const valorItem = Number(item.valor)
-
-    if (obterMesLancamento(item) !== appData.mesAtivo) {
-      return
-    }
-
-    if (item.tipo === 'ganho') {
-      totalTodosBancosNum += valorItem
-    } else {
-      totalTodosBancosNum -= valorItem
-      totalGastoNum += valorItem
-    }
-
-    if (Number(item.bancoId) === Number(idProcurado)) {
-      if (item.tipo === 'ganho') {
-        saldoBancoSelecionadoNum += valorItem
-      } else {
-        saldoBancoSelecionadoNum -= valorItem
-      }
-    }
-  })
+  const totalGastoNum = obterResumoDoMes(appData.mesAtivo).despesas
 
   const campoBusca = document.getElementById('search-text')
   if (campoBusca?.value.trim()) {
