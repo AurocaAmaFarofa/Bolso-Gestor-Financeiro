@@ -2026,7 +2026,7 @@ main {
 .fixed-expenses-panel {
   display: flex;
   flex-direction: column;
-  max-height: 280px;
+  max-height: 400px;
 }
 
 #fixed-expenses-main {
