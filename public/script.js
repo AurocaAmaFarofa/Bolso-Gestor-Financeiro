@@ -472,9 +472,12 @@ if (btnBaixarRelatorioDespesas) {
     btnBaixarRelatorioDespesas.disabled = true
 
     try {
-      const resposta = await fetch('/lancamentos/relatorio-despesas', {
-        headers: authHeaders(),
-      })
+      const resposta = await fetch(
+        `/lancamentos/relatorio-despesas?mesAno=${encodeURIComponent(appData.mesAtivo)}`,
+        {
+          headers: authHeaders(),
+        },
+      )
 
       if (resposta.status === 401) {
         window.location.href = 'login.html'

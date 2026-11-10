@@ -2023,6 +2023,18 @@ main {
   min-height: 266px;
 }
 
+.fixed-expenses-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+}
+
+#fixed-expenses-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .chart-container {
   min-width: 0;
   width: 100%;
@@ -3090,6 +3102,12 @@ main {
     padding: 0 15px;
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .transactions-actions {
+    flex-wrap: wrap;
+    display: grid;
+    justify-content: stretch;
   }
 
   .app-brand {

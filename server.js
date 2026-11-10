@@ -150,40 +150,69 @@ app.get('/lancamentos', exigirLogin, async (req, res) => {
 })
 
 app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
+  const mesAno = req.query.mesAno
+
+  if (!mesAno || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mesAno)) {
+    return res.status(400).json({
+      erro: 'Mês de referência inválido.',
+    })
+  }
+
   const sql = `
     SELECT l.id, l.valor, l.descricao, l.forma, l.data,
-           l.bancoId, b.nome AS banco, c.nome AS categoria
+          l.tipo, l.bancoId, b.nome AS banco, c.nome AS categoria
     FROM lancamentos l
     LEFT JOIN bancos b
       ON b.id = l.bancoId AND b.usuarioId = l.usuarioId
     LEFT JOIN categorias_gasto c ON c.id = l.categoria_id
-    WHERE l.usuarioId = ? AND l.tipo = 'despesa'
+    WHERE l.usuarioId = ? AND l.tipo IN ('despesa', 'ganho') AND l.mesAno = ?
     ORDER BY COALESCE(b.nome, 'Conta não identificada'), l.data DESC, l.id DESC
   `
 
   try {
-    const [despesas] = await pool.query(sql, [req.usuarioId])
+    const [lancamentos] = await pool.query(sql, [req.usuarioId, mesAno])
     const gruposPorBanco = new Map()
 
-    despesas.forEach((despesa) => {
-      const idBanco = String(despesa.bancoId ?? 'sem-conta')
+    lancamentos.forEach((lancamento) => {
+      const idBanco = String(lancamento.bancoId ?? 'sem-conta')
+
       if (!gruposPorBanco.has(idBanco)) {
         gruposPorBanco.set(idBanco, {
-          nome: despesa.banco || 'Conta não identificada',
+          nome: lancamento.banco || 'Conta não identificada',
           despesas: [],
-          total: 0,
+          ganhos: [],
+          totalDespesas: 0,
+          totalGanhos: 0,
         })
       }
 
       const grupo = gruposPorBanco.get(idBanco)
-      const valor = Number(despesa.valor) || 0
-      grupo.despesas.push(despesa)
-      grupo.total += valor
+      const valor = Number(lancamento.valor) || 0
+
+      if (lancamento.tipo === 'despesa') {
+        grupo.despesas.push(lancamento)
+        grupo.totalDespesas += valor
+      } else if (lancamento.tipo === 'ganho') {
+        grupo.ganhos.push(lancamento)
+        grupo.totalGanhos += valor
+      }
     })
 
     const grupos = Array.from(gruposPorBanco.values())
-    const totalGeral = grupos.reduce((total, grupo) => total + grupo.total, 0)
-    const quantidadeTotal = despesas.length
+
+    const totalDespesas = grupos.reduce(
+      (total, grupo) => total + grupo.totalDespesas,
+      0,
+    )
+
+    const totalGanhos = grupos.reduce(
+      (total, grupo) => total + grupo.totalGanhos,
+      0,
+    )
+
+    const saldoLiquido = totalGanhos - totalDespesas
+
+    const quantidadeTotal = lancamentos.length
     const moeda = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -240,13 +269,13 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
         .font('Helvetica-Bold')
         .fontSize(21)
         .fillColor('#172b45')
-        .text('Despesas por conta', margem, 49)
+        .text('Relatório financeiro por conta', margem, 49)
       pdf
         .font('Helvetica')
         .fontSize(9)
         .fillColor('#66758a')
         .text(
-          `Gerado em ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}  |  Todas as contas`,
+          `Gerado em ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}  |  Mês de referência: ${mesAno}`,
           margem,
           81,
         )
@@ -310,31 +339,74 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
 
     desenharCabecalhoPagina()
     y = 119
-    pdf.roundedRect(margem, y, largura, 54, 7).fill('#f5f8fc')
+
+    pdf.roundedRect(margem, y, largura, 58, 7).fill('#f5f8fc')
+
+    const espacamentoResumo = largura / 3
+
+    // Total de despesas
     pdf
       .font('Helvetica')
-      .fontSize(8)
+      .fontSize(7)
       .fillColor('#65758a')
-      .text('TOTAL DE DESPESAS', margem + 14, y + 11)
+      .text('TOTAL DE DESPESAS', margem + 12, y + 11)
+
     pdf
       .font('Helvetica-Bold')
-      .fontSize(15)
-      .fillColor('#172b45')
-      .text(moeda.format(totalGeral), margem + 14, y + 26)
+      .fontSize(11)
+      .fillColor('#c0392b')
+      .text(moeda.format(totalDespesas), margem + 12, y + 29)
+
+    // Total de ganhos
+    pdf
+      .font('Helvetica')
+      .fontSize(7)
+      .fillColor('#65758a')
+      .text('TOTAL DE GANHOS', margem + espacamentoResumo, y + 11)
+
+    pdf
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .fillColor('#21865a')
+      .text(moeda.format(totalGanhos), margem + espacamentoResumo, y + 29)
+
+    // Saldo líquido
+    pdf
+      .font('Helvetica')
+      .fontSize(7)
+      .fillColor('#65758a')
+      .text('SALDO LÍQUIDO', margem + espacamentoResumo * 2, y + 11)
+
+    pdf
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .fillColor(saldoLiquido >= 0 ? '#21865a' : '#c0392b')
+      .text(moeda.format(saldoLiquido), margem + espacamentoResumo * 2, y + 29)
+
+    y += 70
+
     pdf
       .font('Helvetica')
       .fontSize(8)
       .fillColor('#65758a')
       .text(
-        `${quantidadeTotal} lançamentos  |  ${grupos.length} contas`,
-        margem + largura - 175,
-        y + 29,
-        {
-          width: 160,
-          align: 'right',
-        },
+        `${quantidadeTotal} lançamentos | ${grupos.length} contas`,
+        margem,
+        y - 5,
       )
-    y += 70
+
+    y += 5
+
+    if (grupos.length === 0) {
+      pdf
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#65758a')
+        .text('Nenhum lançamento financeiro cadastrado.', margem, y + 12, {
+          width: largura,
+          align: 'center',
+        })
+    }
 
     if (grupos.length === 0) {
       pdf
@@ -348,94 +420,142 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
     }
 
     grupos.forEach((grupo) => {
-      garantirEspaco(58)
+      const secoes = [
+        {
+          titulo: 'DESPESAS',
+          lancamentos: grupo.despesas,
+          total: grupo.totalDespesas,
+          quantidade: grupo.despesas.length,
+        },
+        {
+          titulo: 'GANHOS',
+          lancamentos: grupo.ganhos,
+          total: grupo.totalGanhos,
+          quantidade: grupo.ganhos.length,
+        },
+      ]
+
+      garantirEspaco(35)
+
       pdf
         .font('Helvetica-Bold')
         .fontSize(11)
         .fillColor('#172b45')
         .text(grupo.nome, margem, y)
-      pdf
-        .font('Helvetica')
-        .fontSize(8)
-        .fillColor('#65758a')
-        .text(`${grupo.despesas.length} despesas`, margem, y + 15)
-      y += 31
-      desenharCabecalhoTabela()
 
-      grupo.despesas.forEach((despesa, indice) => {
-        garantirEspaco(36, grupo.nome)
-        const alturaLinha = 30
-        if (indice % 2 === 0) {
-          pdf.rect(margem, y - 3, largura, alturaLinha).fill('#fafbfd')
-        }
+      y += 20
 
-        const valores = [
-          dataFormatada(despesa.data),
-          ajustarTexto(
-            despesa.descricao || 'Sem descrição',
-            colunas[1].largura - 12,
-            8,
-          ),
-          ajustarTexto(
-            despesa.categoria || 'Sem categoria',
-            colunas[2].largura - 12,
-            8,
-          ),
-          ajustarTexto(
-            despesa.forma || 'Não informada',
-            colunas[3].largura - 12,
-            8,
-          ),
-          moeda.format(Number(despesa.valor) || 0),
-        ]
-        let x = margem + 8
-        pdf.font('Helvetica').fontSize(8).fillColor('#33445b')
-        valores.forEach((valor, colunaIndice) => {
-          const coluna = colunas[colunaIndice]
-          pdf.text(valor, x, y + 6, {
-            width: coluna.largura - 12,
-            align: coluna.alinhar || 'left',
-            lineBreak: false,
+      secoes.forEach((secao) => {
+        if (secao.lancamentos.length === 0) return
+
+        garantirEspaco(58)
+
+        pdf
+          .font('Helvetica-Bold')
+          .fontSize(9)
+          .fillColor(secao.titulo === 'GANHOS' ? '#21865a' : '#c0392b')
+          .text(secao.titulo, margem, y)
+
+        pdf
+          .font('Helvetica')
+          .fontSize(8)
+          .fillColor('#65758a')
+          .text(`${secao.quantidade} lançamentos`, margem + 100, y + 1)
+
+        y += 19
+
+        desenharCabecalhoTabela()
+
+        secao.lancamentos.forEach((lancamento, indice) => {
+          garantirEspaco(36, grupo.nome)
+
+          const alturaLinha = 30
+
+          if (indice % 2 === 0) {
+            pdf.rect(margem, y - 3, largura, alturaLinha).fill('#fafbfd')
+          }
+
+          const valores = [
+            dataFormatada(lancamento.data),
+            ajustarTexto(
+              lancamento.descricao || 'Sem descrição',
+              colunas[1].largura - 12,
+              8,
+            ),
+            ajustarTexto(
+              lancamento.categoria || 'Sem categoria',
+              colunas[2].largura - 12,
+              8,
+            ),
+            ajustarTexto(
+              lancamento.forma || 'Não informada',
+              colunas[3].largura - 12,
+              8,
+            ),
+            moeda.format(Number(lancamento.valor) || 0),
+          ]
+
+          let x = margem + 8
+
+          pdf.font('Helvetica').fontSize(8).fillColor('#33445b')
+
+          valores.forEach((valor, colunaIndice) => {
+            const coluna = colunas[colunaIndice]
+
+            pdf.text(valor, x, y + 6, {
+              width: coluna.largura - 12,
+              align: coluna.alinhar || 'left',
+              lineBreak: false,
+            })
+
+            x += coluna.largura
           })
-          x += coluna.largura
-        })
-        y += alturaLinha
-      })
 
-      garantirEspaco(31)
-      pdf
-        .moveTo(margem, y)
-        .lineTo(pdf.page.width - margem, y)
-        .lineWidth(0.7)
-        .strokeColor('#dce3eb')
-        .stroke()
-      pdf
-        .font('Helvetica-Bold')
-        .fontSize(8)
-        .fillColor('#244a78')
-        .text(`Subtotal - ${grupo.nome}`, margem + 8, y + 8)
-      pdf
-        .font('Helvetica-Bold')
-        .fontSize(9)
-        .text(moeda.format(grupo.total), margem, y + 7, {
-          width: largura - 8,
-          align: 'right',
+          y += alturaLinha
         })
-      y += 31
+
+        garantirEspaco(31, grupo.nome)
+
+        pdf
+          .moveTo(margem, y)
+          .lineTo(pdf.page.width - margem, y)
+          .lineWidth(0.7)
+          .strokeColor('#dce3eb')
+          .stroke()
+
+        pdf
+          .font('Helvetica-Bold')
+          .fontSize(8)
+          .fillColor(secao.titulo === 'GANHOS' ? '#21865a' : '#c0392b')
+          .text(`Subtotal - ${secao.titulo.toLowerCase()}`, margem + 8, y + 8)
+
+        pdf
+          .font('Helvetica-Bold')
+          .fontSize(9)
+          .text(moeda.format(secao.total), margem, y + 7, {
+            width: largura - 8,
+            align: 'right',
+          })
+
+        y += 31
+      })
     })
 
     if (grupos.length > 0) {
       garantirEspaco(48)
+
       pdf.roundedRect(margem, y, largura, 38, 6).fill('#244a78')
+
       pdf
         .font('Helvetica-Bold')
         .fontSize(10)
         .fillColor('#ffffff')
-        .text('TOTAL GERAL DE DESPESAS', margem + 12, y + 13)
+        .text('SALDO LÍQUIDO FINAL', margem + 12, y + 13)
+
       pdf
         .font('Helvetica-Bold')
         .fontSize(11)
-        .text(moeda.format(totalGeral), margem, y + 12, {
+        .text(moeda.format(saldoLiquido), margem, y + 12, {
           width: largura - 12,
           align: 'right',
         })
@@ -458,11 +578,7 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
         .font('Helvetica')
         .fontSize(8)
         .fillColor('#7a8798')
-        .text(
-          'Relatório privado das suas despesas',
-          margem,
-          pdf.page.height - 29,
-        )
+        .text('Relatório financeiro privado', margem, pdf.page.height - 29)
       pdf.text(
         `Página ${indice + 1} de ${paginas.count}`,
         margem,
