@@ -941,7 +941,7 @@ function gerarMesesHistoricos(mesReferencia, quantidade) {
 }
 
 function estadoVazioGrafico(mensagem) {
-  return `<div class="chart-empty" role="status"><span class="chart-empty-icon" aria-hidden="true"><i class="fa-solid fa-chart-simple"></i></span><p>${mensagem}</p></div>`
+  return `<div class="chart-empty" role="status"><span class="chart-empty-icon" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-bars"></use></svg></span><p>${mensagem}</p></div>`
 }
 
 function renderizarGraficoBarras(meses, resumoPorMes, id, compacto = false) {
@@ -2710,10 +2710,10 @@ async function prepararConfirmacaoGoogle() {
   })
   googleIdentity.renderButton(botaoGoogleExcluirConta, {
     type: 'standard',
-    theme: 'outline',
+    theme: 'filled_black',
     size: 'large',
     text: 'signin_with',
-    shape: 'rectangular',
+    shape: 'pill',
   })
   googleExclusaoConfigurado = true
 }

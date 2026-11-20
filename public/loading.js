@@ -7,18 +7,20 @@
     #request-loading-indicator {
       position: fixed;
       left: 50%;
-      bottom: 20px;
+      bottom: var(--loading-offset, 20px);
       z-index: 10000;
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 14px;
-      border: 1px solid var(--color-border, #dde2ea);
+      max-width: calc(100vw - 32px);
+      padding: 10px 16px;
+      border: 1px solid var(--color-border-strong, #dde2ea);
       border-radius: 999px;
-      background: var(--color-surface, #fff);
+      background: var(--color-surface-soft, #fff);
       color: var(--color-ink, #101828);
-      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.18);
-      font: 500 0.85rem var(--font-body, sans-serif);
+      box-shadow: var(--shadow-pop, 0 8px 24px rgba(16, 24, 40, 0.18));
+      font: 500 0.8125rem var(--font-body, sans-serif);
+      white-space: nowrap;
       opacity: 0;
       visibility: hidden;
       transform: translate(-50%, 8px);
@@ -39,7 +41,7 @@
       width: 18px;
       height: 18px;
       border: 2px solid var(--color-accent-soft, #dde6f5);
-      border-top-color: var(--color-accent, #2b4c8c);
+      border-top-color: var(--color-accent-text, #2b4c8c);
       border-radius: 50%;
       animation: request-loading-spin 0.8s linear infinite;
     }

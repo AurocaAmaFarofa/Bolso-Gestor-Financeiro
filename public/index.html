@@ -7,17 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
     <script src="loading.js" defer></script>
     <script src="script.js" defer></script>
   </head>
@@ -34,7 +28,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Nova Meta</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('new-goals-popup', 'fechar')"
           >
             x
@@ -68,7 +64,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Cadastrar Novo Banco</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('popup-novo-banco', 'fechar')"
           >
             x
@@ -106,7 +104,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à retirar</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('modal-minus', 'fechar')"
           >
             x
@@ -127,7 +127,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Valor à adicionar</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('modal-add', 'fechar')"
           >
             x
@@ -148,7 +150,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Nova Reserva</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('popup-reserved', 'fechar')"
           >
             x
@@ -198,7 +202,7 @@
 
           <div id="reserve-expiration-preview">
             <div class="expiration-preview-icon">
-              <i class="fa-regular fa-calendar-check"></i>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-calendar"></use></svg>
             </div>
 
             <div class="expiration-preview-content">
@@ -210,7 +214,7 @@
               </div>
 
               <div class="expiration-preview-info">
-                <i class="fa-solid fa-circle-info"></i>
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-info"></use></svg>
                 <small id="reserve-expiration-info">
                   Será removida da visualização em Dezembro de 2026.
                 </small>
@@ -248,7 +252,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Novo Gasto Fixo</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('popup-fixed-expense', 'fechar')"
           >
             x
@@ -291,7 +297,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Novo lançamento</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('popup-modal', 'fechar')"
           >
             x
@@ -370,7 +378,9 @@
         <div class="container-modal-title">
           <h1 class="modal-title">Nova Categoria</h1>
           <button
+            type="button"
             class="close-modal-btn"
+            aria-label="Fechar"
             onclick="abrirOuFecharPopup('popup-nova-categoria', 'fechar')"
           >
             X
@@ -410,8 +420,7 @@
               id="btn-dashboard"
               aria-label="Visão geral"
             >
-              <i class="fa-solid fa-house" aria-hidden="true"></i
-              ><span>Visão geral</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-home"></use></svg><span>Visão geral</span>
             </button>
             <button
               onclick="mostrarPagina('expenses')"
@@ -419,11 +428,7 @@
               id="btn-expenses"
               aria-label="Transações"
             >
-              <i
-                class="fa-solid fa-arrow-right-arrow-left"
-                aria-hidden="true"
-              ></i
-              ><span>Transações</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-swap"></use></svg><span>Transações</span>
             </button>
             <button
               onclick="mostrarPagina('statistics')"
@@ -431,8 +436,7 @@
               id="btn-statistics"
               aria-label="Análises"
             >
-              <i class="fa-solid fa-chart-line" aria-hidden="true"></i
-              ><span>Análises</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chart"></use></svg><span>Análises</span>
             </button>
             <button
               onclick="mostrarPagina('fixedExpenses')"
@@ -440,8 +444,7 @@
               id="btn-fixedExpenses"
               aria-label="Gastos fixos"
             >
-              <i class="fa-solid fa-calendar-check" aria-hidden="true"></i
-              ><span>Gastos fixos</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-calendar"></use></svg><span>Gastos fixos</span>
             </button>
             <button
               onclick="mostrarPagina('reserved')"
@@ -449,8 +452,7 @@
               id="btn-reserved"
               aria-label="Reservas"
             >
-              <i class="fa-solid fa-piggy-bank" aria-hidden="true"></i
-              ><span>Reservas</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-piggy"></use></svg><span>Reservas</span>
             </button>
             <button
               onclick="mostrarPagina('profile')"
@@ -459,8 +461,7 @@
               aria-controls="profile"
               aria-label="Perfil"
             >
-              <i class="fa-solid fa-user" aria-hidden="true"></i
-              ><span>Perfil</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-user"></use></svg><span>Perfil</span>
             </button>
             <a
               href="convites.html"
@@ -468,8 +469,7 @@
               id="btn-convites-abrir"
               aria-label="Convites"
             >
-              <i class="fa-solid fa-ticket" aria-hidden="true"></i
-              ><span>Convites</span>
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-ticket"></use></svg><span>Convites</span>
             </a>
           </nav>
           <button
@@ -481,11 +481,7 @@
               })
             "
           >
-            <i
-              class="fa-solid fa-arrow-right-from-bracket"
-              aria-hidden="true"
-            ></i
-            ><span>Sair</span>
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-logout"></use></svg><span>Sair</span>
           </button>
         </header>
         <main>
@@ -515,7 +511,7 @@
                   aria-label="Ver mês anterior"
                   onclick="diminuirOuAumentarMes('Diminuir')"
                 >
-                  <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chevron-left"></use></svg>
                 </button>
                 <h3 id="month-visor">Month</h3>
                 <button
@@ -524,7 +520,7 @@
                   aria-label="Ver próximo mês"
                   onclick="diminuirOuAumentarMes('Aumentar')"
                 >
-                  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chevron-right"></use></svg>
                 </button>
               </section>
             </header>
@@ -535,7 +531,7 @@
                 id="btn-dashboard-new-transaction"
                 onclick="abrirOuFecharPopup('popup-modal', 'abrir')"
               >
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-plus"></use></svg>
                 Novo lançamento
               </button>
             </div>
@@ -570,7 +566,7 @@
                     <p id="current-balance-id">R$ 00,00</p>
                   </div>
                   <span class="balance-icon" aria-hidden="true">
-                    <i class="fa-solid fa-wallet"></i>
+                    <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-wallet"></use></svg>
                   </span>
                 </div>
                 <div class="balance-breakdown">
@@ -590,7 +586,7 @@
               >
                 <article class="stats-card stats-card--income">
                   <span
-                    ><i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                    ><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-in"></use></svg>
                     Receitas no mês</span
                   >
                   <p id="month-income">R$ 0,00</p>
@@ -600,7 +596,7 @@
                 </article>
                 <article class="stats-card stats-card--expenses">
                   <span
-                    ><i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                    ><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-out"></use></svg>
                     Despesas no mês</span
                   >
                   <p id="total-expenses">R$ 0,00</p>
@@ -610,7 +606,7 @@
                 </article>
                 <article class="stats-card stats-card--reserve">
                   <span
-                    ><i class="fa-solid fa-piggy-bank" aria-hidden="true"></i>
+                    ><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-piggy"></use></svg>
                     Guardado em reservas</span
                   >
                   <p id="total-reserved">R$ 0,00</p>
@@ -631,10 +627,7 @@
                     onclick="mostrarPagina('statistics')"
                   >
                     Ver análises
-                    <i
-                      class="fa-solid fa-arrow-up-right-from-square"
-                      aria-hidden="true"
-                    ></i>
+                    <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-out"></use></svg>
                   </button>
                 </div>
                 <div
@@ -655,7 +648,7 @@
                     onclick="mostrarPagina('fixedExpenses')"
                     aria-label="Ver gastos fixos"
                   >
-                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-right"></use></svg>
                   </button>
                 </div>
                 <div id="fixed-expenses-main"></div>
@@ -674,7 +667,7 @@
                   onclick="mostrarPagina('expenses')"
                 >
                   Gerenciar metas
-                  <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-right"></use></svg>
                 </button>
               </div>
               <div id="main-goals-visor"></div>
@@ -692,7 +685,7 @@
                   onclick="mostrarPagina('expenses')"
                 >
                   Ver todos
-                  <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-arrow-right"></use></svg>
                 </button>
               </div>
               <div class="header-last-expenses">
@@ -703,7 +696,7 @@
                   aria-label="Expandir lançamentos recentes"
                   aria-expanded="false"
                 >
-                  <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chevron-down"></use></svg>
                 </button>
               </div>
               <div id="grid-last">
@@ -844,7 +837,7 @@
                   aria-label="Ver mês anterior"
                   onclick="diminuirOuAumentarMes('Diminuir')"
                 >
-                  <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chevron-left"></use></svg>
                 </button>
                 <h3 id="transactions-month-visor">Month</h3>
                 <button
@@ -853,7 +846,7 @@
                   aria-label="Ver próximo mês"
                   onclick="diminuirOuAumentarMes('Aumentar')"
                 >
-                  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-chevron-right"></use></svg>
                 </button>
               </section>
               <button
@@ -873,7 +866,7 @@
                 class="btn-new-expenses"
                 id="btn-download-expense-report"
               >
-                <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-file"></use></svg>
                 Baixar PDF das transações
               </button>
             </div>
@@ -975,7 +968,7 @@
             </header>
             <div class="current-balance profile-card">
               <div class="profile-avatar" aria-hidden="true">
-                <i class="fa-solid fa-user"></i>
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-user"></use></svg>
               </div>
               <div class="profile-information" aria-live="polite">
                 <h2 id="profile-name">Carregando perfil...</h2>
@@ -1002,7 +995,7 @@
                 class="account-delete-button"
                 aria-haspopup="dialog"
               >
-                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-trash"></use></svg>
                 Excluir conta
               </button>
             </div>
@@ -1017,7 +1010,7 @@
       >
         <div class="account-dialog-content">
           <div class="account-dialog-icon" aria-hidden="true">
-            <i class="fa-solid fa-triangle-exclamation"></i>
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-alert"></use></svg>
           </div>
           <h2 id="delete-account-title">Tem certeza?</h2>
           <p id="delete-account-description">
