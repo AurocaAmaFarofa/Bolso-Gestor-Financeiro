@@ -43,6 +43,8 @@ const senhas = require('./routes/senha')
 const users = require('./routes/users')
 const reservas = require('./routes/reservas')
 const investimentos = require('./routes/investimentos')
+const cartoes = require('./routes/cartoes')
+const { garantirEsquemaCartoes } = require('./lib/esquemaCartoes')
 
 app.use(cors(corsOptions))
 
@@ -60,6 +62,7 @@ app.use('/senhas', senhas)
 app.use('/usuarios', users)
 app.use('/reservas', reservas)
 app.use('/investimentos', investimentos)
+app.use('/cartoes', cartoes)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -136,13 +139,14 @@ const exigirLogin = authMiddleware
 app.get('/lancamentos', exigirLogin, async (req, res) => {
   const sql = `
     SELECT l.id, l.tipo, l.valor, l.descricao, l.forma, l.data, l.mesAno, l.bancoId,
-           l.categoria_id, c.nome AS categoria
+           l.categoria_id, l.cartaoId, c.nome AS categoria
     FROM lancamentos l
     JOIN categorias_gasto c ON c.id = l.categoria_id
     WHERE l.usuarioId = ?
   `
 
   try {
+    await garantirEsquemaCartoes()
     const [resultados] = await pool.query(sql, [req.usuarioId])
     res.json(resultados)
   } catch (erro) {
@@ -605,8 +609,35 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
 })
 
 app.post('/lancamentos', exigirLogin, async (req, res) => {
-  const { tipo, valor, categoriaId, descricao, forma, data, mesAno, bancoId } =
-    req.body
+  const { tipo, valor, categoriaId, descricao, forma, data, mesAno } = req.body
+  let { bancoId } = req.body
+  let cartaoId = null
+
+  if (req.body.cartaoId !== undefined && req.body.cartaoId !== null && req.body.cartaoId !== '') {
+    cartaoId = Number(req.body.cartaoId)
+    if (!Number.isInteger(cartaoId) || cartaoId <= 0) {
+      return res.status(400).json({ erro: 'Cartão inválido.' })
+    }
+    if (tipo !== 'despesa' || !['credito', 'debito'].includes(forma)) {
+      return res.status(400).json({ erro: 'Cartão só vale para gastos no crédito ou débito.' })
+    }
+
+    try {
+      await garantirEsquemaCartoes()
+      const [cartoesEncontrados] = await pool.query(
+        'SELECT bancoId FROM cartoes WHERE id = ? AND usuarioId = ?',
+        [cartaoId, req.usuarioId],
+      )
+      if (cartoesEncontrados.length === 0) {
+        return res.status(400).json({ erro: 'Cartão não encontrado.' })
+      }
+      // A compra fica na conta que paga o cartão (no crédito, ela só sai da conta quando a fatura é paga).
+      bancoId = String(cartoesEncontrados[0].bancoId)
+    } catch (erro) {
+      console.log('erro ao validar cartão', erro)
+      return res.status(500).json({ erro: 'erro ao validar cartão' })
+    }
+  }
 
   const sqlCategoria = `
     SELECT nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?
@@ -628,8 +659,8 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
 
   const sql = `
       INSERT INTO lancamentos
-      (tipo, valor, categoria_id, descricao, forma, data, mesAno, bancoId, usuarioId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (tipo, valor, categoria_id, descricao, forma, data, mesAno, bancoId, usuarioId, cartaoId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
 
   const valores = [
@@ -642,9 +673,11 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
     mesAno,
     bancoId,
     req.usuarioId,
+    cartaoId,
   ]
 
   try {
+    await garantirEsquemaCartoes()
     const [resultado] = await pool.query(sql, valores)
     res.status(201).json({
       mensagem: 'Lançamento criado',
@@ -659,6 +692,7 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
         data,
         mesAno,
         bancoId,
+        cartaoId,
       },
     })
   } catch (erro) {
@@ -1017,6 +1051,15 @@ app.delete('/bancos/:id', exigirLogin, async (req, res) => {
     return res.status(500).json({
       erro: 'Erro ao excluir lançamentos do banco',
     })
+  }
+
+  try {
+    await garantirEsquemaCartoes()
+    await pool.query('DELETE FROM cartoes WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
+    await pool.query('DELETE FROM fatura_pagamentos WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
+  } catch (erro) {
+    console.log('Erro ao excluir cartões do banco:', erro)
+    return res.status(500).json({ erro: 'Erro ao excluir cartões do banco' })
   }
 
   const sqlBanco = `

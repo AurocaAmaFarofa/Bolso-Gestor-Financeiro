@@ -102,6 +102,16 @@ uma sessão de administrador.
 - **Reservas:** valores reservados com operações para adicionar ou retirar
   saldo; uma retirada não pode exceder o valor disponível na reserva.
 - **Gastos fixos:** despesas acompanhadas com status `pendente` ou `pago`.
+- **Cartões de crédito:** cada cartão tem conta pagadora, dia de fechamento,
+  dia de vencimento (fixos todo mês), limite opcional e a opção de reservar a
+  fatura. Compras no crédito são lançamentos com `forma = 'credito'` e
+  `cartaoId`: contam como gasto no mês da compra, mas **não** saem do saldo da
+  conta. O pagamento da fatura fica em `fatura_pagamentos` (não é lançamento):
+  sai do saldo da conta na data paga e não conta como gasto, então nada é cobrado
+  duas vezes. As faturas (qual compra cai em qual mês, total, pago, status
+  aberta/fechada/paga/atrasada) são calculadas em `public/cartoes-ui.js`. Com a
+  reserva ligada, o que falta pagar aparece em Reservas e sai do saldo livre.
+  Gastos no débito com cartão saem da conta na hora.
 - **Investimentos:** caixinhas pós-fixadas atreladas ao CDI (ex.: CDB 101,5% do
   CDI). O usuário registra aportes, resgates e, opcionalmente, conferências do
   saldo bruto informado pelo banco. O servidor baixa a série diária do CDI do
@@ -149,6 +159,8 @@ O esquema definido em `estrutura_bolso.sql` inclui:
 | `bancos` | Contas com saldo inicial, mês de criação, cor (`#rrggbb`, opcional) e usuário associado. A coluna `cor` é criada pelo servidor se faltar (`db/migracao_bancos_cor.sql`). |
 | `reservas` | Nome, valor, usuário, mês de criação e duração; reservas antigas sem mês de criação permanecem permanentes. |
 | `gastos_fixos` | Nome, valor, status e usuário associado. |
+| `cartoes` | Cartões: conta que paga (`bancoId`), nome, dias de fechamento e vencimento, limite e `reservar_fatura`. |
+| `fatura_pagamentos` | Pagamentos de fatura: cartão, mês da fatura (mês do vencimento, `YYYY-MM`), valor, data e conta que pagou. |
 | `investimentos` | Caixinhas: nome, instituição, tipo, % do CDI, liquidez, vencimento e data de criação. |
 | `investimento_movimentos` | Aportes/resgates por caixinha, com data, valor, dono e `lancamento_id` opcional. |
 | `investimento_conferencias` | Saldo bruto informado pelo banco em uma data, usado para recalibrar o cálculo. |
@@ -159,6 +171,10 @@ Algumas tabelas usam nomes de colunas em estilos diferentes, por exemplo
 `usuarioId`, `usuario_id`, `bancoId` e `categoria_id`. As consultas existentes
 dependem desses nomes exatos; padronizá-los exige alterar o esquema e todos os
 locais que os consultam.
+
+As tabelas de cartões e a coluna `lancamentos.cartaoId` são criadas por
+`lib/esquemaCartoes.js` quando faltam (o mesmo SQL está em
+`db/migracao_cartoes.sql`).
 
 As quatro tabelas de investimentos são criadas por `routes/investimentos.js`
 (`CREATE TABLE IF NOT EXISTS`) na primeira requisição a `/investimentos`, então
@@ -232,6 +248,7 @@ usuário associado ao JWT.
 | Bancos | `GET /bancos`, `POST /bancos`, `PATCH /bancos/:id`, `DELETE /bancos/:id` |
 | Reservas | `GET /reservas`, `POST /reservas`, `PATCH /reservas/:id`, `DELETE /reservas/:id` |
 | Gastos fixos | `GET /gastos-fixos`, `POST /gastos-fixos`, `PATCH /gastos-fixos/:id`, `DELETE /gastos-fixos/:id` |
+| Cartões | `GET /cartoes`, `POST /cartoes`, `PATCH /cartoes/:id`, `DELETE /cartoes/:id`, `POST /cartoes/:id/pagamentos`, `DELETE /cartoes/:id/pagamentos/:pagamentoId` |
 | Investimentos | `GET /investimentos`, `POST /investimentos`, `PATCH /investimentos/:id`, `DELETE /investimentos/:id`, `POST /investimentos/:id/movimentos`, `DELETE /investimentos/:id/movimentos/:movimentoId`, `POST /investimentos/:id/conferencias`, `DELETE /investimentos/:id/conferencias/:conferenciaId` |
 
 ### Convites

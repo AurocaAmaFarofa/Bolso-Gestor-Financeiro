@@ -783,6 +783,7 @@ function atualizarTudo() {
   renderizarDoisVisores()
   atualizarGridUltimos()
   renderizarAnalises()
+  if (typeof renderizarCartoes === 'function') renderizarCartoes()
 }
 
 const moedaBRL = new Intl.NumberFormat('pt-BR', {
@@ -874,6 +875,10 @@ function obterSaldoAcumulado(mes, bancoId) {
       return
     }
 
+    // Compra no crédito de um cartão cadastrado não sai da conta agora:
+    // o dinheiro só sai quando a fatura é marcada como paga (abaixo).
+    if (ehCompraNoCartaoDeCredito(lancamento)) return
+
     const mesLancamento = obterMesLancamento(lancamento)
     const valor = Number(lancamento.valor)
     if (!mesLancamento || mesLancamento > mesLimite || !Number.isFinite(valor)) {
@@ -883,7 +888,28 @@ function obterSaldoAcumulado(mes, bancoId) {
     saldo += lancamento.tipo === 'ganho' ? valor : -valor
   })
 
+  ;(appData.faturaPagamentos || []).forEach((pagamento) => {
+    if (bancoId !== undefined && Number(pagamento.bancoId) !== Number(bancoId)) {
+      return
+    }
+    const mesPagamento = String(pagamento.data || '').slice(0, 7)
+    const valor = Number(pagamento.valor)
+    if (!mesPagamento || mesPagamento > mesLimite || !Number.isFinite(valor)) {
+      return
+    }
+    saldo -= valor
+  })
+
   return saldo
+}
+
+function ehCompraNoCartaoDeCredito(lancamento) {
+  return (
+    lancamento.forma === 'credito' &&
+    lancamento.cartaoId !== null &&
+    lancamento.cartaoId !== undefined &&
+    lancamento.cartaoId !== ''
+  )
 }
 
 function obterResumoDoMes(mes) {
@@ -2008,10 +2034,34 @@ function renderizarGridReservas() {
     ).replace('.', ',')
   })
 
-  if (reservasAtivas.length === 0) {
+  // Faturas de cartão com "reservar fatura" ligado (calculadas em cartoes-ui.js).
+  const reservasDeFatura =
+    typeof obterReservasDeFatura === 'function' ? obterReservasDeFatura() : []
+
+  if (reservasAtivas.length === 0 && reservasDeFatura.length === 0) {
     gridReservas.innerHTML =
       '<p class="grid-none-expenses data-empty-state">Suas reservas aparecerão aqui quando você criar a primeira.</p>'
   }
+
+  reservasDeFatura.forEach((reserva) => {
+    gridReservas.innerHTML += `
+      <div class="card-expenses reserva-fatura">
+        <div class="especifications">
+          <h2>${escaparHtml(reserva.titulo)}</h2>
+          <p>${moedaBRL.format(reserva.valor)}</p>
+        </div>
+        <span class="reserve-duration-label">${escaparHtml(reserva.descricao)}</span>
+        <div class="btns-delete-plus-minus">
+          <button type="button" class="btn-plus-minus reserva-fatura-botao" onclick="abrirCartao(${Number(reserva.cartaoId)})">Ver fatura</button>
+        </div>
+      </div>
+    `
+    valorTotalReservado += reserva.valor
+  })
+
+  totalReservadoVisor.textContent = (
+    'R$' + valorTotalReservado.toFixed(2)
+  ).replace('.', ',')
 }
 
 function atualizarPrevisaoReserva() {
@@ -2366,6 +2416,10 @@ if (btnAddLancamento) {
         data: dataLancamento,
         mesAno: mesAnoDoLancamento,
         bancoId: appData.bancoAtual,
+        cartaoId:
+          typeof obterCartaoDoFormulario === 'function'
+            ? obterCartaoDoFormulario(tipoSelecionado)
+            : null,
       }
 
       if (novoLancamento.tipo === 'despesa') {
@@ -2410,6 +2464,11 @@ if (btnAddLancamento) {
       const resultado = await resposta.json()
       console.log(resultado)
 
+      if (!resposta.ok || !resultado.lancamento) {
+        showPopup(resultado.erro || 'Não foi possível salvar o lançamento.', 3000)
+        return
+      }
+
       appData.lancamentos.push(resultado.lancamento)
       atualizarTudo()
       abrirOuFecharPopup('popup-modal', 'fechar')
@@ -2419,6 +2478,7 @@ if (btnAddLancamento) {
       document.getElementById('descriptionInput').value = ''
       document.getElementById('payment-select').value = ''
       tipoSelecionado = 'despesa'
+      if (typeof atualizarCampoCartao === 'function') atualizarCampoCartao()
     } else {
       showPopup('Você não possui nenhum banco. Crie um banco primeiro.', 2600)
       abrirPopupBanco()

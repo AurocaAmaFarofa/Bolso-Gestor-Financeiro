@@ -13,9 +13,11 @@
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="investimentos.css" />
+    <link rel="stylesheet" href="cartoes.css" />
     <script src="loading.js" defer></script>
     <script src="script.js" defer></script>
     <script src="investimentos-ui.js" defer></script>
+    <script src="cartoes-ui.js" defer></script>
   </head>
   <body>
     <div
@@ -372,6 +374,12 @@
             </select>
           </label>
 
+          <label class="popup-container" id="card-select-field" hidden>
+            <span class="span-popup">Cartão</span>
+            <select id="card-select"></select>
+            <small class="card-select-dica" id="card-select-hint"></small>
+          </label>
+
           <label class="popup-container">
             <span class="span-popup">Data</span>
             <input type="date" id="dateInput" required />
@@ -464,6 +472,14 @@
               aria-label="Reservas"
             >
               <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-piggy"></use></svg><span>Reservas</span>
+            </button>
+            <button
+              onclick="mostrarPagina('cards')"
+              class="btn-header"
+              id="btn-cards"
+              aria-label="Cartões"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-card"></use></svg><span>Cartões</span>
             </button>
             <button
               onclick="mostrarPagina('investments')"
@@ -994,6 +1010,26 @@
               </p>
             </div>
           </section>
+          <!-- Seção de Cartões -->
+          <section id="cards" class="page" aria-labelledby="cards-title">
+            <header class="page-header">
+              <div>
+                <span class="page-eyebrow">CRÉDITO SEM SUSTO</span>
+                <h1 id="cards-title">Cartões</h1>
+                <p class="page-subtitle">
+                  Compras no crédito só saem da conta quando você marca a fatura como paga.
+                </p>
+              </div>
+              <button type="button" class="btn-new-expenses" id="card-btn-novo">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-plus"></use></svg>
+                Novo cartão
+              </button>
+            </header>
+            <div class="cards-grid" id="cards-grid">
+              <p class="grid-none-expenses data-empty-state">Carregando cartões…</p>
+            </div>
+          </section>
+
           <!-- Seção de Investimentos -->
           <section id="investments" class="page" aria-labelledby="inv-title">
             <header class="page-header">
@@ -1199,6 +1235,90 @@
           </div>
         </div>
       </dialog>
+      <!-- ===== Cartões: diálogos ===== -->
+      <dialog id="card-dialog-detalhe" class="inv-dialog inv-dialog-largo" aria-labelledby="card-detalhe-nome">
+        <div class="inv-dialog-cabecalho">
+          <div>
+            <span class="section-kicker" id="card-detalhe-conta">CARTÃO</span>
+            <h2 id="card-detalhe-nome">Cartão</h2>
+          </div>
+          <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+        </div>
+        <div id="card-detalhe-conteudo" class="inv-detalhe"></div>
+      </dialog>
+
+      <dialog id="card-dialog-form" class="inv-dialog" aria-labelledby="card-form-titulo">
+        <form id="card-form" class="transaction-form-container" novalidate>
+          <div class="inv-dialog-cabecalho">
+            <h2 id="card-form-titulo" class="modal-title">Novo cartão</h2>
+            <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+          </div>
+          <label class="popup-container">
+            <span class="span-popup">Nome do cartão</span>
+            <input type="text" name="nome" maxlength="80" placeholder="Ex: Cresol Mastercard" required />
+          </label>
+          <label class="popup-container">
+            <span class="span-popup">Conta que paga a fatura</span>
+            <select name="bancoId" required></select>
+          </label>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">Fecha todo dia</span>
+              <input type="number" name="dia_fechamento" min="1" max="31" step="1" placeholder="Ex: 25" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Vence todo dia</span>
+              <input type="number" name="dia_vencimento" min="1" max="31" step="1" placeholder="Ex: 4" required />
+            </label>
+          </div>
+          <p class="inv-dica" id="card-form-exemplo">
+            Compras feitas a partir do dia do fechamento entram na fatura do mês seguinte.
+          </p>
+          <label class="popup-container">
+            <span class="span-popup">Limite (opcional)</span>
+            <input type="number" name="limite" min="0.01" step="0.01" placeholder="0,00" />
+          </label>
+          <label class="reserve-goal-toggle">
+            <input type="checkbox" name="reservar_fatura" />
+            <span>Reservar o valor da fatura no saldo livre até eu pagar</span>
+          </label>
+          <p class="inv-form-erro" role="alert" hidden></p>
+          <button type="submit" class="btn-submit">Salvar cartão</button>
+        </form>
+      </dialog>
+
+      <dialog id="card-dialog-pagamento" class="inv-dialog" aria-labelledby="card-pagamento-titulo">
+        <form id="card-form-pagamento" class="transaction-form-container" novalidate>
+          <div class="inv-dialog-cabecalho">
+            <div>
+              <span class="section-kicker" id="card-pagamento-fatura">FATURA</span>
+              <h2 id="card-pagamento-titulo" class="modal-title">Marcar fatura como paga</h2>
+            </div>
+            <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+          </div>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">Valor pago</span>
+              <input type="number" name="valor" min="0.01" step="0.01" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Data do pagamento</span>
+              <input type="date" name="data" required />
+            </label>
+          </div>
+          <label class="popup-container">
+            <span class="span-popup">Pago com a conta</span>
+            <select name="bancoId" required></select>
+          </label>
+          <p class="inv-dica">
+            Só agora o valor sai da conta. As compras já foram contadas como gasto
+            quando você lançou, então o pagamento não entra de novo nas despesas.
+          </p>
+          <p class="inv-form-erro" role="alert" hidden></p>
+          <button type="submit" class="btn-submit">Confirmar pagamento</button>
+        </form>
+      </dialog>
+
       <!-- ===== Investimentos: diálogos ===== -->
       <dialog id="inv-dialog-detalhe" class="inv-dialog inv-dialog-largo" aria-labelledby="inv-detalhe-nome">
         <div class="inv-dialog-cabecalho">

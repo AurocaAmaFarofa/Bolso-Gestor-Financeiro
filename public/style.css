@@ -2681,7 +2681,8 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .bank-card,
-.banco-cor-preview {
+.banco-cor-preview,
+.cartao-visual {
   --bank-cor: #2f6fdb;
   background:
     radial-gradient(120% 110% at 0% 0%, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 55%),
@@ -2718,7 +2719,8 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .bank-card[data-tinta='clara'],
-.banco-cor-preview[data-tinta='clara'] {
+.banco-cor-preview[data-tinta='clara'],
+.cartao-visual[data-tinta='clara'] {
   --hero-ink: #ffffff;
   --hero-ink-soft: rgba(255, 255, 255, 0.78);
   --card-vidro: rgba(255, 255, 255, 0.14);
@@ -2727,7 +2729,8 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .bank-card[data-tinta='escura'],
-.banco-cor-preview[data-tinta='escura'] {
+.banco-cor-preview[data-tinta='escura'],
+.cartao-visual[data-tinta='escura'] {
   --hero-ink: #14171c;
   --hero-ink-soft: rgba(20, 23, 28, 0.72);
   --card-vidro: rgba(255, 255, 255, 0.38);

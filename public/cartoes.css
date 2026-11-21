@@ -1,0 +1,332 @@
+/* ============================================================
+   BOLSO — Cartões de crédito
+   Usa apenas os tokens de tokens.css (e as classes inv-* de
+   investimentos.css para diálogos, listas e resumos).
+   ============================================================ */
+
+.card-select-dica {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.cartao-item {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.cartao-visual {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  align-content: stretch;
+  justify-content: stretch;
+  align-items: start;
+  justify-items: start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 190px;
+  padding: var(--space-5);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  color: var(--hero-ink, #fff);
+  text-align: left;
+  white-space: normal;
+  isolation: isolate;
+}
+
+.cartao-visual:hover {
+  border: 0;
+  filter: brightness(1.05);
+}
+
+.cartao-visual:active {
+  transform: scale(0.99);
+}
+
+.cartao-visual:focus-visible {
+  box-shadow: var(--ring);
+}
+
+.cartao-visual::after {
+  content: '';
+  position: absolute;
+  right: -30%;
+  bottom: -70%;
+  z-index: -1;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2rem rgba(255, 255, 255, 0.06),
+    0 0 0 4rem rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.cartao-visual-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.cartao-visual-topo strong {
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartao-tag {
+  flex: 0 0 auto;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--card-vidro, rgba(255, 255, 255, 0.16));
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cartao-visual-fatura {
+  display: grid;
+  gap: 2px;
+  align-self: end;
+}
+
+.cartao-visual-fatura small {
+  color: var(--hero-ink-soft, rgba(255, 255, 255, 0.78));
+  font-size: var(--text-xs);
+}
+
+.cartao-visual-fatura strong {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.cartao-visual-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  color: var(--hero-ink-soft, rgba(255, 255, 255, 0.78));
+  font-size: var(--text-xs);
+}
+
+.cartao-resumo {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+
+.cartao-resumo-linha,
+.fatura-cabecalho-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}
+
+.cartao-limite {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cartao-limite-texto {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.cartao-limite-barra {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+}
+
+.cartao-limite-barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-text));
+}
+
+.cartao-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cartao-acoes > button {
+  flex: 1 1 auto;
+}
+
+/* ---------- Status da fatura ---------- */
+
+.fatura-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.fatura-status--aberta {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+
+.fatura-status--fechada {
+  background: var(--color-reserve-soft);
+  color: var(--color-reserve-text);
+}
+
+.fatura-status--paga {
+  background: var(--color-income-soft);
+  color: var(--color-income-text);
+}
+
+.fatura-status--atrasada {
+  background: var(--color-expense-soft);
+  color: var(--color-expense-text);
+}
+
+.fatura-status--sem-gastos {
+  background: var(--color-surface-raised);
+  color: var(--color-ink-muted);
+}
+
+/* ---------- Abas de faturas no detalhe ---------- */
+
+.fatura-abas {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
+}
+
+.fatura-aba {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: start;
+  gap: 2px;
+  min-height: 0;
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+}
+
+.fatura-aba span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  text-transform: capitalize;
+}
+
+.fatura-aba strong {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.fatura-aba::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent-text);
+}
+
+.fatura-aba--paga::before {
+  background: var(--color-income-text);
+}
+
+.fatura-aba--fechada::before {
+  background: var(--color-reserve-text);
+}
+
+.fatura-aba--atrasada::before {
+  background: var(--color-expense-text);
+}
+
+.fatura-aba--sem-gastos::before {
+  background: var(--color-ink-muted);
+}
+
+.fatura-aba[aria-selected='true'] {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.fatura-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.fatura-cabecalho > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fatura-cabecalho .inv-dica {
+  font-size: var(--text-xs);
+}
+
+/* ---------- Reserva da fatura na aba Reservas ---------- */
+
+.reserva-fatura {
+  border-style: dashed;
+}
+
+.reserva-fatura .btn-plus-minus.reserva-fatura-botao {
+  width: auto;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+}
+
+@media (min-width: 768px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
