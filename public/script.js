@@ -1316,7 +1316,126 @@ async function carregarLancamento() {
 
 //============== BANCOS PARA SELECIOAR ===============//
 
+// ---------- Cor do cartão de cada banco ----------
+
+const COR_BANCO_PADRAO = '#2f6fdb'
+const CORES_BANCO = [
+  { nome: 'Azul', cor: '#2f6fdb' },
+  { nome: 'Roxo', cor: '#8a2be2' },
+  { nome: 'Preto', cor: '#1f2329' },
+  { nome: 'Verde', cor: '#12a150' },
+  { nome: 'Laranja', cor: '#ff7a1a' },
+  { nome: 'Vermelho', cor: '#d6283a' },
+  { nome: 'Amarelo', cor: '#f2c230' },
+  { nome: 'Rosa', cor: '#e0457b' },
+  { nome: 'Turquesa', cor: '#14a3a8' },
+  { nome: 'Grafite', cor: '#5b6472' },
+]
+
+let corBancoSelecionada = COR_BANCO_PADRAO
+let bancoEmEdicao = null
+
+function corDoBanco(banco) {
+  return banco && /^#[0-9a-f]{6}$/i.test(banco.cor || '') ? banco.cor : COR_BANCO_PADRAO
+}
+
+// Cores claras pedem texto escuro no cartão; as demais, texto claro.
+function corEhClara(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const canal = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const luminancia = 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b)
+  return luminancia > 0.4
+}
+
+function pintarCartao(elemento, cor) {
+  if (!elemento) return
+  elemento.style.setProperty('--bank-cor', cor)
+  elemento.dataset.tinta = corEhClara(cor) ? 'escura' : 'clara'
+}
+
+function atualizarCartaoBanco() {
+  const banco = appData.bancos.find(
+    (item) => Number(item.id) === Number(appData.bancoAtual),
+  )
+  pintarCartao(document.getElementById('bank-card'), corDoBanco(banco))
+  const nome = document.getElementById('bank-card-nome')
+  if (nome) nome.textContent = banco ? banco.nome : 'Bolso'
+}
+
+function renderizarCoresBanco() {
+  const lista = document.getElementById('banco-cores-lista')
+  if (!lista) return
+
+  const personalizada = !CORES_BANCO.some((item) => item.cor === corBancoSelecionada)
+  lista.innerHTML =
+    CORES_BANCO.map(
+      (item) => `
+        <button type="button" class="banco-cor" role="radio"
+          aria-checked="${item.cor === corBancoSelecionada}"
+          aria-label="${item.nome}" title="${item.nome}"
+          style="--cor:${item.cor}" data-cor="${item.cor}"></button>`,
+    ).join('') +
+    `<label class="banco-cor banco-cor-personalizada" title="Outra cor" aria-checked="${personalizada}" style="--cor:${corBancoSelecionada}">
+      <span class="visually-hidden">Escolher outra cor</span>
+      <input type="color" id="banco-cor-personalizada" value="${corBancoSelecionada}" />
+    </label>`
+
+  pintarCartao(document.getElementById('banco-cor-preview'), corBancoSelecionada)
+  const nomePreview = document.getElementById('banco-cor-preview-nome')
+  const inputNome = document.querySelector('#banco-name')
+  if (nomePreview) nomePreview.textContent = inputNome?.value.trim() || 'Seu banco'
+}
+
+document.addEventListener('click', (evento) => {
+  const botao = evento.target.closest('.banco-cor[data-cor]')
+  if (!botao) return
+  corBancoSelecionada = botao.dataset.cor
+  renderizarCoresBanco()
+})
+
+document.addEventListener('input', (evento) => {
+  if (evento.target.id === 'banco-cor-personalizada') {
+    corBancoSelecionada = evento.target.value.toLowerCase()
+    pintarCartao(document.getElementById('banco-cor-preview'), corBancoSelecionada)
+    const rotulo = evento.target.closest('.banco-cor-personalizada')
+    rotulo.style.setProperty('--cor', corBancoSelecionada)
+    document
+      .querySelectorAll('#banco-cores-lista .banco-cor')
+      .forEach((item) => item.setAttribute('aria-checked', String(item === rotulo)))
+  } else if (evento.target.id === 'banco-name') {
+    const nomePreview = document.getElementById('banco-cor-preview-nome')
+    if (nomePreview) nomePreview.textContent = evento.target.value.trim() || 'Seu banco'
+  }
+})
+
+function abrirPopupBanco(banco = null) {
+  bancoEmEdicao = banco ? Number(banco.id) : null
+  corBancoSelecionada = banco ? corDoBanco(banco) : COR_BANCO_PADRAO
+
+  document.querySelector('#banco-name').value = banco ? banco.nome : ''
+  document.querySelector('#banco-saldo-inicial').value = banco
+    ? Number(banco.saldoInicial) || 0
+    : ''
+  document.getElementById('banco-popup-titulo').textContent = banco
+    ? 'Editar banco'
+    : 'Cadastrar Novo Banco'
+  btnSubmitBanco.textContent = banco ? 'Salvar alterações' : 'Salvar Banco'
+
+  renderizarCoresBanco()
+  abrirOuFecharPopup('popup-novo-banco', 'abrir')
+}
+
+function editarBanco(id) {
+  const banco = appData.bancos.find((item) => Number(item.id) === Number(id))
+  if (banco) abrirPopupBanco(banco)
+}
+
+document.getElementById('bank-card-editar')?.addEventListener('click', () => {
+  editarBanco(appData.bancoAtual)
+})
+
 function renderizarAbasBancos() {
+  atualizarCartaoBanco()
   ;[
     { elemento: listBancosAbas, permitirExclusao: true },
     { elemento: listBancosTransacoes, permitirExclusao: false },
@@ -1336,11 +1455,19 @@ function renderizarAbasBancos() {
             aria-pressed="${Number(banco.id) === Number(appData.bancoAtual)}"
             onclick="selecionarBanco(${Number(banco.id)})"
           >
+            <span class="banco-ponto" style="--cor:${corDoBanco(banco)}" aria-hidden="true"></span>
             ${escaparHtml(banco.nome)}
           </button>
           ${
             permitirExclusao
               ? `<button
+                  type="button"
+                  class="btn-aba-banco btn-editar-banco"
+                  aria-label="Editar conta ${escaparHtml(banco.nome)}"
+                  title="Editar"
+                  onclick="editarBanco(${Number(banco.id)})"
+                ><svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-edit"></use></svg></button>
+                <button
                   type="button"
                   class="btn-aba-banco color-red-btn"
                   aria-label="Excluir conta ${escaparHtml(banco.nome)}"
@@ -1380,10 +1507,40 @@ if (btnSubmitBanco) {
       return
     }
 
+    if (bancoEmEdicao) {
+      const resposta = await fetch(`/bancos/${bancoEmEdicao}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          nome: inputNome.value.trim(),
+          saldoInicial: Number(inputSaldo.value) || 0,
+          cor: corBancoSelecionada,
+        }),
+      })
+      const resultado = await resposta.json().catch(() => ({}))
+
+      if (!resposta.ok) {
+        showPopup(resultado.erro || 'Erro ao editar banco.', 2600)
+        return
+      }
+
+      appData.bancos = appData.bancos.map((banco) =>
+        Number(banco.id) === Number(bancoEmEdicao)
+          ? { ...banco, ...resultado.banco }
+          : banco,
+      )
+      bancoEmEdicao = null
+      modalPopupBanco.classList.add('display-none')
+      showPopup('Banco atualizado.')
+      atualizarTudo()
+      return
+    }
+
     const novoBanco = {
       mesCriado: appData.mesAtivo,
       nome: inputNome.value,
       saldoInicial: Number(inputSaldo.value) || 0,
+      cor: corBancoSelecionada,
     }
 
     const resposta = await fetch('/bancos', {
@@ -2264,7 +2421,7 @@ if (btnAddLancamento) {
       tipoSelecionado = 'despesa'
     } else {
       showPopup('Você não possui nenhum banco. Crie um banco primeiro.', 2600)
-      abrirOuFecharPopup('popup-novo-banco', 'abrir')
+      abrirPopupBanco()
       return
     }
   })

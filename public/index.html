@@ -64,7 +64,7 @@
       <!-- Popup Trocar Conta Bancaria -->
       <div class="popup-modal display-none modal-popup" id="popup-novo-banco">
         <div class="container-modal-title">
-          <h1 class="modal-title">Cadastrar Novo Banco</h1>
+          <h1 class="modal-title" id="banco-popup-titulo">Cadastrar Novo Banco</h1>
           <button
             type="button"
             class="close-modal-btn"
@@ -95,6 +95,15 @@
               required
             />
           </label>
+
+          <fieldset class="banco-cores">
+            <legend class="span-popup">Cor do cartão</legend>
+            <div class="banco-cores-lista" id="banco-cores-lista" role="radiogroup" aria-label="Cor do cartão"></div>
+            <div class="banco-cor-preview" id="banco-cor-preview" aria-hidden="true">
+              <span class="bank-card-chip"></span>
+              <strong id="banco-cor-preview-nome">Seu banco</strong>
+            </div>
+          </fieldset>
 
           <button type="submit" class="btn-submit" id="btn-submit-banco">
             Salvar Banco
@@ -553,7 +562,7 @@
                 </div>
                 <button
                   type="button"
-                  onclick="abrirOuFecharPopup('popup-novo-banco', 'abrir')"
+                  onclick="abrirPopupBanco()"
                   class="btn-add-bank"
                   aria-label="Adicionar conta"
                   title="Adicionar conta"
@@ -567,7 +576,23 @@
             </section>
 
             <div class="dashboard-overview">
-              <section class="current-balance balance-hero">
+              <section class="current-balance balance-hero bank-card" id="bank-card">
+                <div class="bank-card-topo">
+                  <strong class="bank-card-nome" id="bank-card-nome">Bolso</strong>
+                  <button
+                    type="button"
+                    class="bank-card-editar"
+                    id="bank-card-editar"
+                    aria-label="Editar conta selecionada"
+                    title="Editar conta"
+                  >
+                    <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-edit"></use></svg>
+                  </button>
+                </div>
+                <div class="bank-card-chip-linha" aria-hidden="true">
+                  <span class="bank-card-chip"></span>
+                  <svg class="icon bank-card-contactless" aria-hidden="true" focusable="false"><use href="icons.svg#i-contactless"></use></svg>
+                </div>
                 <div class="balance-hero-top">
                   <div>
                     <span class="hero-label"
@@ -575,9 +600,6 @@
                     >
                     <p id="current-balance-id">R$ 00,00</p>
                   </div>
-                  <span class="balance-icon" aria-hidden="true">
-                    <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-wallet"></use></svg>
-                  </span>
                 </div>
                 <div class="balance-breakdown">
                   <div>

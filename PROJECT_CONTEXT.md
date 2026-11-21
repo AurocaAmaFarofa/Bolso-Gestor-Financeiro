@@ -95,8 +95,10 @@ uma sessão de administrador.
   `outros`; metas dessa categoria são removidas.
 - **Metas:** limite de gastos por categoria e mês. O banco impede mais de uma
   meta para a mesma combinação de usuário, categoria e mês.
-- **Bancos/contas:** múltiplas contas, saldo inicial e mês de criação. A
-  exclusão de uma conta bancária também tenta remover seus lançamentos.
+- **Bancos/contas:** múltiplas contas, saldo inicial, mês de criação e cor. A
+  cor pinta o cartão da visão geral quando a conta está selecionada; nome, saldo
+  inicial e cor podem ser editados (`PATCH /bancos/:id`). A exclusão de uma conta
+  bancária também tenta remover seus lançamentos.
 - **Reservas:** valores reservados com operações para adicionar ou retirar
   saldo; uma retirada não pode exceder o valor disponível na reserva.
 - **Gastos fixos:** despesas acompanhadas com status `pendente` ou `pago`.
@@ -144,7 +146,7 @@ O esquema definido em `estrutura_bolso.sql` inclui:
 | `categorias_gasto` | Categorias por usuário; nome único dentro de cada usuário e remoção em cascata ao excluir o usuário. |
 | `lancamentos` | Entradas e despesas, vinculadas a uma categoria; guarda também banco, usuário, data e mês. |
 | `metas` | Limite por usuário, categoria e mês; valor precisa ser positivo e a combinação tem restrição de unicidade. |
-| `bancos` | Contas com saldo inicial, mês de criação e usuário associado. |
+| `bancos` | Contas com saldo inicial, mês de criação, cor (`#rrggbb`, opcional) e usuário associado. A coluna `cor` é criada pelo servidor se faltar (`db/migracao_bancos_cor.sql`). |
 | `reservas` | Nome, valor, usuário, mês de criação e duração; reservas antigas sem mês de criação permanecem permanentes. |
 | `gastos_fixos` | Nome, valor, status e usuário associado. |
 | `investimentos` | Caixinhas: nome, instituição, tipo, % do CDI, liquidez, vencimento e data de criação. |
@@ -227,7 +229,7 @@ usuário associado ao JWT.
 | Lançamentos | `GET /lancamentos`, `POST /lancamentos`, `DELETE /lancamentos/:id` |
 | Categorias | `GET /categorias`, `POST /categorias`, `DELETE /categorias/:id` |
 | Metas | `GET /metas`, `POST /metas`, `DELETE /metas/:id` |
-| Bancos | `GET /bancos`, `POST /bancos`, `DELETE /bancos/:id` |
+| Bancos | `GET /bancos`, `POST /bancos`, `PATCH /bancos/:id`, `DELETE /bancos/:id` |
 | Reservas | `GET /reservas`, `POST /reservas`, `PATCH /reservas/:id`, `DELETE /reservas/:id` |
 | Gastos fixos | `GET /gastos-fixos`, `POST /gastos-fixos`, `PATCH /gastos-fixos/:id`, `DELETE /gastos-fixos/:id` |
 | Investimentos | `GET /investimentos`, `POST /investimentos`, `PATCH /investimentos/:id`, `DELETE /investimentos/:id`, `POST /investimentos/:id/movimentos`, `DELETE /investimentos/:id/movimentos/:movimentoId`, `POST /investimentos/:id/conferencias`, `DELETE /investimentos/:id/conferencias/:conferenciaId` |

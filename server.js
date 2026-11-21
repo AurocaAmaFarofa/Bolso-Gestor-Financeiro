@@ -883,24 +883,52 @@ app.get('/bancos', exigirLogin, async (req, res) => {
   }
 })
 
+function corValida(cor) {
+  return typeof cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cor)
+}
+
+// Garante a coluna `cor` em bancos já existentes (o mesmo ALTER está em db/migracao_bancos_cor.sql).
+let colunaCorBancosPronta = null
+
+function garantirColunaCorBancos() {
+  if (!colunaCorBancosPronta) {
+    colunaCorBancosPronta = (async () => {
+      const [colunas] = await pool.query(
+        `SELECT COUNT(*) AS total FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bancos' AND COLUMN_NAME = 'cor'`,
+      )
+      if (Number(colunas[0].total) === 0) {
+        await pool.query('ALTER TABLE bancos ADD COLUMN cor VARCHAR(7) DEFAULT NULL')
+      }
+    })().catch((erro) => {
+      colunaCorBancosPronta = null
+      throw erro
+    })
+  }
+  return colunaCorBancosPronta
+}
+
 app.post('/bancos', exigirLogin, async (req, res) => {
   const { nome, saldoInicial, mesCriado } = req.body
+  const cor = corValida(req.body.cor) ? req.body.cor.toLowerCase() : null
 
   const sql = `
     INSERT INTO bancos
-    (nome, saldoInicial, mesCriado, usuarioId)
-    VALUES (?, ?, ?, ?)
+    (nome, saldoInicial, mesCriado, usuarioId, cor)
+    VALUES (?, ?, ?, ?, ?)
   `
 
-  const valores = [nome, saldoInicial, mesCriado, req.usuarioId]
+  const valores = [nome, saldoInicial, mesCriado, req.usuarioId, cor]
 
   try {
+    await garantirColunaCorBancos()
     const [resultado] = await pool.query(sql, valores)
     const novoBanco = {
       id: resultado.insertId,
       nome,
       saldoInicial,
       mesCriado,
+      cor,
     }
 
     res.status(201).json({
@@ -910,6 +938,67 @@ app.post('/bancos', exigirLogin, async (req, res) => {
   } catch (erro) {
     console.log('Erro ao criar banco:', erro)
     res.status(500).json({ erro: 'Erro ao criar banco.' })
+  }
+})
+
+app.patch('/bancos/:id', exigirLogin, async (req, res) => {
+  const id = Number(req.params.id)
+  const { nome, saldoInicial, cor } = req.body
+  const campos = []
+  const valores = []
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'ID inválido.' })
+  }
+
+  if (nome !== undefined) {
+    if (typeof nome !== 'string' || !nome.trim() || nome.trim().length > 100) {
+      return res.status(400).json({ erro: 'Nome do banco inválido.' })
+    }
+    campos.push('nome = ?')
+    valores.push(nome.trim())
+  }
+
+  if (saldoInicial !== undefined) {
+    const saldo = Number(saldoInicial)
+    if (!Number.isFinite(saldo) || Math.abs(saldo) > 99999999) {
+      return res.status(400).json({ erro: 'Saldo inicial inválido.' })
+    }
+    campos.push('saldoInicial = ?')
+    valores.push(Math.round(saldo * 100) / 100)
+  }
+
+  if (cor !== undefined) {
+    if (cor !== null && !corValida(cor)) {
+      return res.status(400).json({ erro: 'Cor inválida.' })
+    }
+    campos.push('cor = ?')
+    valores.push(cor ? cor.toLowerCase() : null)
+  }
+
+  if (campos.length === 0) {
+    return res.status(400).json({ erro: 'Nada para atualizar.' })
+  }
+
+  try {
+    await garantirColunaCorBancos()
+    const [resultado] = await pool.query(
+      `UPDATE bancos SET ${campos.join(', ')} WHERE id = ? AND usuarioId = ?`,
+      [...valores, id, req.usuarioId],
+    )
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ erro: 'Banco não encontrado.' })
+    }
+
+    const [bancos] = await pool.query(
+      'SELECT * FROM bancos WHERE id = ? AND usuarioId = ?',
+      [id, req.usuarioId],
+    )
+    res.json({ mensagem: 'Banco atualizado', banco: bancos[0] })
+  } catch (erro) {
+    console.log('Erro ao atualizar banco:', erro)
+    res.status(500).json({ erro: 'Erro ao atualizar banco.' })
   }
 })
 

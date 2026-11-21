@@ -2670,3 +2670,260 @@ input::-webkit-calendar-picker-indicator {
 #delete-account-google-button iframe {
   color-scheme: light;
 }
+
+/* ------------------------------------------------------------
+   Cartão do banco selecionado (cor escolhida pelo usuário)
+   ------------------------------------------------------------ */
+@property --bank-cor {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2f6fdb;
+}
+
+.bank-card,
+.banco-cor-preview {
+  --bank-cor: #2f6fdb;
+  background:
+    radial-gradient(120% 110% at 0% 0%, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0) 55%),
+    radial-gradient(90% 120% at 100% 100%, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--bank-cor) 72%, #fff) 0%,
+      var(--bank-cor) 52%,
+      color-mix(in srgb, var(--bank-cor) 68%, #000) 100%
+    );
+  transition: --bank-cor var(--duration-slow) var(--ease-out);
+}
+
+.bank-card {
+  gap: var(--space-4);
+  box-shadow: 0 28px 60px -28px color-mix(in srgb, var(--bank-cor) 80%, transparent);
+}
+
+/* Anéis decorativos no lugar das barrinhas */
+.bank-card::after {
+  inset: auto -18% -55% auto;
+  right: -12%;
+  bottom: -60%;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  background: none;
+  box-shadow:
+    0 0 0 2.5rem rgba(255, 255, 255, 0.06),
+    0 0 0 5rem rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.bank-card[data-tinta='clara'],
+.banco-cor-preview[data-tinta='clara'] {
+  --hero-ink: #ffffff;
+  --hero-ink-soft: rgba(255, 255, 255, 0.78);
+  --card-vidro: rgba(255, 255, 255, 0.14);
+  --card-vidro-borda: rgba(255, 255, 255, 0.24);
+  color: var(--hero-ink);
+}
+
+.bank-card[data-tinta='escura'],
+.banco-cor-preview[data-tinta='escura'] {
+  --hero-ink: #14171c;
+  --hero-ink-soft: rgba(20, 23, 28, 0.72);
+  --card-vidro: rgba(255, 255, 255, 0.38);
+  --card-vidro-borda: rgba(255, 255, 255, 0.55);
+  color: var(--hero-ink);
+}
+
+.bank-card .balance-breakdown > div {
+  background: var(--card-vidro, rgba(255, 255, 255, 0.14));
+  box-shadow: inset 0 0 0 1px var(--card-vidro-borda, rgba(255, 255, 255, 0.24));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.bank-card-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.bank-card-nome {
+  overflow: hidden;
+  color: var(--hero-ink);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bank-card-editar {
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card-vidro, rgba(255, 255, 255, 0.14));
+  color: var(--hero-ink);
+  box-shadow: inset 0 0 0 1px var(--card-vidro-borda, rgba(255, 255, 255, 0.24));
+}
+
+.bank-card-editar:hover {
+  border: 0;
+  background: var(--card-vidro-borda, rgba(255, 255, 255, 0.24));
+}
+
+.bank-card-editar .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.bank-card-chip-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bank-card-chip {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 34px;
+  flex: 0 0 44px;
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, transparent 30%, rgba(90, 60, 10, 0.35) 30% 32%, transparent 32% 68%, rgba(90, 60, 10, 0.35) 68% 70%, transparent 70%),
+    linear-gradient(180deg, transparent 45%, rgba(90, 60, 10, 0.35) 45% 55%, transparent 55%),
+    linear-gradient(135deg, #f6e3a6 0%, #d6b45c 45%, #b8913a 100%);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 10, 0.25);
+}
+
+.bank-card-contactless {
+  width: 26px;
+  height: 26px;
+  color: var(--hero-ink);
+  opacity: 0.8;
+}
+
+/* Abas de conta: bolinha da cor + botão editar */
+.banco-ponto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: var(--cor);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.btn-aba-banco.btn-editar-banco {
+  width: var(--tap);
+  min-width: var(--tap);
+  padding: 0;
+  color: var(--color-ink-muted);
+}
+
+.btn-aba-banco.btn-editar-banco .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.btn-aba-banco.btn-editar-banco:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+
+/* Seletor de cor no popup de banco */
+.banco-cores {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.banco-cores legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.banco-cores-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.banco-cor {
+  position: relative;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--cor);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+
+.banco-cor:hover {
+  border-color: var(--color-border-strong);
+  background: var(--cor);
+}
+
+.banco-cor[aria-checked='true'] {
+  border-color: var(--color-surface);
+  box-shadow:
+    0 0 0 2px var(--color-ink),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.banco-cor-personalizada[aria-checked='false'] {
+  background: conic-gradient(#ff4d4d, #ffcc33, #4dd97a, #33b5ff, #8a5cff, #ff4dc4, #ff4d4d);
+}
+
+.banco-cor-personalizada input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.banco-cor-preview {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 88px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.banco-cor-preview strong {
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banco-cor-preview .bank-card-chip {
+  align-self: flex-start;
+  order: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bank-card,
+  .banco-cor-preview {
+    transition: none;
+  }
+}
