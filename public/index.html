@@ -12,8 +12,10 @@
     />
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="investimentos.css" />
     <script src="loading.js" defer></script>
     <script src="script.js" defer></script>
+    <script src="investimentos-ui.js" defer></script>
   </head>
   <body>
     <div
@@ -453,6 +455,14 @@
               aria-label="Reservas"
             >
               <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-piggy"></use></svg><span>Reservas</span>
+            </button>
+            <button
+              onclick="mostrarPagina('investments')"
+              class="btn-header"
+              id="btn-investments"
+              aria-label="Investimentos"
+            >
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-trend"></use></svg><span>Investimentos</span>
             </button>
             <button
               onclick="mostrarPagina('profile')"
@@ -962,6 +972,86 @@
               </p>
             </div>
           </section>
+          <!-- Seção de Investimentos -->
+          <section id="investments" class="page" aria-labelledby="inv-title">
+            <header class="page-header">
+              <div>
+                <span class="page-eyebrow">SUA CARTEIRA</span>
+                <h1 id="inv-title">Investimentos</h1>
+                <p class="page-subtitle" id="inv-cdi-info">Carregando CDI…</p>
+              </div>
+              <button type="button" class="btn-new-expenses" id="inv-btn-nova">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="icons.svg#i-plus"></use></svg>
+                Nova caixinha
+              </button>
+            </header>
+
+            <p class="inv-aviso" id="inv-aviso" role="status" hidden></p>
+
+            <section class="inv-resumo" aria-label="Resumo da carteira">
+              <article class="stats-card inv-destaque">
+                <span>Saldo bruto</span>
+                <p id="inv-total-bruto">R$ 0,00</p>
+                <small id="inv-total-liquido">Líquido R$ 0,00</small>
+              </article>
+              <article class="stats-card">
+                <span>Total investido</span>
+                <p id="inv-total-investido">R$ 0,00</p>
+              </article>
+              <article class="stats-card">
+                <span>Rendimento bruto</span>
+                <p id="inv-total-rendimento" class="inv-positivo">R$ 0,00</p>
+                <small id="inv-total-impostos">IR + IOF R$ 0,00</small>
+              </article>
+            </section>
+
+            <section class="inv-periodos" aria-label="Quanto rendeu">
+              <div><span>Último dia útil</span><strong id="inv-rendeu-dia">R$ 0,00</strong></div>
+              <div><span>Neste mês</span><strong id="inv-rendeu-mes">R$ 0,00</strong></div>
+              <div><span>Neste ano</span><strong id="inv-rendeu-ano">R$ 0,00</strong></div>
+            </section>
+
+            <section class="current-balance dashboard-panel">
+              <div class="section-heading inv-grafico-cabecalho">
+                <div>
+                  <span class="section-kicker">EVOLUÇÃO</span>
+                  <h2 id="inv-grafico-titulo">Quanto rendeu</h2>
+                </div>
+                <div class="inv-controles">
+                  <div class="inv-segmentado" role="group" aria-label="Período" data-grupo="periodo" data-alvo="carteira">
+                    <button type="button" data-valor="dia">Dia</button>
+                    <button type="button" data-valor="mes" aria-pressed="true">Mês</button>
+                    <button type="button" data-valor="ano">Ano</button>
+                  </div>
+                  <div class="inv-segmentado" role="group" aria-label="Mostrar" data-grupo="metrica" data-alvo="carteira">
+                    <button type="button" data-valor="rendimento" aria-pressed="true">Rendimento</button>
+                    <button type="button" data-valor="saldo">Saldo bruto</button>
+                  </div>
+                </div>
+              </div>
+              <div id="inv-grafico" class="chart-container" aria-live="polite"></div>
+            </section>
+
+            <section class="current-balance dashboard-panel" id="inv-donos-painel" hidden>
+              <div class="section-heading">
+                <div>
+                  <span class="section-kicker">DE QUEM É</span>
+                  <h2>Dinheiro por pessoa</h2>
+                </div>
+              </div>
+              <div id="inv-donos" class="inv-donos"></div>
+            </section>
+
+            <div class="section-heading inv-lista-titulo">
+              <div>
+                <span class="section-kicker">CAIXINHAS</span>
+                <h2>Sua carteira</h2>
+              </div>
+            </div>
+            <div class="grid-expenses inv-grid" id="inv-grid">
+              <p class="grid-none-expenses data-empty-state">Carregando investimentos…</p>
+            </div>
+          </section>
           <section id="profile" class="page" aria-labelledby="profile-title">
             <header class="page-header">
               <h1 id="profile-title">Seu perfil</h1>
@@ -1087,6 +1177,158 @@
           </div>
         </div>
       </dialog>
+      <!-- ===== Investimentos: diálogos ===== -->
+      <dialog id="inv-dialog-detalhe" class="inv-dialog inv-dialog-largo" aria-labelledby="inv-detalhe-nome">
+        <div class="inv-dialog-cabecalho">
+          <div>
+            <span class="section-kicker" id="inv-detalhe-tipo">CDB</span>
+            <h2 id="inv-detalhe-nome">Caixinha</h2>
+          </div>
+          <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+        </div>
+        <div id="inv-detalhe-conteudo" class="inv-detalhe"></div>
+      </dialog>
+
+      <dialog id="inv-dialog-caixinha" class="inv-dialog" aria-labelledby="inv-caixinha-titulo">
+        <form id="inv-form-caixinha" class="transaction-form-container" novalidate>
+          <div class="inv-dialog-cabecalho">
+            <h2 id="inv-caixinha-titulo" class="modal-title">Nova caixinha</h2>
+            <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+          </div>
+          <label class="popup-container">
+            <span class="span-popup">Nome</span>
+            <input type="text" name="nome" maxlength="120" placeholder="Ex: CDB C6 Pós-Fixado Liq. Diária" required />
+          </label>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">Banco / corretora</span>
+              <input type="text" name="instituicao" maxlength="80" placeholder="Ex: C6 Bank" />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Tipo</span>
+              <input type="text" name="tipo" maxlength="30" value="CDB" list="inv-lista-tipos" />
+            </label>
+          </div>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">% do CDI</span>
+              <input type="number" name="percentual_cdi" min="0.01" max="1000" step="0.01" value="100" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Prazo de resgate</span>
+              <input type="text" name="liquidez" maxlength="40" value="Diária" list="inv-lista-liquidez" />
+            </label>
+          </div>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">Data de criação</span>
+              <input type="date" name="data_inicio" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Vencimento</span>
+              <input type="date" name="vencimento" />
+            </label>
+          </div>
+          <fieldset class="inv-fieldset" id="inv-caixinha-aporte">
+            <legend>Primeiro aporte (opcional)</legend>
+            <div class="inv-duas-colunas">
+              <label class="popup-container">
+                <span class="span-popup">Valor</span>
+                <input type="number" name="aporte_inicial" min="0.01" step="0.01" placeholder="0,00" />
+              </label>
+              <label class="popup-container">
+                <span class="span-popup">De quem é</span>
+                <input type="text" name="dono" maxlength="60" value="Eu" list="inv-lista-donos" />
+              </label>
+            </div>
+            <label class="popup-container">
+              <span class="span-popup">Descontar de uma conta do Bolso</span>
+              <select name="bancoId" data-contas></select>
+            </label>
+          </fieldset>
+          <p class="inv-form-erro" role="alert" hidden></p>
+          <button type="submit" class="btn-submit">Salvar caixinha</button>
+        </form>
+      </dialog>
+
+      <dialog id="inv-dialog-movimento" class="inv-dialog" aria-labelledby="inv-movimento-titulo">
+        <form id="inv-form-movimento" class="transaction-form-container" novalidate>
+          <div class="inv-dialog-cabecalho">
+            <div>
+              <span class="section-kicker" id="inv-movimento-caixinha">CAIXINHA</span>
+              <h2 id="inv-movimento-titulo" class="modal-title">Novo aporte</h2>
+            </div>
+            <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+          </div>
+          <div class="inv-segmentado inv-segmentado-cheio" role="group" aria-label="Tipo de movimentação" id="inv-movimento-tipo">
+            <button type="button" data-valor="aporte" aria-pressed="true">Aportar</button>
+            <button type="button" data-valor="resgate">Resgatar</button>
+          </div>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup" id="inv-movimento-valor-rotulo">Valor</span>
+              <input type="number" name="valor" min="0.01" step="0.01" placeholder="0,00" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Data</span>
+              <input type="date" name="data" required />
+            </label>
+          </div>
+          <label class="popup-container">
+            <span class="span-popup">De quem é o dinheiro</span>
+            <input type="text" name="dono" maxlength="60" value="Eu" list="inv-lista-donos" required />
+          </label>
+          <p class="inv-dica" id="inv-movimento-disponivel" hidden></p>
+          <label class="popup-container">
+            <span class="span-popup" id="inv-movimento-conta-rotulo">Descontar de uma conta do Bolso</span>
+            <select name="bancoId" data-contas></select>
+          </label>
+          <p class="inv-form-erro" role="alert" hidden></p>
+          <button type="submit" class="btn-submit" id="inv-movimento-salvar">Registrar aporte</button>
+        </form>
+      </dialog>
+
+      <dialog id="inv-dialog-conferencia" class="inv-dialog" aria-labelledby="inv-conferencia-titulo">
+        <form id="inv-form-conferencia" class="transaction-form-container" novalidate>
+          <div class="inv-dialog-cabecalho">
+            <h2 id="inv-conferencia-titulo" class="modal-title">Conferir com o banco</h2>
+            <button type="button" class="close-modal-btn" data-fechar aria-label="Fechar">x</button>
+          </div>
+          <p class="inv-dica">
+            Digite o saldo bruto que aparece no app do banco. O Bolso ajusta a
+            diferença (normalmente centavos) e divide entre os donos na
+            proporção do saldo de cada um.
+          </p>
+          <div class="inv-duas-colunas">
+            <label class="popup-container">
+              <span class="span-popup">Data</span>
+              <input type="date" name="data" required />
+            </label>
+            <label class="popup-container">
+              <span class="span-popup">Saldo bruto no banco</span>
+              <input type="number" name="saldo_bruto" min="0.01" step="0.01" placeholder="0,00" required />
+            </label>
+          </div>
+          <p class="inv-dica" id="inv-conferencia-calculado"></p>
+          <p class="inv-form-erro" role="alert" hidden></p>
+          <button type="submit" class="btn-submit">Salvar conferência</button>
+        </form>
+      </dialog>
+
+      <datalist id="inv-lista-donos"></datalist>
+      <datalist id="inv-lista-tipos">
+        <option value="CDB"></option>
+        <option value="LCI"></option>
+        <option value="LCA"></option>
+        <option value="RDB"></option>
+        <option value="Tesouro Selic"></option>
+      </datalist>
+      <datalist id="inv-lista-liquidez">
+        <option value="Diária"></option>
+        <option value="No vencimento"></option>
+        <option value="D+30"></option>
+        <option value="D+90"></option>
+      </datalist>
       <p class="app-copyright">© 2026 Bolso</p>
     </div>
     <script async defer src="https://accounts.google.com/gsi/client"></script>

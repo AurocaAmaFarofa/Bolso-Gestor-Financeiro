@@ -100,6 +100,16 @@ uma sessão de administrador.
 - **Reservas:** valores reservados com operações para adicionar ou retirar
   saldo; uma retirada não pode exceder o valor disponível na reserva.
 - **Gastos fixos:** despesas acompanhadas com status `pendente` ou `pago`.
+- **Investimentos:** caixinhas pós-fixadas atreladas ao CDI (ex.: CDB 101,5% do
+  CDI). O usuário registra aportes, resgates e, opcionalmente, conferências do
+  saldo bruto informado pelo banco. O servidor baixa a série diária do CDI do
+  Banco Central (SGS 12), guarda em `cdi_diario` e calcula saldo bruto,
+  rendimento, IR e IOF regressivos. Cada aporte é um lote com dono (ex.: "Eu",
+  "Namorada"), então o rendimento e os impostos de cada pessoa são calculados
+  separadamente; resgates saem dos lotes mais antigos do dono escolhido. Dias
+  ainda sem CDI publicado usam a última taxa conhecida, pulando fins de semana e
+  feriados nacionais. LCI/LCA são tratadas como isentas. Aportes e resgates podem
+  gerar lançamentos vinculados (categoria `investimentos`) em uma conta.
 - **Resumo financeiro:** a interface calcula e apresenta informações como
   saldo, gastos mensais e valor que pode ser gasto, com base nos dados
   carregados.
@@ -137,12 +147,20 @@ O esquema definido em `estrutura_bolso.sql` inclui:
 | `bancos` | Contas com saldo inicial, mês de criação e usuário associado. |
 | `reservas` | Nome, valor, usuário, mês de criação e duração; reservas antigas sem mês de criação permanecem permanentes. |
 | `gastos_fixos` | Nome, valor, status e usuário associado. |
+| `investimentos` | Caixinhas: nome, instituição, tipo, % do CDI, liquidez, vencimento e data de criação. |
+| `investimento_movimentos` | Aportes/resgates por caixinha, com data, valor, dono e `lancamento_id` opcional. |
+| `investimento_conferencias` | Saldo bruto informado pelo banco em uma data, usado para recalibrar o cálculo. |
+| `cdi_diario` | Cache da taxa diária do CDI (% ao dia) vinda do Banco Central. |
 | `recuperar_senha` | Hash do token de recuperação, usuário, expiração e indicador de uso. |
 
 Algumas tabelas usam nomes de colunas em estilos diferentes, por exemplo
 `usuarioId`, `usuario_id`, `bancoId` e `categoria_id`. As consultas existentes
 dependem desses nomes exatos; padronizá-los exige alterar o esquema e todos os
 locais que os consultam.
+
+As quatro tabelas de investimentos são criadas por `routes/investimentos.js`
+(`CREATE TABLE IF NOT EXISTS`) na primeira requisição a `/investimentos`, então
+também funcionam em bancos já inicializados.
 
 `estrutura_bolso.sql` também insere as categorias padrão para usuários que já
 existam no momento em que o arquivo for executado. Para novos usuários, o fluxo
@@ -212,6 +230,7 @@ usuário associado ao JWT.
 | Bancos | `GET /bancos`, `POST /bancos`, `DELETE /bancos/:id` |
 | Reservas | `GET /reservas`, `POST /reservas`, `PATCH /reservas/:id`, `DELETE /reservas/:id` |
 | Gastos fixos | `GET /gastos-fixos`, `POST /gastos-fixos`, `PATCH /gastos-fixos/:id`, `DELETE /gastos-fixos/:id` |
+| Investimentos | `GET /investimentos`, `POST /investimentos`, `PATCH /investimentos/:id`, `DELETE /investimentos/:id`, `POST /investimentos/:id/movimentos`, `DELETE /investimentos/:id/movimentos/:movimentoId`, `POST /investimentos/:id/conferencias`, `DELETE /investimentos/:id/conferencias/:conferenciaId` |
 
 ### Convites
 

@@ -42,6 +42,7 @@ const authRoutes = require('./routes/auth')
 const senhas = require('./routes/senha')
 const users = require('./routes/users')
 const reservas = require('./routes/reservas')
+const investimentos = require('./routes/investimentos')
 
 app.use(cors(corsOptions))
 
@@ -58,6 +59,7 @@ app.use('/api/auth', authRoutes)
 app.use('/senhas', senhas)
 app.use('/usuarios', users)
 app.use('/reservas', reservas)
+app.use('/investimentos', investimentos)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
