@@ -181,6 +181,17 @@ app.get('/lancamentos', exigirLogin, async (req, res) => {
   }
 })
 
+// A fonte do PDF (Helvetica) não desenha emojis nem outros alfabetos: sem este
+// filtro eles saem embaralhados por cima das outras colunas.
+function textoImprimivel(texto) {
+  return String(texto ?? '')
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .replace(/[^\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/g, '')
+    .replace(/ {2,}/g, ' ')
+    .trim()
+}
+
 app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
   const mesAno = req.query.mesAno
 
@@ -218,7 +229,7 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
 
       if (!gruposPorBanco.has(idBanco)) {
         gruposPorBanco.set(idBanco, {
-          nome: lancamento.banco || 'Conta não identificada',
+          nome: textoImprimivel(lancamento.banco) || 'Conta não identificada',
           despesas: [],
           ganhos: [],
           transferencias: [],
@@ -393,18 +404,23 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
       }
     }
 
+    // Corta o texto com reticências até caber na coluna. O intervalo da busca
+    // sempre diminui, então ela termina para qualquer texto.
     function ajustarTexto(texto, larguraMaxima, tamanhoFonte) {
-      let resultado = String(texto || '—')
-        .replace(/\s+/g, ' ')
-        .trim()
+      const completo = textoImprimivel(texto) || '—'
       pdf.font('Helvetica').fontSize(tamanhoFonte)
-      while (
-        resultado.length > 1 &&
-        pdf.widthOfString(resultado) > larguraMaxima
-      ) {
-        resultado = `${resultado.slice(0, -2)}...`
+      if (pdf.widthOfString(completo) <= larguraMaxima) return completo
+
+      // Maior pedaço do texto original que cabe junto com "...".
+      let cabem = 0
+      let limite = completo.length - 1
+      while (cabem < limite) {
+        const meio = Math.ceil((cabem + limite) / 2)
+        const tentativa = `${completo.slice(0, meio)}...`
+        if (pdf.widthOfString(tentativa) <= larguraMaxima) cabem = meio
+        else limite = meio - 1
       }
-      return resultado
+      return `${completo.slice(0, cabem).trimEnd()}...`
     }
 
     desenharCabecalhoPagina()
