@@ -90,9 +90,20 @@ uma sessão de administrador.
 
 - **Lançamentos:** entradas e despesas com valor, categoria, descrição, forma de
   pagamento, data, mês e banco associado.
-- **Categorias:** categorias padrão por conta e categorias personalizadas. Ao
-  remover uma categoria, os lançamentos correspondentes são transferidos para
-  `outros`; metas dessa categoria são removidas.
+- **Categorias:** categorias padrão por conta e categorias personalizadas. A
+  lista padrão fica só em `lib/categorias.js`; o back-end não deixa excluí-las
+  nem criar variações delas (acentos, maiúsculas, espaços). Ao remover uma
+  categoria personalizada, os lançamentos são transferidos para `outros`; metas
+  dessa categoria são removidas.
+- **Transferências e repasses:** lançamentos na categoria padrão
+  `transferência` mudam o saldo das contas, mas não contam como gasto nem
+  receita (totais, metas, gráficos e totais do PDF). O servidor informa isso em
+  `ehTransferencia`. `POST /transferencias` grava a saída e a entrada entre duas
+  contas na mesma transação. Em `POST /lancamentos`, `valorRepasse` separa a
+  parte de um gasto que é de outra pessoa. Lançamentos criados juntos têm o
+  mesmo `grupoId` e são excluídos juntos; ao excluir uma conta bancária, a ponta
+  que está na outra conta permanece. A categoria é criada para contas antigas em
+  `GET /categorias`.
 - **Metas:** limite de gastos por categoria e mês. O banco impede mais de uma
   meta para a mesma combinação de usuário, categoria e mês.
 - **Bancos/contas:** múltiplas contas, saldo inicial, mês de criação e cor. A
@@ -174,7 +185,8 @@ locais que os consultam.
 
 As tabelas de cartões e a coluna `lancamentos.cartaoId` são criadas por
 `lib/esquemaCartoes.js` quando faltam (o mesmo SQL está em
-`db/migracao_cartoes.sql`).
+`db/migracao_cartoes.sql`). A coluna `lancamentos.grupoId` é criada da mesma
+forma por `lib/lancamentos.js`.
 
 As quatro tabelas de investimentos são criadas por `routes/investimentos.js`
 (`CREATE TABLE IF NOT EXISTS`) na primeira requisição a `/investimentos`, então
@@ -243,6 +255,7 @@ usuário associado ao JWT.
 | Recurso | Rotas |
 | --- | --- |
 | Lançamentos | `GET /lancamentos`, `POST /lancamentos`, `DELETE /lancamentos/:id` |
+| Transferências | `POST /transferencias` |
 | Categorias | `GET /categorias`, `POST /categorias`, `DELETE /categorias/:id` |
 | Metas | `GET /metas`, `POST /metas`, `DELETE /metas/:id` |
 | Bancos | `GET /bancos`, `POST /bancos`, `PATCH /bancos/:id`, `DELETE /bancos/:id` |

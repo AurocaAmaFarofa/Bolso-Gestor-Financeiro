@@ -6,6 +6,7 @@ const reservas = JSON.parse(localStorage.getItem('reservas')) || []
 const btnAddLancamento = document.querySelector('#btn-submit')
 const btnGasto = document.querySelector('#expense-btn')
 const btnRecebimento = document.querySelector('#income-btn')
+const btnTransferencia = document.querySelector('#transfer-btn')
 const gridLancamentos = document.querySelector('#grid-expenses')
 const gridGastosFixos = document.querySelector('#grid-fixed-expenses')
 const gridReservas = document.querySelector('#grid-reserveds')
@@ -241,18 +242,26 @@ function renderizarCategoriasDeGasto() {
   htmlCategoria.innerHTML = ''
   if (listaCategorias) listaCategorias.innerHTML = ''
 
-  appData.categoriasGasto.forEach((gasto) => {
+  // "Transferência" fica por último, com um aviso no nome.
+  const categorias = [...appData.categoriasGasto].sort(
+    (a, b) => Number(a.ehTransferencia === true) - Number(b.ehTransferencia === true),
+  )
+
+  categorias.forEach((gasto) => {
     const nomeFormatado = escaparHtml(primeiraLetraMaior(gasto.nome))
+    const ehRepasse = gasto.ehTransferencia === true
 
     htmlCategoria.innerHTML += `
-            <option value="${gasto.id}">${nomeFormatado}</option>
+            <option value="${gasto.id}">${nomeFormatado}${ehRepasse ? ' / repasse (não conta)' : ''}</option>
         `
 
-    htmlCategoriaMeta.innerHTML += `
+    if (!ehRepasse) {
+      htmlCategoriaMeta.innerHTML += `
             <option value="${gasto.id}">${nomeFormatado}</option>
         `
+    }
 
-    if (listaCategorias && gasto.nome !== 'outros') {
+    if (listaCategorias && !gasto.protegida) {
       listaCategorias.innerHTML += `
         <div class="item-categoria">
           <span>${nomeFormatado}</span>
@@ -261,6 +270,8 @@ function renderizarCategoriasDeGasto() {
       `
     }
   })
+
+  atualizarFormularioLancamento()
 }
 
 // =============== Ultimos lançamentos ==========================
@@ -313,13 +324,21 @@ function atualizarGridUltimos() {
       const dataFormatada = Number.isNaN(data.getTime())
         ? ''
         : data.toLocaleDateString('pt-BR')
-      const tipoFormatado = item.tipo === 'ganho' ? 'Receita' : 'Despesa'
+      const transferencia = ehTransferencia(item)
+      const classeValor = transferencia
+        ? 'recent-transfer'
+        : item.tipo === 'ganho'
+          ? 'recent-income'
+          : 'recent-expense'
+      const resumo = transferencia
+        ? escaparHtml(descreverTransferencia(item))
+        : `${item.tipo === 'ganho' ? 'Receita' : 'Despesa'} · ${escaparHtml(item.categoria || 'Sem categoria')}`
 
       gridUltimosGastos.innerHTML += `
         <div class="card-expenses cards-last">
           <h3 class="card-text-last">${escaparHtml(item.descricao)}</h3>
-          <strong class="card-text-last recent-amount ${item.tipo === 'ganho' ? 'recent-income' : 'recent-expense'}">${moedaBRL.format(valor)}</strong>
-          <p class="card-text-last recent-description">${tipoFormatado} · ${escaparHtml(item.categoria || 'Sem categoria')}${dataFormatada ? ` · ${dataFormatada}` : ''}</p>
+          <strong class="card-text-last recent-amount ${classeValor}">${moedaBRL.format(valor)}</strong>
+          <p class="card-text-last recent-description">${resumo}${dataFormatada ? ` · ${dataFormatada}` : ''}</p>
         </div>
       `
     })
@@ -438,6 +457,17 @@ function renderizarHistoricoTransacoes(lancamentos = obterHistoricoDaConta()) {
         ? '—'
         : data.toLocaleDateString('pt-BR')
       const ehReceita = lancamento.tipo === 'ganho'
+      const transferencia = ehTransferencia(lancamento)
+      const rotuloTipo = transferencia
+        ? escaparHtml(descreverTransferencia(lancamento))
+        : ehReceita
+          ? 'Receita'
+          : 'Despesa'
+      const classeValor = transferencia
+        ? 'transaction-transfer'
+        : ehReceita
+          ? 'transaction-income'
+          : 'transaction-expense'
 
       return `
         <tr>
@@ -445,8 +475,8 @@ function renderizarHistoricoTransacoes(lancamentos = obterHistoricoDaConta()) {
           <td>${escaparHtml(lancamento.descricao || 'Sem descrição')}</td>
           <td>${escaparHtml(lancamento.categoria || 'Sem categoria')}</td>
           <td>${escaparHtml(lancamento.forma || '—')}</td>
-          <td>${ehReceita ? 'Receita' : 'Despesa'}</td>
-          <td class="${ehReceita ? 'transaction-income' : 'transaction-expense'}">
+          <td>${rotuloTipo}</td>
+          <td class="${classeValor}">
             ${ehReceita ? '+' : '−'} ${moedaBRL.format(Number(lancamento.valor) || 0)}
           </td>
           <td class="transaction-actions">
@@ -607,7 +637,8 @@ function renderizarDoisVisores() {
       return (
         obterMesLancamento(lancamento) === appData.mesAtivo &&
         lancamento.categoria_id === item.categoria_id &&
-        lancamento.tipo === 'despesa'
+        lancamento.tipo === 'despesa' &&
+        !ehTransferencia(lancamento)
       )
     })
 
@@ -783,6 +814,7 @@ function atualizarTudo() {
   renderizarDoisVisores()
   atualizarGridUltimos()
   renderizarAnalises()
+  atualizarFormularioLancamento()
   if (typeof renderizarCartoes === 'function') renderizarCartoes()
 }
 
@@ -839,6 +871,30 @@ function obterMesLancamento(lancamento) {
   }
 
   return normalizarMes(lancamento.mesAno)
+}
+
+// Transferências mudam o saldo das contas, mas não são gasto nem receita.
+function ehTransferencia(lancamento) {
+  return lancamento.ehTransferencia === true
+}
+
+// "Transferência enviada para Cresol" (o nome aparece quando há a outra conta).
+function descreverTransferencia(lancamento) {
+  const entrada = lancamento.tipo === 'ganho'
+  const outraPonta =
+    lancamento.grupoId &&
+    appData.lancamentos.find(
+      (item) =>
+        item.grupoId === lancamento.grupoId && item.tipo !== lancamento.tipo,
+    )
+  const conta =
+    outraPonta &&
+    appData.bancos.find(
+      (banco) => Number(banco.id) === Number(outraPonta.bancoId),
+    )
+  const base = entrada ? 'Transferência recebida' : 'Transferência enviada'
+
+  return conta ? `${base} ${entrada ? 'de' : 'para'} ${conta.nome}` : base
 }
 
 function obterLancamentosDoMes(mes) {
@@ -916,7 +972,7 @@ function obterResumoDoMes(mes) {
   return obterLancamentosDoMes(mes).reduce(
     (resumo, lancamento) => {
       const valor = Number(lancamento.valor)
-      if (!Number.isFinite(valor)) return resumo
+      if (!Number.isFinite(valor) || ehTransferencia(lancamento)) return resumo
 
       if (lancamento.tipo === 'ganho') {
         resumo.receitas += valor
@@ -1043,7 +1099,7 @@ function renderizarGraficoCategorias(lancamentos, id) {
 
   const categorias = new Map()
   lancamentos.forEach((lancamento) => {
-    if (lancamento.tipo === 'ganho') return
+    if (lancamento.tipo === 'ganho' || ehTransferencia(lancamento)) return
     const nome = String(lancamento.categoria || 'Outros')
     const valor = Number(lancamento.valor)
     if (!Number.isFinite(valor)) return
@@ -1660,7 +1716,7 @@ async function excluirBanco(id) {
   if (!banco) return
 
   const confirmar = confirm(
-    `Deseja excluir o banco "${banco.nome}"? Os lançamentos dele também serão excluídos.`,
+    `Deseja excluir o banco "${banco.nome}"? Os lançamentos dele também serão excluídos. Transferências com outras contas continuam registradas nelas.`,
   )
 
   if (!confirmar) return
@@ -2342,147 +2398,365 @@ function renderizarGridLancamentos() {
 }
 
 async function deletarLancamento(id) {
-  console.log(id)
-
-  const resposta = await fetch(`/lancamentos/${id}`, {
-    method: 'DELETE',
-  })
-
-  const resultado = await resposta.json()
-
-  console.log(resultado)
-
-  const indice = appData.lancamentos.findIndex(
+  const alvo = appData.lancamentos.find(
     (lancamento) => Number(lancamento.id) === Number(id),
   )
+  const juntos = alvo?.grupoId
+    ? appData.lancamentos.filter((item) => item.grupoId === alvo.grupoId)
+    : []
 
-  if (indice !== -1) {
-    appData.lancamentos.splice(indice, 1)
+  if (juntos.length > 1) {
+    const entreContas = juntos.some((item) => item.tipo === 'ganho')
+    const confirmou = confirm(
+      entreContas
+        ? 'Excluir esta transferência? Ela sai das duas contas.'
+        : 'Este gasto foi dividido com outra pessoa. Excluir apaga as duas partes. Continuar?',
+    )
+    if (!confirmou) return
   }
 
+  try {
+    const resposta = await fetch(`/lancamentos/${id}`, { method: 'DELETE' })
+    const resultado = await resposta.json().catch(() => ({}))
+
+    if (!resposta.ok) {
+      showPopup(resultado.erro || 'Não foi possível excluir o lançamento.', 3000)
+      return
+    }
+
+    const excluidos = new Set((resultado.ids || [id]).map(Number))
+    appData.lancamentos = appData.lancamentos.filter(
+      (lancamento) => !excluidos.has(Number(lancamento.id)),
+    )
+    atualizarTudo()
+  } catch (erro) {
+    console.error('Erro ao excluir lançamento:', erro)
+    showPopup('Erro de conexão ao excluir o lançamento.', 3000)
+  }
+}
+
+//------------------ Formulário de lançamento ---------------------
+
+function categoriaDoFormulario() {
+  const id = Number(document.getElementById('category-select')?.value)
+  return appData.categoriasGasto.find((categoria) => categoria.id === id)
+}
+
+function mostrarCampo(id, visivel) {
+  const elemento = document.getElementById(id)
+  if (elemento) elemento.hidden = !visivel
+}
+
+// Mantém as duas listas de contas da transferência, sem repetir a mesma.
+function preencherContasDaTransferencia() {
+  const origem = document.getElementById('transfer-from')
+  const destino = document.getElementById('transfer-to')
+  if (!origem || !destino) return
+
+  const existe = (id) =>
+    appData.bancos.some((banco) => String(banco.id) === String(id))
+  const opcoes = (bancos) =>
+    bancos
+      .map(
+        (banco) =>
+          `<option value="${Number(banco.id)}">${escaparHtml(banco.nome)}</option>`,
+      )
+      .join('')
+
+  const origemAnterior = origem.value
+  const destinoAnterior = destino.value
+
+  origem.innerHTML = opcoes(appData.bancos)
+  if (existe(origemAnterior)) origem.value = origemAnterior
+  else if (existe(appData.bancoAtual)) origem.value = String(appData.bancoAtual)
+
+  const outras = appData.bancos.filter(
+    (banco) => String(banco.id) !== origem.value,
+  )
+  destino.innerHTML = opcoes(outras)
+  if (outras.some((banco) => String(banco.id) === destinoAnterior)) {
+    destino.value = destinoAnterior
+  }
+}
+
+function atualizarPreviaDivisao() {
+  const previa = document.getElementById('split-preview')
+  if (!previa) return
+
+  const total = Number(document.getElementById('valueInput').value)
+  const parte = Number(document.getElementById('split-value').value)
+
+  if (!(total > 0) || !(parte > 0)) {
+    previa.textContent = 'Informe o valor total e a parte da outra pessoa.'
+  } else if (parte >= total) {
+    previa.textContent = 'A parte da outra pessoa precisa ser menor que o total.'
+  } else {
+    previa.textContent = `Seu gasto: ${moedaBRL.format(total - parte)} · Transferência: ${moedaBRL.format(parte)}`
+  }
+}
+
+// Mostra só os campos que fazem sentido para o tipo e a categoria escolhidos.
+function atualizarFormularioLancamento() {
+  if (!btnAddLancamento) return
+
+  const transferindo = tipoSelecionado === 'transferencia'
+  const repasse =
+    !transferindo && categoriaDoFormulario()?.ehTransferencia === true
+  const podeDividir = tipoSelecionado === 'despesa' && !repasse
+
+  if (transferindo) preencherContasDaTransferencia()
+
+  mostrarCampo('transfer-from-field', transferindo)
+  mostrarCampo('transfer-to-field', transferindo)
+  mostrarCampo('category-field', !transferindo)
+  mostrarCampo('btn-nova-categoria', !transferindo)
+  mostrarCampo('payment-field', !transferindo)
+  mostrarCampo('split-field', podeDividir)
+  mostrarCampo(
+    'split-value-field',
+    podeDividir && document.getElementById('split-toggle')?.checked,
+  )
+
+  const dica = document.getElementById('transfer-hint')
+  if (dica) {
+    let texto = ''
+    if (transferindo) {
+      texto =
+        appData.bancos.length < 2
+          ? 'Cadastre uma segunda conta para transferir entre elas.'
+          : 'O dinheiro sai de uma conta e entra na outra. Não conta como gasto nem como receita.'
+    } else if (repasse) {
+      texto =
+        tipoSelecionado === 'ganho'
+          ? 'Entra na conta, mas não conta como receita. Use quando alguém te dá dinheiro para você pagar algo por essa pessoa.'
+          : 'Sai da conta, mas não conta como seu gasto. Use quando você paga algo por outra pessoa.'
+    }
+    dica.textContent = texto
+    dica.hidden = !texto
+  }
+
+  const descricao = document.getElementById('descriptionInput')
+  if (descricao) {
+    descricao.placeholder = transferindo
+      ? 'Opcional'
+      : 'Ex: Supermercado do mês'
+  }
+  btnAddLancamento.textContent = transferindo
+    ? 'Salvar transferência'
+    : 'Salvar lançamento'
+
+  atualizarPreviaDivisao()
+}
+
+function selecionarTipoLancamento(tipo) {
+  tipoSelecionado = tipo
+  ;[
+    [btnGasto, 'despesa', 'btn-selected-ex'],
+    [btnRecebimento, 'ganho', 'btn-selected-in'],
+    [btnTransferencia, 'transferencia', 'btn-selected-tr'],
+  ].forEach(([botao, valor, classe]) => {
+    if (!botao) return
+    botao.classList.toggle(classe, tipo === valor)
+    botao.setAttribute('aria-pressed', String(tipo === valor))
+  })
+
+  // A conta de origem começa na conta que está selecionada na tela.
+  if (tipo === 'transferencia') {
+    const origem = document.getElementById('transfer-from')
+    if (origem) origem.value = ''
+  }
+
+  atualizarFormularioLancamento()
+  if (typeof atualizarCampoCartao === 'function') atualizarCampoCartao()
+}
+
+btnGasto?.addEventListener('click', () => selecionarTipoLancamento('despesa'))
+btnRecebimento?.addEventListener('click', () =>
+  selecionarTipoLancamento('ganho'),
+)
+btnTransferencia?.addEventListener('click', () =>
+  selecionarTipoLancamento('transferencia'),
+)
+;['category-select', 'split-toggle', 'transfer-from'].forEach((id) => {
+  document
+    .getElementById(id)
+    ?.addEventListener('change', atualizarFormularioLancamento)
+})
+;['valueInput', 'split-value'].forEach((id) => {
+  document
+    .getElementById(id)
+    ?.addEventListener('input', atualizarPreviaDivisao)
+})
+
+function lerDataDoFormulario() {
+  const inputData = document.getElementById('dateInput').value
+  return inputData ? obterDataLancamento(inputData) : new Date()
+}
+
+function limparFormularioLancamento() {
+  document.getElementById('valueInput').value = ''
+  document.getElementById('category-select').value = ''
+  document.getElementById('descriptionInput').value = ''
+  document.getElementById('payment-select').selectedIndex = 0
+  document.getElementById('split-toggle').checked = false
+  document.getElementById('split-value').value = ''
+  selecionarTipoLancamento('despesa')
+}
+
+async function enviarLancamentos(rota, corpo) {
+  const resposta = await fetch(rota, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(corpo),
+  })
+
+  if (resposta.status === 401) {
+    window.location.href = 'login.html'
+    return
+  }
+
+  const resultado = await resposta.json().catch(() => ({}))
+
+  if (!resposta.ok || !Array.isArray(resultado.lancamentos)) {
+    showPopup(resultado.erro || 'Não foi possível salvar o lançamento.', 3500)
+    return
+  }
+
+  appData.lancamentos.push(...resultado.lancamentos)
   atualizarTudo()
+  abrirOuFecharPopup('popup-modal', 'fechar')
+  limparFormularioLancamento()
+  showPopup(resultado.mensagem)
 }
 
-//deixa o botao sem o visual de selecionado
-function desmarcarBotao() {
-  if (btnGasto) btnGasto.classList.remove('btn-selected-ex')
-  if (btnRecebimento) btnRecebimento.classList.remove('btn-selected-in')
-}
+async function salvarTransferencia() {
+  const valor = Number(document.getElementById('valueInput').value)
+  const origem = Number(document.getElementById('transfer-from').value)
+  const destino = Number(document.getElementById('transfer-to').value)
 
-//seleciona o tipo pra gasto
-if (btnGasto) {
-  btnGasto.addEventListener('click', () => {
-    btnRecebimento.classList.remove('btn-selected-in')
-    btnGasto.classList.add('btn-selected-ex')
-    tipoSelecionado = 'despesa'
+  if (!origem || !destino) {
+    showPopup('Cadastre uma segunda conta para transferir.', 2600)
+    return
+  }
+  if (!(valor > 0)) {
+    showPopup('Informe um valor maior que zero.', 2600)
+    return
+  }
+
+  await enviarLancamentos('/transferencias', {
+    bancoOrigemId: origem,
+    bancoDestinoId: destino,
+    valor,
+    data: lerDataDoFormulario().getTime(),
+    descricao: document.getElementById('descriptionInput').value,
   })
 }
 
-//seleciona o tipo pra ganho
-if (btnRecebimento) {
-  btnRecebimento.addEventListener('click', () => {
-    console.log('mudou')
-    btnGasto.classList.remove('btn-selected-ex')
-    btnRecebimento.classList.add('btn-selected-in')
-    tipoSelecionado = 'ganho'
-  })
+async function salvarLancamento() {
+  const dataLancamentoObj = lerDataDoFormulario()
+  const mesAnoDoLancamento = `${dataLancamentoObj.getFullYear()}-${String(
+    dataLancamentoObj.getMonth() + 1,
+  ).padStart(2, '0')}`
+  const categoria = categoriaDoFormulario()
+  const novoLancamento = {
+    tipo: tipoSelecionado,
+    valor: Number(document.getElementById('valueInput').value),
+    categoriaId: Number(document.getElementById('category-select').value),
+    descricao: document.getElementById('descriptionInput').value,
+    forma: document.getElementById('payment-select').value,
+    data: dataLancamentoObj.getTime(),
+    bancoId: Number(appData.bancoAtual),
+    cartaoId:
+      typeof obterCartaoDoFormulario === 'function'
+        ? obterCartaoDoFormulario(tipoSelecionado)
+        : null,
+  }
+
+  if (!(novoLancamento.valor > 0)) {
+    showPopup('Informe um valor maior que zero.', 2600)
+    return
+  }
+  if (!categoria) {
+    showPopup('Escolha uma categoria.', 2600)
+    return
+  }
+
+  const ehRepasse = categoria.ehTransferencia === true
+  const dividir =
+    tipoSelecionado === 'despesa' &&
+    !ehRepasse &&
+    document.getElementById('split-toggle').checked
+  let valorDeOutraPessoa = 0
+
+  if (dividir) {
+    valorDeOutraPessoa = Number(document.getElementById('split-value').value)
+    if (!(valorDeOutraPessoa > 0 && valorDeOutraPessoa < novoLancamento.valor)) {
+      showPopup('A parte da outra pessoa precisa ser maior que zero e menor que o total.', 3000)
+      return
+    }
+    novoLancamento.valorRepasse = valorDeOutraPessoa
+  }
+
+  if (novoLancamento.tipo === 'despesa' && !ehRepasse) {
+    const metaEncontrada = appData.metas.find(
+      (meta) =>
+        meta.categoria_id === novoLancamento.categoriaId &&
+        meta.mes_ano === mesAnoDoLancamento,
+    )
+
+    if (metaEncontrada) {
+      const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
+        return (
+          obterMesLancamento(lancamento) === mesAnoDoLancamento &&
+          lancamento.categoria_id === metaEncontrada.categoria_id &&
+          lancamento.tipo === 'despesa'
+        )
+      })
+
+      const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
+        return soma + Number(lancamento.valor)
+      }, 0)
+
+      // Só a sua parte do gasto entra na meta.
+      const gastoComInput =
+        totalGasto + novoLancamento.valor - valorDeOutraPessoa
+
+      if (gastoComInput > Number(metaEncontrada.valor_max)) {
+        const continuar = confirm('Valor irá exceder a meta, deseja continuar?')
+        if (!continuar) return
+      }
+    }
+  }
+
+  await enviarLancamentos('/lancamentos', novoLancamento)
 }
 
 if (btnAddLancamento) {
   btnAddLancamento.addEventListener('click', async () => {
-    if (appData.bancos.length > 0) {
-      const bancoAtualExiste = appData.bancos.some(
-        (banco) => Number(banco.id) === Number(appData.bancoAtual),
-      )
-
-      if (!bancoAtualExiste) {
-        selecionarBanco(appData.bancos[0].id)
-      }
-
-      const inputData = document.getElementById('dateInput').value
-      const dataLancamentoObj = inputData
-        ? obterDataLancamento(inputData)
-        : new Date()
-      const dataLancamento = dataLancamentoObj.getTime()
-      const mesAnoDoLancamento = `${dataLancamentoObj.getFullYear()}-${String(
-        dataLancamentoObj.getMonth() + 1,
-      ).padStart(2, '0')}`
-      const novoLancamento = {
-        tipo: tipoSelecionado,
-        valor: Number(document.getElementById('valueInput').value),
-        categoriaId: Number(document.getElementById('category-select').value),
-        descricao: document.getElementById('descriptionInput').value,
-        forma: document.getElementById('payment-select').value,
-        data: dataLancamento,
-        mesAno: mesAnoDoLancamento,
-        bancoId: appData.bancoAtual,
-        cartaoId:
-          typeof obterCartaoDoFormulario === 'function'
-            ? obterCartaoDoFormulario(tipoSelecionado)
-            : null,
-      }
-
-      if (novoLancamento.tipo === 'despesa') {
-        const metaEncontrada = appData.metas.find(
-          (meta) =>
-            meta.categoria_id === novoLancamento.categoriaId &&
-            meta.mes_ano === novoLancamento.mesAno,
-        )
-
-        if (metaEncontrada) {
-          const gastosDaCategoria = appData.lancamentos.filter((lancamento) => {
-            return (
-              obterMesLancamento(lancamento) === novoLancamento.mesAno &&
-              lancamento.categoria_id === metaEncontrada.categoria_id &&
-              lancamento.tipo === 'despesa'
-            )
-          })
-
-          const totalGasto = gastosDaCategoria.reduce((soma, lancamento) => {
-            return soma + Number(lancamento.valor)
-          }, 0)
-
-          const gastoComInput = totalGasto + novoLancamento.valor
-
-          if (gastoComInput > Number(metaEncontrada.valor_max)) {
-            let resposta = confirm(
-              'Valor irá exceder a meta, deseja continuar?',
-            )
-            if (resposta === false) {
-              return
-            }
-          }
-        }
-      }
-
-      const resposta = await fetch('/lancamentos', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(novoLancamento),
-      })
-
-      const resultado = await resposta.json()
-      console.log(resultado)
-
-      if (!resposta.ok || !resultado.lancamento) {
-        showPopup(resultado.erro || 'Não foi possível salvar o lançamento.', 3000)
-        return
-      }
-
-      appData.lancamentos.push(resultado.lancamento)
-      atualizarTudo()
-      abrirOuFecharPopup('popup-modal', 'fechar')
-
-      document.getElementById('valueInput').value = ''
-      document.getElementById('category-select').value = ''
-      document.getElementById('descriptionInput').value = ''
-      document.getElementById('payment-select').value = ''
-      tipoSelecionado = 'despesa'
-      if (typeof atualizarCampoCartao === 'function') atualizarCampoCartao()
-    } else {
+    if (appData.bancos.length === 0) {
       showPopup('Você não possui nenhum banco. Crie um banco primeiro.', 2600)
       abrirPopupBanco()
       return
+    }
+
+    const bancoAtualExiste = appData.bancos.some(
+      (banco) => Number(banco.id) === Number(appData.bancoAtual),
+    )
+
+    if (!bancoAtualExiste) {
+      selecionarBanco(appData.bancos[0].id)
+    }
+
+    // Evita gravar duas vezes com um clique duplo.
+    btnAddLancamento.disabled = true
+    try {
+      if (tipoSelecionado === 'transferencia') await salvarTransferencia()
+      else await salvarLancamento()
+    } catch (erro) {
+      console.error('Erro ao salvar lançamento:', erro)
+      showPopup('Erro de conexão. Confira o histórico antes de tentar de novo.', 3500)
+    } finally {
+      btnAddLancamento.disabled = false
     }
   })
 }

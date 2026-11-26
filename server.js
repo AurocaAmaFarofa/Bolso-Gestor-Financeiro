@@ -44,8 +44,27 @@ const users = require('./routes/users')
 const reservas = require('./routes/reservas')
 const investimentos = require('./routes/investimentos')
 const cartoes = require('./routes/cartoes')
-const { garantirEsquemaCartoes } = require('./lib/esquemaCartoes')
+const transferencias = require('./routes/transferencias')
 const { dataDoLancamento, intervaloDeBusca } = require('./lib/mesLancamento')
+const {
+  CATEGORIA_TRANSFERENCIA,
+  CATEGORIA_FALLBACK,
+  CATEGORIAS_PADRAO,
+  nomePadrao,
+  ehTransferencia,
+  garantirCategoria,
+} = require('./lib/categorias')
+const {
+  TIPOS,
+  FORMAS,
+  garantirEsquemaLancamentos,
+  lerId,
+  lerValor,
+  lerData,
+  lerDescricao,
+  emTransacao,
+  inserirLancamento,
+} = require('./lib/lancamentos')
 
 app.use(cors(corsOptions))
 
@@ -64,6 +83,7 @@ app.use('/usuarios', users)
 app.use('/reservas', reservas)
 app.use('/investimentos', investimentos)
 app.use('/cartoes', cartoes)
+app.use('/transferencias', transferencias)
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -140,16 +160,21 @@ const exigirLogin = authMiddleware
 app.get('/lancamentos', exigirLogin, async (req, res) => {
   const sql = `
     SELECT l.id, l.tipo, l.valor, l.descricao, l.forma, l.data, l.mesAno, l.bancoId,
-           l.categoria_id, l.cartaoId, c.nome AS categoria
+           l.categoria_id, l.cartaoId, l.grupoId, c.nome AS categoria
     FROM lancamentos l
     JOIN categorias_gasto c ON c.id = l.categoria_id
     WHERE l.usuarioId = ?
   `
 
   try {
-    await garantirEsquemaCartoes()
+    await garantirEsquemaLancamentos()
     const [resultados] = await pool.query(sql, [req.usuarioId])
-    res.json(resultados)
+    res.json(
+      resultados.map((lancamento) => ({
+        ...lancamento,
+        ehTransferencia: ehTransferencia(lancamento.categoria),
+      })),
+    )
   } catch (erro) {
     console.error('Erro ao buscar lançamentos:', erro)
     res.status(500).json({ erro: 'Erro ao buscar lançamentos' })
@@ -166,7 +191,7 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
   }
 
   const sql = `
-    SELECT l.id, l.valor, l.descricao, l.forma, l.data,
+    SELECT l.id, l.valor, l.descricao, l.forma, l.data, l.grupoId,
           l.tipo, l.bancoId, b.nome AS banco, c.nome AS categoria
     FROM lancamentos l
     LEFT JOIN bancos b
@@ -178,6 +203,7 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
   `
 
   try {
+    await garantirEsquemaLancamentos()
     const [candidatos] = await pool.query(sql, [
       req.usuarioId,
       ...intervaloDeBusca(mesAno),
@@ -195,15 +221,23 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
           nome: lancamento.banco || 'Conta não identificada',
           despesas: [],
           ganhos: [],
+          transferencias: [],
           totalDespesas: 0,
           totalGanhos: 0,
+          totalRecebido: 0,
+          totalEnviado: 0,
         })
       }
 
       const grupo = gruposPorBanco.get(idBanco)
       const valor = Number(lancamento.valor) || 0
 
-      if (lancamento.tipo === 'despesa') {
+      // Transferências aparecem no relatório, mas não são gasto nem ganho.
+      if (ehTransferencia(lancamento.categoria)) {
+        grupo.transferencias.push(lancamento)
+        if (lancamento.tipo === 'ganho') grupo.totalRecebido += valor
+        else grupo.totalEnviado += valor
+      } else if (lancamento.tipo === 'despesa') {
         grupo.despesas.push(lancamento)
         grupo.totalDespesas += valor
       } else if (lancamento.tipo === 'ganho') {
@@ -225,6 +259,30 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
     )
 
     const saldoLiquido = totalGanhos - totalDespesas
+
+    const totalRecebido = grupos.reduce(
+      (total, grupo) => total + grupo.totalRecebido,
+      0,
+    )
+
+    const totalEnviado = grupos.reduce(
+      (total, grupo) => total + grupo.totalEnviado,
+      0,
+    )
+
+    // "Para Cresol" / "De C6 Bank" quando a outra conta da transferência existe.
+    const descreverMovimento = (lancamento) => {
+      const outraPonta = lancamentos.find(
+        (outro) =>
+          lancamento.grupoId &&
+          outro.grupoId === lancamento.grupoId &&
+          outro.tipo !== lancamento.tipo,
+      )
+      if (lancamento.tipo === 'ganho') {
+        return outraPonta?.banco ? `De ${outraPonta.banco}` : 'Recebida'
+      }
+      return outraPonta?.banco ? `Para ${outraPonta.banco}` : 'Enviada'
+    }
 
     const quantidadeTotal = lancamentos.length
     const moeda = new Intl.NumberFormat('pt-BR', {
@@ -409,6 +467,19 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
 
     y += 5
 
+    if (totalRecebido > 0 || totalEnviado > 0) {
+      pdf
+        .font('Helvetica')
+        .fontSize(8)
+        .fillColor('#244a78')
+        .text(
+          `Transferências: ${moeda.format(totalRecebido)} recebidos e ${moeda.format(totalEnviado)} enviados (não contam como ganho nem despesa).`,
+          margem,
+          y,
+        )
+      y += 18
+    }
+
     if (grupos.length === 0) {
       pdf
         .font('Helvetica')
@@ -420,34 +491,36 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
         })
     }
 
-    if (grupos.length === 0) {
-      pdf
-        .font('Helvetica')
-        .fontSize(10)
-        .fillColor('#65758a')
-        .text('Nenhuma despesa cadastrada nas suas contas.', margem, y + 12, {
-          width: largura,
-          align: 'center',
-        })
-    }
-
     grupos.forEach((grupo) => {
       const secoes = [
         {
           titulo: 'DESPESAS',
+          cor: '#c0392b',
           lancamentos: grupo.despesas,
-          total: grupo.totalDespesas,
-          quantidade: grupo.despesas.length,
+          subtotal: moeda.format(grupo.totalDespesas),
         },
         {
           titulo: 'GANHOS',
+          cor: '#21865a',
           lancamentos: grupo.ganhos,
-          total: grupo.totalGanhos,
-          quantidade: grupo.ganhos.length,
+          subtotal: moeda.format(grupo.totalGanhos),
+        },
+        {
+          titulo: 'TRANSFERÊNCIAS',
+          cor: '#244a78',
+          transferencia: true,
+          lancamentos: grupo.transferencias,
+          subtotal: `+ ${moeda.format(grupo.totalRecebido)}   - ${moeda.format(grupo.totalEnviado)}`,
         },
       ]
 
-      garantirEspaco(35)
+      // Título da seção, cabeçalho da tabela e primeira linha ficam juntos.
+      const alturaDeAbertura = (secao) =>
+        49 + (secao.lancamentos.length === 1 ? 67 : 36)
+
+      garantirEspaco(
+        20 + alturaDeAbertura(secoes.find((secao) => secao.lancamentos.length)),
+      )
 
       pdf
         .font('Helvetica-Bold')
@@ -460,26 +533,38 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
       secoes.forEach((secao) => {
         if (secao.lancamentos.length === 0) return
 
-        garantirEspaco(58)
+        if (y + alturaDeAbertura(secao) > limiteInferior) {
+          iniciarPagina()
+          pdf
+            .font('Helvetica-Bold')
+            .fontSize(10)
+            .fillColor('#244a78')
+            .text(`${grupo.nome} - continuação`, margem, y)
+          y += 20
+        }
 
         pdf
           .font('Helvetica-Bold')
           .fontSize(9)
-          .fillColor(secao.titulo === 'GANHOS' ? '#21865a' : '#c0392b')
+          .fillColor(secao.cor)
           .text(secao.titulo, margem, y)
 
         pdf
           .font('Helvetica')
           .fontSize(8)
           .fillColor('#65758a')
-          .text(`${secao.quantidade} lançamentos`, margem + 100, y + 1)
+          .text(`${secao.lancamentos.length} lançamentos`, margem + 100, y + 1)
 
         y += 19
 
+        // Vale também para o cabeçalho repetido nas páginas de continuação.
+        colunas[2].titulo = secao.transferencia ? 'Movimento' : 'Categoria'
         desenharCabecalhoTabela()
 
         secao.lancamentos.forEach((lancamento, indice) => {
-          garantirEspaco(36, grupo.nome)
+          // A última linha reserva espaço para o subtotal, que não fica sozinho.
+          const ultima = indice === secao.lancamentos.length - 1
+          garantirEspaco(ultima ? 67 : 36, grupo.nome)
 
           const alturaLinha = 30
 
@@ -495,7 +580,9 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
               8,
             ),
             ajustarTexto(
-              lancamento.categoria || 'Sem categoria',
+              secao.transferencia
+                ? descreverMovimento(lancamento)
+                : lancamento.categoria || 'Sem categoria',
               colunas[2].largura - 12,
               8,
             ),
@@ -504,7 +591,7 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
               colunas[3].largura - 12,
               8,
             ),
-            moeda.format(Number(lancamento.valor) || 0),
+            `${secao.transferencia ? (lancamento.tipo === 'ganho' ? '+ ' : '- ') : ''}${moeda.format(Number(lancamento.valor) || 0)}`,
           ]
 
           let x = margem + 8
@@ -538,13 +625,13 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
         pdf
           .font('Helvetica-Bold')
           .fontSize(8)
-          .fillColor(secao.titulo === 'GANHOS' ? '#21865a' : '#c0392b')
+          .fillColor(secao.cor)
           .text(`Subtotal - ${secao.titulo.toLowerCase()}`, margem + 8, y + 8)
 
         pdf
           .font('Helvetica-Bold')
           .fontSize(9)
-          .text(moeda.format(secao.total), margem, y + 7, {
+          .text(secao.subtotal, margem, y + 7, {
             width: largura - 8,
             align: 'right',
           })
@@ -615,21 +702,50 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
 })
 
 app.post('/lancamentos', exigirLogin, async (req, res) => {
-  const { tipo, valor, categoriaId, descricao, forma, data, mesAno } = req.body
-  let { bancoId } = req.body
+  const corpo = req.body || {}
+  const { tipo, forma } = corpo
+  const valor = lerValor(corpo.valor)
+  const data = lerData(corpo.data)
+  const descricao = lerDescricao(corpo.descricao)
+  const categoriaId = lerId(corpo.categoriaId)
+  const informado = (campo) =>
+    corpo[campo] !== undefined && corpo[campo] !== null && corpo[campo] !== ''
+  let bancoId = lerId(corpo.bancoId)
   let cartaoId = null
+  let valorRepasse = null
 
-  if (req.body.cartaoId !== undefined && req.body.cartaoId !== null && req.body.cartaoId !== '') {
-    cartaoId = Number(req.body.cartaoId)
-    if (!Number.isInteger(cartaoId) || cartaoId <= 0) {
-      return res.status(400).json({ erro: 'Cartão inválido.' })
+  if (!TIPOS.includes(tipo)) return res.status(400).json({ erro: 'Tipo inválido.' })
+  if (valor === null) return res.status(400).json({ erro: 'Informe um valor maior que zero.' })
+  if (data === null) return res.status(400).json({ erro: 'Data inválida.' })
+  if (!FORMAS.includes(forma)) return res.status(400).json({ erro: 'Forma de pagamento inválida.' })
+  if (descricao === null) return res.status(400).json({ erro: 'Descrição muito longa.' })
+  if (!categoriaId) return res.status(400).json({ erro: 'Categoria inválida.' })
+
+  // Parte de um gasto que é de outra pessoa: vira um repasse à parte.
+  if (informado('valorRepasse')) {
+    valorRepasse = lerValor(corpo.valorRepasse)
+    if (tipo !== 'despesa') {
+      return res.status(400).json({ erro: 'Só um gasto pode ser dividido com outra pessoa.' })
     }
+    if (valorRepasse === null || valorRepasse >= valor) {
+      return res.status(400).json({
+        erro: 'A parte da outra pessoa precisa ser menor que o total. Se o valor todo for dela, use a categoria Transferência.',
+      })
+    }
+  }
+
+  if (informado('cartaoId')) {
+    cartaoId = lerId(corpo.cartaoId)
+    if (!cartaoId) return res.status(400).json({ erro: 'Cartão inválido.' })
     if (tipo !== 'despesa' || !['credito', 'debito'].includes(forma)) {
       return res.status(400).json({ erro: 'Cartão só vale para gastos no crédito ou débito.' })
     }
+  }
 
-    try {
-      await garantirEsquemaCartoes()
+  try {
+    await garantirEsquemaLancamentos()
+
+    if (cartaoId) {
       const [cartoesEncontrados] = await pool.query(
         'SELECT bancoId FROM cartoes WHERE id = ? AND usuarioId = ?',
         [cartaoId, req.usuarioId],
@@ -638,68 +754,63 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
         return res.status(400).json({ erro: 'Cartão não encontrado.' })
       }
       // A compra fica na conta que paga o cartão (no crédito, ela só sai da conta quando a fatura é paga).
-      bancoId = String(cartoesEncontrados[0].bancoId)
-    } catch (erro) {
-      console.log('erro ao validar cartão', erro)
-      return res.status(500).json({ erro: 'erro ao validar cartão' })
+      bancoId = cartoesEncontrados[0].bancoId
     }
-  }
 
-  const sqlCategoria = `
-    SELECT nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?
-  `
+    const [contas] = await pool.query(
+      'SELECT id FROM bancos WHERE id = ? AND usuarioId = ?',
+      [bancoId, req.usuarioId],
+    )
+    if (contas.length === 0) return res.status(400).json({ erro: 'Conta não encontrada.' })
 
-  let categorias
-  try {
-    categorias = (
-      await pool.query(sqlCategoria, [categoriaId, req.usuarioId])
-    )[0]
-  } catch (erro) {
-    console.log('erro ao validar categoria', erro)
-    return res.status(500).json({ erro: 'erro ao validar categoria' })
-  }
+    const [categorias] = await pool.query(
+      'SELECT id, nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?',
+      [categoriaId, req.usuarioId],
+    )
+    if (categorias.length === 0) return res.status(400).json({ erro: 'Categoria inválida.' })
 
-  if (categorias.length === 0) {
-    return res.status(400).json({ erro: 'Categoria inválida.' })
-  }
+    const categoria = categorias[0]
+    const comum = { tipo, forma, data, bancoId, cartaoId }
+    let partes = [{ ...comum, valor, categoria, descricao }]
 
-  const sql = `
-      INSERT INTO lancamentos
-      (tipo, valor, categoria_id, descricao, forma, data, mesAno, bancoId, usuarioId, cartaoId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
+    if (valorRepasse !== null) {
+      if (ehTransferencia(categoria.nome)) {
+        return res.status(400).json({ erro: 'Escolha a categoria da sua parte do gasto.' })
+      }
 
-  const valores = [
-    tipo,
-    valor,
-    categoriaId,
-    descricao,
-    forma,
-    data,
-    mesAno,
-    bancoId,
-    req.usuarioId,
-    cartaoId,
-  ]
+      const categoriaRepasse = await garantirCategoria(pool, req.usuarioId, CATEGORIA_TRANSFERENCIA)
+      const grupoId = crypto.randomUUID()
+      const sufixo = ' (parte de outra pessoa)'
+      partes = [
+        {
+          ...comum,
+          grupoId,
+          categoria,
+          descricao,
+          valor: Math.round((valor - valorRepasse) * 100) / 100,
+        },
+        {
+          ...comum,
+          grupoId,
+          categoria: categoriaRepasse,
+          descricao: `${(descricao || 'Repasse').slice(0, 255 - sufixo.length)}${sufixo}`,
+          valor: valorRepasse,
+        },
+      ]
+    }
 
-  try {
-    await garantirEsquemaCartoes()
-    const [resultado] = await pool.query(sql, valores)
+    const lancamentos = await emTransacao(async (conexao) => {
+      const criados = []
+      for (const parte of partes) {
+        criados.push(await inserirLancamento(conexao, req.usuarioId, parte))
+      }
+      return criados
+    })
+
     res.status(201).json({
       mensagem: 'Lançamento criado',
-      lancamento: {
-        id: resultado.insertId,
-        tipo,
-        valor,
-        categoriaId,
-        categoria: categorias[0].nome,
-        descricao,
-        forma,
-        data,
-        mesAno,
-        bancoId,
-        cartaoId,
-      },
+      lancamento: lancamentos[0],
+      lancamentos,
     })
   } catch (erro) {
     console.log('erro no lançamento', erro)
@@ -707,18 +818,43 @@ app.post('/lancamentos', exigirLogin, async (req, res) => {
   }
 })
 
+// Lançamentos criados juntos (transferência ou gasto dividido) são excluídos
+// juntos, para o saldo das contas não ficar pela metade.
 app.delete('/lancamentos/:id', exigirLogin, async (req, res) => {
-  const id = req.params.id
-
-  const sql = `DELETE FROM lancamentos WHERE id = ? AND usuarioId = ?`
+  const id = lerId(req.params.id)
+  if (!id) return res.status(400).json({ erro: 'ID inválido.' })
 
   try {
-    const [resultado] = await pool.query(sql, [id, req.usuarioId])
-    if (resultado.affectedRows === 0) {
+    await garantirEsquemaLancamentos()
+
+    const ids = await emTransacao(async (conexao) => {
+      const [encontrados] = await conexao.query(
+        'SELECT id, grupoId FROM lancamentos WHERE id = ? AND usuarioId = ? FOR UPDATE',
+        [id, req.usuarioId],
+      )
+      if (encontrados.length === 0) return []
+
+      let excluir = [encontrados[0].id]
+      if (encontrados[0].grupoId) {
+        const [grupo] = await conexao.query(
+          'SELECT id FROM lancamentos WHERE grupoId = ? AND usuarioId = ? FOR UPDATE',
+          [encontrados[0].grupoId, req.usuarioId],
+        )
+        excluir = grupo.map((lancamento) => lancamento.id)
+      }
+
+      await conexao.query('DELETE FROM lancamentos WHERE id IN (?) AND usuarioId = ?', [
+        excluir,
+        req.usuarioId,
+      ])
+      return excluir
+    })
+
+    if (ids.length === 0) {
       return res.status(404).json({ erro: 'Lançamento não encontrado.' })
     }
 
-    res.json({ mensagem: 'Excluido com sucesso', id: id })
+    res.json({ mensagem: 'Excluido com sucesso', id, ids })
   } catch (erro) {
     console.log('Erro ao excluir: ', erro)
     res.status(500).json({ erro: 'Erro ao exlcuir' })
@@ -748,8 +884,16 @@ app.get('/categorias', exigirLogin, async (req, res) => {
   const sql = `SELECT id, nome FROM categorias_gasto WHERE usuario_id = ? ORDER BY nome`
 
   try {
+    // Contas criadas antes das transferências ganham a categoria aqui.
+    await garantirCategoria(pool, req.usuarioId, CATEGORIA_TRANSFERENCIA)
     const [resultados] = await pool.query(sql, [req.usuarioId])
-    res.json(resultados)
+    res.json(
+      resultados.map((categoria) => ({
+        ...categoria,
+        protegida: nomePadrao(categoria.nome) !== null,
+        ehTransferencia: ehTransferencia(categoria.nome),
+      })),
+    )
   } catch (erro) {
     console.log('Erro ao buscar categorias:', erro)
     res.status(500).json({ erro: 'Erro ao buscar categorias.' })
@@ -757,12 +901,17 @@ app.get('/categorias', exigirLogin, async (req, res) => {
 })
 
 app.post('/categorias', exigirLogin, async (req, res) => {
-  const nome =
-    typeof req.body.nome === 'string' ? req.body.nome.trim().toLowerCase() : ''
+  const informado =
+    typeof req.body?.nome === 'string' ? req.body.nome.trim().toLowerCase() : ''
 
-  if (!nome || nome.length > 100) {
+  if (!informado || informado.length > 100) {
     return res.status(400).json({ erro: 'Nome inválido.' })
   }
+
+  // Variações de uma categoria padrão ("Transferencia", "SAUDE") usam o nome
+  // oficial, então não dá para criar uma cópia dela.
+  const oficial = nomePadrao(informado)
+  const nome = oficial || informado
 
   const sql = `INSERT INTO categorias_gasto (usuario_id, nome) VALUES (?, ?)`
 
@@ -770,7 +919,12 @@ app.post('/categorias', exigirLogin, async (req, res) => {
     const [resultado] = await pool.query(sql, [req.usuarioId, nome])
     res.status(201).json({
       mensagem: 'Categoria criada',
-      categoria: { id: resultado.insertId, nome },
+      categoria: {
+        id: resultado.insertId,
+        nome,
+        protegida: oficial !== null,
+        ehTransferencia: ehTransferencia(nome),
+      },
     })
   } catch (erro) {
     if (erro.code === 'ER_DUP_ENTRY') {
@@ -784,37 +938,39 @@ app.post('/categorias', exigirLogin, async (req, res) => {
 })
 
 app.delete('/categorias/:id', exigirLogin, async (req, res) => {
-  const id = req.params.id
-
-  const sqlFallback = `SELECT id FROM categorias_gasto WHERE usuario_id = ? AND nome = 'outros'`
+  const id = lerId(req.params.id)
+  if (!id) return res.status(400).json({ erro: 'ID inválido.' })
 
   try {
-    const [fallback] = await pool.query(sqlFallback, [req.usuarioId])
-    if (fallback.length === 0 || Number(fallback[0].id) === Number(id)) {
+    const [categorias] = await pool.query(
+      'SELECT id, nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?',
+      [id, req.usuarioId],
+    )
+    if (categorias.length === 0) {
+      return res.status(404).json({ erro: 'Categoria não encontrada.' })
+    }
+    if (nomePadrao(categorias[0].nome)) {
       return res.status(400).json({
-        erro: 'Não é possível excluir a categoria "outros", ela recebe os lançamentos das categorias excluídas.',
+        erro: `"${categorias[0].nome}" é uma categoria padrão e não pode ser excluída.`,
       })
     }
 
-    const idFallback = fallback[0].id
+    const fallback = await garantirCategoria(pool, req.usuarioId, CATEGORIA_FALLBACK)
 
-    const sqlReatribuir = `
-      UPDATE lancamentos
-      SET categoria_id = ?
-      WHERE categoria_id = ? AND usuarioId = ?
-    `
-
-    await pool.query(sqlReatribuir, [idFallback, id, req.usuarioId])
-
-    const sqlDeletarMetas = `DELETE FROM metas WHERE categoria_id = ? AND usuario_id = ?`
-    await pool.query(sqlDeletarMetas, [id, req.usuarioId])
-
-    const sqlDeletar = `DELETE FROM categorias_gasto WHERE id = ? AND usuario_id = ?`
-    const [resultado] = await pool.query(sqlDeletar, [id, req.usuarioId])
-
-    if (resultado.affectedRows === 0) {
-      return res.status(404).json({ erro: 'Categoria não encontrada.' })
-    }
+    await emTransacao(async (conexao) => {
+      await conexao.query(
+        'UPDATE lancamentos SET categoria_id = ? WHERE categoria_id = ? AND usuarioId = ?',
+        [fallback.id, id, req.usuarioId],
+      )
+      await conexao.query('DELETE FROM metas WHERE categoria_id = ? AND usuario_id = ?', [
+        id,
+        req.usuarioId,
+      ])
+      await conexao.query('DELETE FROM categorias_gasto WHERE id = ? AND usuario_id = ?', [
+        id,
+        req.usuarioId,
+      ])
+    })
 
     res.json({ mensagem: 'Categoria excluída', id })
   } catch (erro) {
@@ -829,13 +985,13 @@ app.get('/metas', exigirLogin, async (req, res) => {
   const sql = `
     SELECT m.id, m.categoria_id, c.nome AS categoria, m.valor_max, m.mes_ano
     FROM metas m
-    JOIN categorias_gasto c ON c.id = m.categoria_id
+    JOIN categorias_gasto c ON c.id = m.categoria_id AND c.usuario_id = m.usuario_id
     WHERE m.usuario_id = ?
   `
 
   try {
     const [resultados] = await pool.query(sql, [req.usuarioId])
-    res.json(resultados)
+    res.json(resultados.filter((meta) => !ehTransferencia(meta.categoria)))
   } catch (erro) {
     console.log('Erro ao buscar metas:', erro)
     res.status(500).json({ erro: 'Erro ao buscar metas.' })
@@ -865,6 +1021,19 @@ app.post('/metas', exigirLogin, async (req, res) => {
   `
 
   try {
+    const [categorias] = await pool.query(
+      'SELECT nome FROM categorias_gasto WHERE id = ? AND usuario_id = ?',
+      [categoriaId, req.usuarioId],
+    )
+    if (categorias.length === 0) {
+      return res.status(400).json({ erro: 'Categoria inválida.' })
+    }
+    if (ehTransferencia(categorias[0].nome)) {
+      return res.status(400).json({
+        erro: 'Transferências não contam como gasto, então não têm meta.',
+      })
+    }
+
     const [resultado] = await pool.query(sql, [
       req.usuarioId,
       categoriaId,
@@ -1043,38 +1212,27 @@ app.patch('/bancos/:id', exigirLogin, async (req, res) => {
 })
 
 app.delete('/bancos/:id', exigirLogin, async (req, res) => {
-  const id = req.params.id
-
-  const sqlLancamentos = `
-    DELETE FROM lancamentos
-    WHERE bancoId = ? AND usuarioId = ?
-  `
+  const id = lerId(req.params.id)
+  if (!id) return res.status(400).json({ erro: 'ID inválido.' })
 
   try {
-    await pool.query(sqlLancamentos, [id, req.usuarioId])
-  } catch (erro) {
-    console.log('Erro ao excluir lançamentos do banco:', erro)
-    return res.status(500).json({
-      erro: 'Erro ao excluir lançamentos do banco',
+    await garantirEsquemaLancamentos()
+    await emTransacao(async (conexao) => {
+      // O dinheiro que foi para (ou veio de) outra conta continua lá: a ponta
+      // que sobra deixa de estar ligada à conta excluída.
+      await conexao.query(
+        `UPDATE lancamentos restante
+         JOIN lancamentos removido
+           ON removido.grupoId = restante.grupoId AND removido.usuarioId = restante.usuarioId
+         SET restante.grupoId = NULL
+         WHERE removido.bancoId = ? AND removido.usuarioId = ? AND restante.bancoId <> ?`,
+        [String(id), req.usuarioId, String(id)],
+      )
+      await conexao.query('DELETE FROM lancamentos WHERE bancoId = ? AND usuarioId = ?', [String(id), req.usuarioId])
+      await conexao.query('DELETE FROM cartoes WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
+      await conexao.query('DELETE FROM fatura_pagamentos WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
+      await conexao.query('DELETE FROM bancos WHERE id = ? AND usuarioId = ?', [id, req.usuarioId])
     })
-  }
-
-  try {
-    await garantirEsquemaCartoes()
-    await pool.query('DELETE FROM cartoes WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
-    await pool.query('DELETE FROM fatura_pagamentos WHERE bancoId = ? AND usuarioId = ?', [id, req.usuarioId])
-  } catch (erro) {
-    console.log('Erro ao excluir cartões do banco:', erro)
-    return res.status(500).json({ erro: 'Erro ao excluir cartões do banco' })
-  }
-
-  const sqlBanco = `
-      DELETE FROM bancos
-      WHERE id = ? AND usuarioId = ?
-    `
-
-  try {
-    await pool.query(sqlBanco, [id, req.usuarioId])
     res.json({
       mensagem: 'Banco excluído com sucesso',
       id: id,
@@ -1210,15 +1368,6 @@ app.post('/cadastro', async (req, res) => {
         (usuario_id, nome)
       VALUES (?, ?)
     `
-    const CATEGORIAS_PADRAO = [
-      'alimentação',
-      'lazer',
-      'transporte',
-      'moradia',
-      'saúde',
-      'contas',
-      'outros',
-    ]
     for (const categoria of CATEGORIAS_PADRAO) {
       await connection.query(sqlCategoria, [usuarioId, categoria])
     }

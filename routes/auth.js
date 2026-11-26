@@ -8,15 +8,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const router = express.Router()
 
-const CATEGORIAS_PADRAO = [
-  'alimentação',
-  'lazer',
-  'transporte',
-  'moradia',
-  'saúde',
-  'contas',
-  'outros',
-]
+const { CATEGORIAS_PADRAO } = require('../lib/categorias')
 
 router.post('/google-login', async (req, res) => {
   const { credential, convite } = req.body || {}
@@ -181,19 +173,9 @@ router.post('/google-login', async (req, res) => {
       usuarioNome = nome
       usuarioEmail = emailLimpo
 
-      const categoriasPadrao = [
-        'alimentação',
-        'lazer',
-        'transporte',
-        'moradia',
-        'saúde',
-        'contas',
-        'outros',
-      ]
-
-      for (const categoria of categoriasPadrao) {
+      for (const categoria of CATEGORIAS_PADRAO) {
         await conn.query(
-          'INSERT INTO categorias (usuario_id, nome) VALUES (?, ?)',
+          'INSERT INTO categorias_gasto (usuario_id, nome) VALUES (?, ?)',
           [usuarioId, categoria],
         )
       }

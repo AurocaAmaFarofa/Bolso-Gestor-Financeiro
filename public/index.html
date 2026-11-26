@@ -319,12 +319,15 @@
           </button>
         </div>
 
-        <div class="popup-plus-minus-btn">
-          <button class="popup-btn btn-selected-ex" id="expense-btn">
+        <div class="popup-plus-minus-btn popup-tipo-lancamento">
+          <button type="button" class="popup-btn btn-selected-ex" id="expense-btn" aria-pressed="true">
             Gasto
           </button>
-          <button class="popup-btn btn-selected-in" id="income-btn">
+          <button type="button" class="popup-btn" id="income-btn" aria-pressed="false">
             Recebimento
+          </button>
+          <button type="button" class="popup-btn" id="transfer-btn" aria-pressed="false">
+            Transferir
           </button>
         </div>
 
@@ -340,18 +343,50 @@
             />
           </label>
 
-          <label class="popup-container">
+          <label class="popup-container" id="transfer-from-field" hidden>
+            <span class="span-popup">Sai da conta</span>
+            <select id="transfer-from"></select>
+          </label>
+
+          <label class="popup-container" id="transfer-to-field" hidden>
+            <span class="span-popup">Entra na conta</span>
+            <select id="transfer-to"></select>
+          </label>
+
+          <label class="popup-container" id="category-field">
             <span class="span-popup">Categoria</span>
             <select id="category-select" required></select>
           </label>
 
           <button
             type="button"
+            id="btn-nova-categoria"
+            aria-label="Criar categoria"
             onclick="abrirOuFecharPopup('popup-nova-categoria', 'abrir')"
             class="btn-submit"
           >
             +
           </button>
+
+          <p class="transfer-hint" id="transfer-hint" aria-live="polite" hidden></p>
+
+          <div class="popup-container" id="split-field">
+            <label class="reserve-goal-toggle">
+              <input type="checkbox" id="split-toggle" />
+              <span>Parte desse valor é de outra pessoa</span>
+            </label>
+            <label class="popup-container" id="split-value-field" hidden>
+              <span class="span-popup">Quanto é da outra pessoa?</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0,00"
+                id="split-value"
+              />
+              <small class="split-preview" id="split-preview" aria-live="polite"></small>
+            </label>
+          </div>
 
           <label class="popup-container">
             <span class="span-popup">Descrição</span>
@@ -363,14 +398,14 @@
             />
           </label>
 
-          <label class="popup-container">
+          <label class="popup-container" id="payment-field">
             <span class="span-popup">Forma de pagamento</span>
             <select id="payment-select" required>
               <option value="pix">Pix</option>
               <option value="debito">Cartão de débito</option>
               <option value="credito">Cartão de crédito</option>
               <option value="dinheiro">Dinheiro</option>
-              <option value="transferencia">Transferência</option>
+              <option value="transferencia">TED / transferência bancária</option>
             </select>
           </label>
 
@@ -423,6 +458,9 @@
           </div>
           <button type="submit" class="btn-submit">Criar Categoria</button>
         </form>
+        <p class="transaction-note">
+          Só as categorias criadas por você podem ser excluídas.
+        </p>
         <div class="lista-categorias" id="lista-categorias"></div>
       </div>
       <div class="app-shell">
@@ -975,6 +1013,10 @@
                 <tbody></tbody>
               </table>
             </div>
+            <p class="transaction-note">
+              Transferências aparecem aqui e mudam o saldo das contas, mas não
+              entram em gastos, receitas, metas nem gráficos.
+            </p>
           </section>
           <!-- Seção de Fixos -->
           <section id="fixedExpenses" class="page">
