@@ -45,6 +45,7 @@ const reservas = require('./routes/reservas')
 const investimentos = require('./routes/investimentos')
 const cartoes = require('./routes/cartoes')
 const { garantirEsquemaCartoes } = require('./lib/esquemaCartoes')
+const { dataDoLancamento, intervaloDeBusca } = require('./lib/mesLancamento')
 
 app.use(cors(corsOptions))
 
@@ -171,12 +172,19 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
     LEFT JOIN bancos b
       ON b.id = l.bancoId AND b.usuarioId = l.usuarioId
     LEFT JOIN categorias_gasto c ON c.id = l.categoria_id
-    WHERE l.usuarioId = ? AND l.tipo IN ('despesa', 'ganho') AND l.mesAno = ?
+    WHERE l.usuarioId = ? AND l.tipo IN ('despesa', 'ganho')
+      AND l.data >= ? AND l.data < ?
     ORDER BY COALESCE(b.nome, 'Conta não identificada'), l.data DESC, l.id DESC
   `
 
   try {
-    const [lancamentos] = await pool.query(sql, [req.usuarioId, mesAno])
+    const [candidatos] = await pool.query(sql, [
+      req.usuarioId,
+      ...intervaloDeBusca(mesAno),
+    ])
+    const lancamentos = candidatos.filter((lancamento) =>
+      dataDoLancamento(lancamento.data)?.startsWith(mesAno),
+    )
     const gruposPorBanco = new Map()
 
     lancamentos.forEach((lancamento) => {
@@ -224,10 +232,8 @@ app.get('/lancamentos/relatorio-despesas', exigirLogin, async (req, res) => {
       currency: 'BRL',
     })
     const dataFormatada = (valor) => {
-      const data = new Date(Number(valor))
-      return Number.isNaN(data.getTime())
-        ? 'Data indisponível'
-        : data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+      const data = dataDoLancamento(valor)
+      return data ? data.split('-').reverse().join('/') : 'Data indisponível'
     }
 
     res.setHeader('Content-Type', 'application/pdf')
